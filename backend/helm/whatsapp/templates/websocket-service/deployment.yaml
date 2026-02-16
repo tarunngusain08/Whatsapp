@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: websocket-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "websocket-service" "root" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.websocketService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "websocket-service" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "websocket-service" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: websocket-service
+          image: {{ include "whatsapp.serviceImage" (dict "root" . "image" .Values.services.websocketService.image) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.websocketService.httpPort }}
+              protocol: TCP
+          env:
+            - name: WS_REDIS_ADDR
+              value: "redis:{{ .Values.redis.port }}"
+            - name: WS_NATS_URL
+              value: "nats://nats:{{ .Values.nats.clientPort }}"
+            - name: WS_AUTH_GRPC_ADDR
+              value: "auth-service:{{ .Values.services.authService.grpcPort }}"
+            - name: WS_MESSAGE_GRPC_ADDR
+              value: "message-service:{{ .Values.services.messageService.grpcPort }}"
+            - name: WS_CHAT_GRPC_ADDR
+              value: "chat-service:{{ .Values.services.chatService.grpcPort }}"
+            - name: WS_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.services.websocketService.resources | nindent 12 }}
