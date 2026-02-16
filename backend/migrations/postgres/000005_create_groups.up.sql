@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS groups (
+    chat_id UUID PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    avatar_url TEXT NOT NULL DEFAULT '',
+    created_by UUID NOT NULL REFERENCES users(id),
+    is_admin_only BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
