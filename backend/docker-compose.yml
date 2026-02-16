@@ -95,6 +95,8 @@ services:
       - "8080:8080"
     environment:
       GATEWAY_REDIS_ADDR: redis:6379
+      GATEWAY_RATE_LIMIT_RPS: 10000
+      GATEWAY_RATE_LIMIT_BURST: 1000
       AUTH_GRPC_ADDR: auth-service:9081
       AUTH_HTTP_ADDR: http://auth-service:8081
       USER_HTTP_ADDR: http://user-service:8082
