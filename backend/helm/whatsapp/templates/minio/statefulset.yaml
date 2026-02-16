@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "minio" "root" .) | nindent 4 }}
+spec:
+  serviceName: minio
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "minio" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "minio" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":{{ .Values.minio.consolePort }}"
+          ports:
+            - name: api
+              containerPort: {{ .Values.minio.apiPort }}
+              protocol: TCP
+            - name: console
+              containerPort: {{ .Values.minio.consolePort }}
+              protocol: TCP
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: whatsapp-secrets
+                  key: minio-access-key
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: whatsapp-secrets
+                  key: minio-secret-key
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+      volumes:
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: minio-data
