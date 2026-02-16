@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "nats" "root" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: client
+      port: {{ .Values.nats.clientPort }}
+      targetPort: client
+      protocol: TCP
+    - name: monitor
+      port: {{ .Values.nats.monitorPort }}
+      targetPort: monitor
+      protocol: TCP
+  selector:
+    {{- include "whatsapp.selectorLabels" (dict "name" "nats" "root" .) | nindent 4 }}
