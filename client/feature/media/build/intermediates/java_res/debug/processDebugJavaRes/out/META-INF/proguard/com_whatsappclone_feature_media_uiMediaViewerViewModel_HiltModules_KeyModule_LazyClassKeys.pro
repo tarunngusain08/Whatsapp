@@ -1,0 +1,4 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.media.ui.SharedMediaViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.media.ui.SharedMediaViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.media.ui.MediaViewerViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.media.ui.MediaViewerViewModel
