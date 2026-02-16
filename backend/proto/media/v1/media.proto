@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package media.v1;
+
+option go_package = "github.com/whatsapp-clone/backend/proto/media/v1;mediav1";
+
+service MediaService {
+  rpc GetMediaMetadata(GetMediaMetadataRequest) returns (GetMediaMetadataResponse);
+}
+
+message GetMediaMetadataRequest {
+  string media_id = 1;
+}
+
+message GetMediaMetadataResponse {
+  string media_id       = 1;
+  string file_type      = 2;
+  string mime_type      = 3;
+  int64  size_bytes     = 4;
+  string url            = 5;
+  string thumbnail_url  = 6;
+  int32  width          = 7;
+  int32  height         = 8;
+  int64  duration_ms    = 9;
+}
