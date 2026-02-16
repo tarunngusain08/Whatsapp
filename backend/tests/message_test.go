@@ -17,7 +17,8 @@ func TestMessage_SendAndRetrieve(t *testing.T) {
 	chatID := createDirectChat(t, tokenA, userB)
 
 	// Send message
-	msgID := sendMessage(t, tokenA, chatID, "Hello, World!", "test-msg-001")
+	clientMsgID := uniqueID("test-msg")
+	msgID := sendMessage(t, tokenA, chatID, "Hello, World!", clientMsgID)
 	assert.NotEmpty(t, msgID)
 
 	// Allow async persistence
@@ -25,13 +26,13 @@ func TestMessage_SendAndRetrieve(t *testing.T) {
 
 	// Retrieve messages as user B
 	resp := doRequest(t, "GET", fmt.Sprintf("/api/v1/messages?chat_id=%s", chatID), nil, tokenB)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body := parseResponse(t, resp)
-	assert.True(t, body["success"].(bool))
+	require.True(t, body["success"].(bool))
 
 	dataRaw := body["data"]
-	require.NotNil(t, dataRaw, "data should not be nil")
+	require.NotNil(t, dataRaw, "data should not be nil, chatID=%s", chatID)
 	messages, ok := dataRaw.([]interface{})
 	require.True(t, ok, "data should be an array")
 	assert.GreaterOrEqual(t, len(messages), 1, "should have at least one message")
@@ -40,7 +41,7 @@ func TestMessage_SendAndRetrieve(t *testing.T) {
 	found := false
 	for _, m := range messages {
 		msg := m.(map[string]interface{})
-		if msg["client_msg_id"] == "test-msg-001" {
+		if msg["client_msg_id"] == clientMsgID {
 			found = true
 			payload := msg["payload"].(map[string]interface{})
 			assert.Equal(t, "Hello, World!", payload["body"])
@@ -58,12 +59,13 @@ func TestMessage_Idempotent(t *testing.T) {
 	chatID := createDirectChat(t, tokenA, userB)
 
 	// Send same message twice with the same client_msg_id
+	dedupID := uniqueID("dedup")
 	for i := 0; i < 2; i++ {
 		resp := doRequest(t, "POST", "/api/v1/messages", map[string]interface{}{
 			"chat_id":       chatID,
 			"type":          "text",
 			"payload":       map[string]interface{}{"body": "Dedup test"},
-			"client_msg_id": "dedup-test-001",
+			"client_msg_id": dedupID,
 		}, tokenA)
 		assert.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.StatusCode)
 		_ = parseResponse(t, resp)
@@ -81,7 +83,7 @@ func TestMessage_Idempotent(t *testing.T) {
 	count := 0
 	for _, m := range messages {
 		msg := m.(map[string]interface{})
-		if msg["client_msg_id"] == "dedup-test-001" {
+		if msg["client_msg_id"] == dedupID {
 			count++
 		}
 	}
@@ -95,7 +97,7 @@ func TestMessage_Delete_ForEveryone(t *testing.T) {
 	chatID := createDirectChat(t, tokenA, userB)
 
 	// Send message
-	msgID := sendMessage(t, tokenA, chatID, "Delete me", "delete-test-001")
+	msgID := sendMessage(t, tokenA, chatID, "Delete me", uniqueID("delete"))
 
 	// Delete for everyone
 	resp := doRequest(t, "DELETE", fmt.Sprintf("/api/v1/messages/%s?for=everyone", msgID), nil, tokenA)
@@ -109,7 +111,7 @@ func TestMessage_Delete_ForMe(t *testing.T) {
 
 	chatID := createDirectChat(t, tokenA, userB)
 
-	msgID := sendMessage(t, tokenA, chatID, "Delete for me only", "delete-me-001")
+	msgID := sendMessage(t, tokenA, chatID, "Delete for me only", uniqueID("delete-me"))
 
 	// Delete for me (default)
 	resp := doRequest(t, "DELETE", fmt.Sprintf("/api/v1/messages/%s?for=me", msgID), nil, tokenA)
@@ -125,7 +127,7 @@ func TestMessage_Pagination(t *testing.T) {
 
 	// Send multiple messages
 	for i := 0; i < 5; i++ {
-		sendMessage(t, tokenA, chatID, fmt.Sprintf("Pagination msg %d", i), fmt.Sprintf("page-msg-%03d", i))
+		sendMessage(t, tokenA, chatID, fmt.Sprintf("Pagination msg %d", i), uniqueID(fmt.Sprintf("page-msg-%d", i)))
 	}
 
 	time.Sleep(500 * time.Millisecond)
@@ -151,7 +153,7 @@ func TestMessage_Star(t *testing.T) {
 	_, _, userB := registerUser(t, "+14155554012")
 
 	chatID := createDirectChat(t, tokenA, userB)
-	msgID := sendMessage(t, tokenA, chatID, "Star me", "star-test-001")
+	msgID := sendMessage(t, tokenA, chatID, "Star me", uniqueID("star"))
 
 	// Star message
 	resp := doRequest(t, "POST", fmt.Sprintf("/api/v1/messages/%s/star", msgID), nil, tokenA)
@@ -173,7 +175,7 @@ func TestMessage_Forward(t *testing.T) {
 	chatAC := createDirectChat(t, tokenA, userC)
 
 	// Send original message
-	msgID := sendMessage(t, tokenA, chatAB, "Forward this", "forward-test-001")
+	msgID := sendMessage(t, tokenA, chatAB, "Forward this", uniqueID("forward"))
 
 	// Forward to another chat
 	resp := doRequest(t, "POST", fmt.Sprintf("/api/v1/messages/%s/forward", msgID), map[string]interface{}{
@@ -190,7 +192,7 @@ func TestMessage_MarkAsRead(t *testing.T) {
 	tokenB, _, userB := registerUser(t, "+14155554017")
 
 	chatID := createDirectChat(t, tokenA, userB)
-	sendMessage(t, tokenA, chatID, "Read me", "read-test-001")
+	sendMessage(t, tokenA, chatID, "Read me", uniqueID("read"))
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -207,8 +209,8 @@ func TestMessage_Search(t *testing.T) {
 	_, _, userB := registerUser(t, "+14155554019")
 
 	chatID := createDirectChat(t, tokenA, userB)
-	sendMessage(t, tokenA, chatID, "searchable keyword alpha", "search-test-001")
-	sendMessage(t, tokenA, chatID, "another message beta", "search-test-002")
+	sendMessage(t, tokenA, chatID, "searchable keyword alpha", uniqueID("search-1"))
+	sendMessage(t, tokenA, chatID, "another message beta", uniqueID("search-2"))
 
 	time.Sleep(500 * time.Millisecond)
 
