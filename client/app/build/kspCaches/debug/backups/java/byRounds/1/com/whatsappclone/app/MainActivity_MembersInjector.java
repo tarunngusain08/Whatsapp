@@ -1,0 +1,83 @@
+package com.whatsappclone.app;
+
+import com.whatsappclone.app.error.GlobalErrorHandler;
+import com.whatsappclone.app.lifecycle.WsLifecycleManager;
+import com.whatsappclone.core.network.url.BaseUrlProvider;
+import com.whatsappclone.feature.auth.data.AuthRepository;
+import dagger.MembersInjector;
+import dagger.internal.DaggerGenerated;
+import dagger.internal.InjectedFieldSignature;
+import dagger.internal.QualifierMetadata;
+import javax.annotation.processing.Generated;
+import javax.inject.Provider;
+
+@QualifierMetadata
+@DaggerGenerated
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes",
+    "KotlinInternal",
+    "KotlinInternalInJava",
+    "cast",
+    "deprecation",
+    "nullness:initialization.field.uninitialized"
+})
+public final class MainActivity_MembersInjector implements MembersInjector<MainActivity> {
+  private final Provider<GlobalErrorHandler> globalErrorHandlerProvider;
+
+  private final Provider<AuthRepository> authRepositoryProvider;
+
+  private final Provider<BaseUrlProvider> baseUrlProvider;
+
+  private final Provider<WsLifecycleManager> wsLifecycleManagerProvider;
+
+  public MainActivity_MembersInjector(Provider<GlobalErrorHandler> globalErrorHandlerProvider,
+      Provider<AuthRepository> authRepositoryProvider, Provider<BaseUrlProvider> baseUrlProvider,
+      Provider<WsLifecycleManager> wsLifecycleManagerProvider) {
+    this.globalErrorHandlerProvider = globalErrorHandlerProvider;
+    this.authRepositoryProvider = authRepositoryProvider;
+    this.baseUrlProvider = baseUrlProvider;
+    this.wsLifecycleManagerProvider = wsLifecycleManagerProvider;
+  }
+
+  public static MembersInjector<MainActivity> create(
+      Provider<GlobalErrorHandler> globalErrorHandlerProvider,
+      Provider<AuthRepository> authRepositoryProvider, Provider<BaseUrlProvider> baseUrlProvider,
+      Provider<WsLifecycleManager> wsLifecycleManagerProvider) {
+    return new MainActivity_MembersInjector(globalErrorHandlerProvider, authRepositoryProvider, baseUrlProvider, wsLifecycleManagerProvider);
+  }
+
+  @Override
+  public void injectMembers(MainActivity instance) {
+    injectGlobalErrorHandler(instance, globalErrorHandlerProvider.get());
+    injectAuthRepository(instance, authRepositoryProvider.get());
+    injectBaseUrlProvider(instance, baseUrlProvider.get());
+    injectWsLifecycleManager(instance, wsLifecycleManagerProvider.get());
+  }
+
+  @InjectedFieldSignature("com.whatsappclone.app.MainActivity.globalErrorHandler")
+  public static void injectGlobalErrorHandler(MainActivity instance,
+      GlobalErrorHandler globalErrorHandler) {
+    instance.globalErrorHandler = globalErrorHandler;
+  }
+
+  @InjectedFieldSignature("com.whatsappclone.app.MainActivity.authRepository")
+  public static void injectAuthRepository(MainActivity instance, AuthRepository authRepository) {
+    instance.authRepository = authRepository;
+  }
+
+  @InjectedFieldSignature("com.whatsappclone.app.MainActivity.baseUrlProvider")
+  public static void injectBaseUrlProvider(MainActivity instance, BaseUrlProvider baseUrlProvider) {
+    instance.baseUrlProvider = baseUrlProvider;
+  }
+
+  @InjectedFieldSignature("com.whatsappclone.app.MainActivity.wsLifecycleManager")
+  public static void injectWsLifecycleManager(MainActivity instance,
+      WsLifecycleManager wsLifecycleManager) {
+    instance.wsLifecycleManager = wsLifecycleManager;
+  }
+}
