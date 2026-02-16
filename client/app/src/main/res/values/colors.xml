@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary brand colors -->
+    <color name="whatsapp_primary">#075E54</color>
+    <color name="whatsapp_primary_dark">#054D44</color>
+    <color name="whatsapp_accent">#25D366</color>
+    <color name="whatsapp_teal_green">#128C7E</color>
+
+    <!-- Chat colors -->
+    <color name="sent_bubble_light">#DCF8C6</color>
+    <color name="received_bubble_light">#FFFFFF</color>
+    <color name="chat_background_light">#ECE5DD</color>
+
+    <color name="sent_bubble_dark">#005C4B</color>
+    <color name="received_bubble_dark">#1F2C34</color>
+    <color name="chat_background_dark">#0B141A</color>
+
+    <!-- Status bar -->
+    <color name="status_bar_light">#075E54</color>
+    <color name="status_bar_dark">#111B21</color>
+
+    <!-- Background / Surface -->
+    <color name="background_light">#F5F5F5</color>
+    <color name="background_dark">#111B21</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1F2C34</color>
+
+    <!-- Text -->
+    <color name="text_primary_light">#1B1B1B</color>
+    <color name="text_primary_dark">#E9EDEF</color>
+    <color name="text_secondary_light">#667781</color>
+    <color name="text_secondary_dark">#8696A0</color>
+
+    <!-- Launcher icon -->
+    <color name="ic_launcher_background">#075E54</color>
+</resources>
