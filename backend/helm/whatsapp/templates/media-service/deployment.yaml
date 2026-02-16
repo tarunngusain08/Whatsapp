@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "media-service" "root" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.mediaService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "media-service" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "media-service" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: media-service
+          image: {{ include "whatsapp.serviceImage" (dict "root" . "image" .Values.services.mediaService.image) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.mediaService.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.services.mediaService.grpcPort }}
+              protocol: TCP
+          env:
+            - name: MEDIA_MONGO_URI
+              value: "mongodb://mongodb:{{ .Values.mongodb.port }}"
+            - name: MEDIA_MONGO_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: MEDIA_MINIO_ENDPOINT
+              value: "minio:{{ .Values.minio.apiPort }}"
+            - name: MEDIA_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: whatsapp-secrets
+                  key: minio-access-key
+            - name: MEDIA_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: whatsapp-secrets
+                  key: minio-secret-key
+            - name: MEDIA_MINIO_BUCKET
+              value: "whatsapp-media"
+            - name: MEDIA_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.services.mediaService.resources | nindent 12 }}
