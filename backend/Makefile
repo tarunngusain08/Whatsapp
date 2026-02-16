@@ -1,4 +1,4 @@
-.PHONY: build test lint proto migrate-up migrate-down mongo-indexes minio-init \
+.PHONY: build test test-unit test-integration lint proto migrate-up migrate-down mongo-indexes minio-init \
        docker-up docker-down docker-build docker-logs clean kind-up kind-down ngrok load-test
 
 # ─────────────────────────────────────────────
@@ -15,12 +15,18 @@ build:
 	done
 	@echo "All services built → ./bin/"
 
-test:
-	@echo "Running tests..."
+test: test-unit test-integration
+
+test-unit:
+	@echo "Running unit tests..."
 	@for svc in $(SERVICES); do \
 		echo "  → $$svc"; \
 		cd $$svc && go test ./... -v -race && cd ..; \
 	done
+
+test-integration:
+	@echo "Running integration tests (requires docker-compose stack)..."
+	cd tests && go test -v -count=1 -timeout 120s ./...
 
 lint:
 	@echo "Running linter..."
@@ -111,6 +117,12 @@ kind-down:
 # Ngrok
 # ─────────────────────────────────────────────
 ngrok:
+	@command -v ngrok >/dev/null 2>&1 || { \
+		echo "Error: ngrok is not installed."; \
+		echo "Install via:  brew install ngrok/ngrok/ngrok"; \
+		echo "         or:  https://ngrok.com/download"; \
+		exit 1; \
+	}
 	@echo "Starting ngrok tunnel..."
 	bash scripts/ngrok-start.sh
 
@@ -118,5 +130,11 @@ ngrok:
 # Load Testing
 # ─────────────────────────────────────────────
 load-test:
+	@command -v k6 >/dev/null 2>&1 || { \
+		echo "Error: k6 is not installed."; \
+		echo "Install via:  brew install k6"; \
+		echo "         or:  https://grafana.com/docs/k6/latest/set-up/install-k6/"; \
+		exit 1; \
+	}
 	@echo "Running load test..."
 	k6 run tests/load/load_test.js
