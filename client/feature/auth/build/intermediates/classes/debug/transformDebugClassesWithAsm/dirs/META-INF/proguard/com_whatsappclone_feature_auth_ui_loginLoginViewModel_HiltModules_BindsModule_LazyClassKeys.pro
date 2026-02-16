@@ -1,0 +1,5 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.auth.ui.otp.OtpViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.auth.ui.otp.OtpViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.auth.ui.profile.ProfileSetupViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.auth.ui.profile.ProfileSetupViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.auth.ui.login.LoginViewModel
