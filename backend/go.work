@@ -1,0 +1,15 @@
+go 1.24.0
+
+use (
+	./api-gateway
+	./auth-service
+	./chat-service
+	./media-service
+	./message-service
+	./notification-service
+	./pkg
+	./proto
+	./tests
+	./user-service
+	./websocket-service
+)
