@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WhatsApp Clone</string>
+
+    <!-- Common Actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_send">Send</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_back">Back</string>
+    <string name="action_done">Done</string>
+    <string name="action_next">Next</string>
+    <string name="action_search">Search</string>
+    <string name="action_share">Share</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_reply">Reply</string>
+
+    <!-- Navigation -->
+    <string name="tab_chats">Chats</string>
+    <string name="tab_status">Status</string>
+    <string name="tab_calls">Calls</string>
+
+    <!-- Auth -->
+    <string name="login_title">Verify your phone number</string>
+    <string name="login_subtitle">WhatsApp Clone will need to verify your phone number.</string>
+    <string name="otp_title">Enter verification code</string>
+    <string name="otp_subtitle">A 6-digit code was sent to %s</string>
+
+    <!-- Profile -->
+    <string name="profile_setup_title">Profile info</string>
+    <string name="profile_setup_subtitle">Please provide your name and an optional profile photo</string>
+
+    <!-- Chat -->
+    <string name="chat_hint">Type a message</string>
+    <string name="chat_typing">typing…</string>
+    <string name="chat_online">online</string>
+    <string name="chat_last_seen">last seen %s</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Something went wrong. Please try again.</string>
+    <string name="error_network">No internet connection. Please check your network.</string>
+    <string name="error_session_expired">Session expired. Please log in again.</string>
+
+    <!-- Notifications -->
+    <string name="notification_new_message">New message</string>
+    <string name="notification_new_group_message">New group message</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_profile">Profile</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_server_url">Server URL</string>
+    <string name="settings_logout">Log out</string>
+
+    <!-- Empty states -->
+    <string name="empty_chats">No conversations yet.\nStart a new chat!</string>
+    <string name="empty_contacts">No contacts found.</string>
+    <string name="empty_search">No results found for \"%s\"</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_profile_photo">Profile photo</string>
+    <string name="cd_send_message">Send message</string>
+    <string name="cd_attach_media">Attach media</string>
+    <string name="cd_take_photo">Take photo</string>
+    <string name="cd_record_audio">Record audio message</string>
+    <string name="cd_back">Navigate back</string>
+    <string name="cd_more_options">More options</string>
+</resources>
