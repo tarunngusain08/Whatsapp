@@ -49,7 +49,7 @@ func TestWebSocket_SendMessage(t *testing.T) {
 			"chat_id":       chatID,
 			"type":          "text",
 			"payload":       map[string]interface{}{"body": "Hello via WS!"},
-			"client_msg_id": "ws-msg-001",
+			"client_msg_id": uniqueID("ws-msg"),
 		},
 	}
 	data, err := json.Marshal(event)
@@ -121,7 +121,7 @@ func TestWebSocket_RealTimeDelivery(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 
 	// User A sends a message via REST API
-	sendMessage(t, tokenA, chatID, "Real-time test!", "rt-msg-001")
+	sendMessage(t, tokenA, chatID, "Real-time test!", uniqueID("rt-msg"))
 
 	// User B should receive the message event via WebSocket
 	_ = connB.SetReadDeadline(time.Now().Add(5 * time.Second))
