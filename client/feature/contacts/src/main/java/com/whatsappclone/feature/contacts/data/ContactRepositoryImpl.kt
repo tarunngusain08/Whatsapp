@@ -1,0 +1,189 @@
+package com.whatsappclone.feature.contacts.data
+
+import android.content.ContentResolver
+import android.provider.ContactsContract
+import com.whatsappclone.core.common.result.AppResult
+import com.whatsappclone.core.common.result.ErrorCode
+import com.whatsappclone.core.common.util.PhoneUtils
+import com.whatsappclone.core.database.dao.ContactDao
+import com.whatsappclone.core.database.dao.UserDao
+import com.whatsappclone.core.database.entity.ContactEntity
+import com.whatsappclone.core.database.entity.UserEntity
+import com.whatsappclone.core.database.relation.ContactWithUser
+import com.whatsappclone.core.network.api.UserApi
+import com.whatsappclone.core.network.model.dto.ContactSyncRequest
+import com.whatsappclone.core.network.model.safeApiCall
+import kotlinx.coroutines.flow.Flow
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class ContactRepositoryImpl @Inject constructor(
+    private val contentResolver: ContentResolver,
+    private val userApi: UserApi,
+    private val contactDao: ContactDao,
+    private val userDao: UserDao
+) : ContactRepository {
+
+    override suspend fun syncContacts(): AppResult<Int> {
+        return try {
+            val deviceContacts = readDeviceContacts()
+            if (deviceContacts.isEmpty()) {
+                return AppResult.Success(0)
+            }
+
+            val phoneNumbers = deviceContacts.map { it.phone }
+            val result = safeApiCall {
+                userApi.syncContacts(ContactSyncRequest(phoneNumbers = phoneNumbers))
+            }
+
+            when (result) {
+                is AppResult.Success -> {
+                    val registeredUsers = result.data.registeredUsers
+                    val registeredPhoneSet = registeredUsers.associateBy { it.phone }
+                    val now = System.currentTimeMillis()
+
+                    val userEntities = registeredUsers.map { dto ->
+                        UserEntity(
+                            id = dto.id,
+                            phone = dto.phone,
+                            displayName = dto.displayName,
+                            statusText = dto.statusText,
+                            avatarUrl = dto.avatarUrl,
+                            isOnline = dto.isOnline ?: false,
+                            lastSeen = null,
+                            isBlocked = false,
+                            createdAt = now,
+                            updatedAt = now
+                        )
+                    }
+                    userDao.upsertAll(userEntities)
+
+                    val contactEntities = deviceContacts.map { dc ->
+                        val matchedUser = registeredPhoneSet[dc.phone]
+                        ContactEntity(
+                            contactId = dc.contactId,
+                            phone = dc.phone,
+                            deviceName = dc.name,
+                            registeredUserId = matchedUser?.id,
+                            updatedAt = now
+                        )
+                    }
+                    contactDao.upsertAll(contactEntities)
+
+                    AppResult.Success(registeredUsers.size)
+                }
+
+                is AppResult.Error -> result
+                is AppResult.Loading -> AppResult.Error(
+                    code = ErrorCode.UNKNOWN,
+                    message = "Unexpected loading state"
+                )
+            }
+        } catch (e: Exception) {
+            AppResult.Error(
+                code = ErrorCode.UNKNOWN,
+                message = e.message ?: "Failed to sync contacts",
+                cause = e
+            )
+        }
+    }
+
+    override fun observeRegisteredContacts(): Flow<List<ContactWithUser>> =
+        contactDao.observeRegisteredContacts()
+
+    override fun searchContacts(query: String): Flow<List<ContactWithUser>> =
+        contactDao.searchRegisteredContacts(query)
+
+    /**
+     * Reads contacts from the device via ContentResolver.
+     * Groups phone numbers by contact, normalizes to E.164 and deduplicates.
+     */
+    private fun readDeviceContacts(): List<DeviceContact> {
+        val contactMap = mutableMapOf<String, DeviceContactBuilder>()
+
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER
+        )
+
+        val cursor = contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            null,
+            null,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+        ) ?: return emptyList()
+
+        cursor.use {
+            val contactIdIdx = it.getColumnIndexOrThrow(
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID
+            )
+            val nameIdx = it.getColumnIndexOrThrow(
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+            )
+            val numberIdx = it.getColumnIndexOrThrow(
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+
+            while (it.moveToNext()) {
+                val contactId = it.getString(contactIdIdx) ?: continue
+                val name = it.getString(nameIdx) ?: continue
+                val rawNumber = it.getString(numberIdx) ?: continue
+
+                val normalized = normalizePhoneNumber(rawNumber)
+                if (normalized != null && PhoneUtils.isValidE164(normalized)) {
+                    val builder = contactMap.getOrPut(normalized) {
+                        DeviceContactBuilder(
+                            contactId = UUID.nameUUIDFromBytes(
+                                normalized.toByteArray()
+                            ).toString(),
+                            name = name,
+                            phone = normalized
+                        )
+                    }
+                    if (builder.name.isBlank()) {
+                        builder.name = name
+                    }
+                }
+            }
+        }
+
+        return contactMap.values.map { builder ->
+            DeviceContact(
+                contactId = builder.contactId,
+                name = builder.name,
+                phone = builder.phone
+            )
+        }
+    }
+
+    private fun normalizePhoneNumber(rawNumber: String): String? {
+        val cleaned = rawNumber.replace(Regex("[\\s\\-().]"), "")
+        return if (cleaned.startsWith("+") && PhoneUtils.isValidE164(cleaned)) {
+            cleaned
+        } else if (cleaned.startsWith("+")) {
+            val digits = cleaned.replace(Regex("[^\\d+]"), "")
+            if (PhoneUtils.isValidE164(digits)) digits else null
+        } else {
+            // Assume +91 (India) as default country code; in production
+            // this would come from the user's SIM/locale
+            val withCountryCode = "+$cleaned"
+            if (PhoneUtils.isValidE164(withCountryCode)) withCountryCode else null
+        }
+    }
+
+    private data class DeviceContact(
+        val contactId: String,
+        val name: String,
+        val phone: String
+    )
+
+    private data class DeviceContactBuilder(
+        val contactId: String,
+        var name: String,
+        val phone: String
+    )
+}
