@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "message-service" "root" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.messageService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "message-service" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "message-service" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: message-service
+          image: {{ include "whatsapp.serviceImage" (dict "root" . "image" .Values.services.messageService.image) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.messageService.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.services.messageService.grpcPort }}
+              protocol: TCP
+          env:
+            - name: MESSAGE_MONGO_URI
+              value: "mongodb://mongodb:{{ .Values.mongodb.port }}"
+            - name: MESSAGE_MONGO_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: MESSAGE_NATS_URL
+              value: "nats://nats:{{ .Values.nats.clientPort }}"
+            - name: MESSAGE_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.services.messageService.resources | nindent 12 }}
