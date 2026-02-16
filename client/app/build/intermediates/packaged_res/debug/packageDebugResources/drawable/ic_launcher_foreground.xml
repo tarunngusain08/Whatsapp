@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Green circle background -->
+    <path
+        android:fillColor="#25D366"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+
+    <!-- White chat bubble icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30c-13.25,0 -24,9.85 -24,22c0,3.88 1.1,7.5 3,10.62L30,74l11.88,-3.12C44.5,72.5 49.12,74 54,74c13.25,0 24,-9.85 24,-22S67.25,30 54,30z" />
+
+    <!-- Phone handset inside bubble -->
+    <path
+        android:fillColor="#25D366"
+        android:pathData="M46.5,43.5c0.5,-0.5 1.2,-0.5 1.7,0l3.3,3.3c0.5,0.5 0.5,1.2 0,1.7l-1.5,1.5c0,0 0.8,3.2 4,6.4s6.4,4 6.4,4l1.5,-1.5c0.5,-0.5 1.2,-0.5 1.7,0l3.3,3.3c0.5,0.5 0.5,1.2 0,1.7l-2,2c-1.2,1.2 -3.2,1.5 -5,0.5c-3,-1.5 -7,-4.5 -10,-7.5s-6,-7 -7.5,-10c-1,-1.8 -0.7,-3.8 0.5,-5L46.5,43.5z" />
+
+</vector>
