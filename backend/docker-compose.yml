@@ -1,0 +1,328 @@
+services:
+  # ─────────────────────────────────────────────
+  # Data Stores
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: whatsapp-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: whatsapp
+      POSTGRES_USER: whatsapp
+      POSTGRES_PASSWORD: whatsapp_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whatsapp -d whatsapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - whatsapp-net
+
+  mongo:
+    image: mongo:7
+    container_name: whatsapp-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - whatsapp-net
+
+  redis:
+    image: redis:7
+    container_name: whatsapp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - whatsapp-net
+
+  nats:
+    image: nats:latest
+    container_name: whatsapp-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream --store_dir /data -m 8222"
+    volumes:
+      - nats_data:/data
+    networks:
+      - whatsapp-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: whatsapp-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - whatsapp-net
+
+  # ─────────────────────────────────────────────
+  # Application Services
+  # ─────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: whatsapp-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      GATEWAY_REDIS_ADDR: redis:6379
+      AUTH_GRPC_ADDR: auth-service:9081
+      AUTH_HTTP_ADDR: http://auth-service:8081
+      USER_HTTP_ADDR: http://user-service:8082
+      CHAT_HTTP_ADDR: http://chat-service:8083
+      MESSAGE_HTTP_ADDR: http://message-service:8084
+      MEDIA_HTTP_ADDR: http://media-service:8086
+      WS_ADDR: ws://websocket-service:8087/ws
+      GATEWAY_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - whatsapp-net
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: whatsapp-auth-service
+    ports:
+      - "8081:8081"
+      - "9081:9081"
+    environment:
+      AUTH_POSTGRES_DSN: postgres://whatsapp:whatsapp_secret@postgres:5432/whatsapp?sslmode=disable
+      AUTH_REDIS_ADDR: redis:6379
+      AUTH_JWT_SECRET: super-secret-jwt-key-change-in-production
+      AUTH_ACCESS_TOKEN_TTL: 24h
+      AUTH_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - whatsapp-net
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: whatsapp-user-service
+    ports:
+      - "8082:8082"
+      - "9082:9082"
+    environment:
+      USER_POSTGRES_DSN: postgres://whatsapp:whatsapp_secret@postgres:5432/whatsapp?sslmode=disable
+      USER_REDIS_ADDR: redis:6379
+      USER_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - whatsapp-net
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: chat-service/Dockerfile
+    container_name: whatsapp-chat-service
+    ports:
+      - "8083:8083"
+      - "9083:9083"
+    environment:
+      CHAT_POSTGRES_DSN: postgres://whatsapp:whatsapp_secret@postgres:5432/whatsapp?sslmode=disable
+      CHAT_NATS_URL: nats://nats:4222
+      CHAT_MESSAGE_GRPC_ADDR: message-service:9084
+      CHAT_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - whatsapp-net
+
+  message-service:
+    build:
+      context: .
+      dockerfile: message-service/Dockerfile
+    container_name: whatsapp-message-service
+    ports:
+      - "8084:8084"
+      - "9084:9084"
+    environment:
+      MESSAGE_MONGO_URI: mongodb://mongo:27017
+      MESSAGE_MONGO_DB: whatsapp
+      MESSAGE_NATS_URL: nats://nats:4222
+      MESSAGE_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      mongo:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - whatsapp-net
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: whatsapp-notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      NOTIF_POSTGRES_DSN: postgres://whatsapp:whatsapp_secret@postgres:5432/whatsapp?sslmode=disable
+      NOTIF_REDIS_ADDR: redis:6379
+      NOTIF_NATS_URL: nats://nats:4222
+      NOTIF_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - whatsapp-net
+
+  media-service:
+    build:
+      context: .
+      dockerfile: media-service/Dockerfile
+    container_name: whatsapp-media-service
+    ports:
+      - "8086:8086"
+      - "9086:9086"
+    environment:
+      MEDIA_MONGO_URI: mongodb://mongo:27017
+      MEDIA_MONGO_DB: whatsapp
+      MEDIA_MINIO_ENDPOINT: minio:9000
+      MEDIA_MINIO_ACCESS_KEY: minioadmin
+      MEDIA_MINIO_SECRET_KEY: minioadmin
+      MEDIA_MINIO_BUCKET: whatsapp-media
+      MEDIA_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      mongo:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - whatsapp-net
+
+  websocket-service:
+    build:
+      context: .
+      dockerfile: websocket-service/Dockerfile
+    container_name: whatsapp-websocket-service
+    ports:
+      - "8087:8087"
+    environment:
+      WS_REDIS_ADDR: redis:6379
+      WS_NATS_URL: nats://nats:4222
+      WS_AUTH_GRPC_ADDR: auth-service:9081
+      WS_MESSAGE_GRPC_ADDR: message-service:9084
+      WS_CHAT_GRPC_ADDR: chat-service:9083
+      WS_LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - whatsapp-net
+
+  # ─────────────────────────────────────────────
+  # Observability Stack
+  # ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: whatsapp-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    networks:
+      - whatsapp-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: whatsapp-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - whatsapp-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: whatsapp-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - whatsapp-net
+
+networks:
+  whatsapp-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  nats_data:
+  minio_data:
+  grafana_data:
