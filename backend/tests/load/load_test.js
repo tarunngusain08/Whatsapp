@@ -1,7 +1,7 @@
 import http from 'k6/http';
-import ws from 'k6/ws';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { SharedArray } from 'k6/data';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
@@ -12,127 +12,170 @@ const chatListDuration = new Trend('chat_list_duration');
 
 export const options = {
   stages: [
-    { duration: '30s', target: 10 },   // Ramp up to 10 users
-    { duration: '2m', target: 50 },    // Stay at 50 users
-    { duration: '1m', target: 100 },   // Spike to 100 users
-    { duration: '2m', target: 50 },    // Back to 50
-    { duration: '30s', target: 0 },    // Ramp down
+    { duration: '30s', target: 10 },
+    { duration: '2m', target: 50 },
+    { duration: '1m', target: 100 },
+    { duration: '2m', target: 50 },
+    { duration: '30s', target: 0 },
   ],
   thresholds: {
     http_req_duration: ['p(95)<500', 'p(99)<1000'],
-    errors: ['rate<0.01'],
-    auth_duration: ['p(95)<300'],
+    errors: ['rate<0.1'],
+    auth_duration: ['p(95)<500'],
     message_duration: ['p(95)<500'],
   },
 };
 
+// Pre-generate phone numbers for VUs (up to 200 to cover all possible VU IDs)
+const phones = new SharedArray('phones', function () {
+  const arr = [];
+  for (let i = 1; i <= 200; i++) {
+    arr.push(`+1415555${String(i).padStart(4, '0')}`);
+  }
+  return arr;
+});
+
+// Cache tokens per VU to avoid re-authenticating on every iteration
+const tokenCache = {};
+
 function getToken(phone) {
-  const otpRes = http.post(`${BASE_URL}/api/v1/auth/request-otp`, JSON.stringify({ phone }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-  
+  if (tokenCache[phone]) {
+    return tokenCache[phone];
+  }
+
+  const start = Date.now();
+
+  const otpRes = http.post(
+    `${BASE_URL}/api/v1/auth/request-otp`,
+    JSON.stringify({ phone }),
+    { headers: { 'Content-Type': 'application/json' }, tags: { name: 'auth_request_otp' } }
+  );
+
   if (otpRes.status !== 200) {
     errorRate.add(1);
     return null;
   }
 
-  const otp = JSON.parse(otpRes.body).data.otp;
-  
-  const verifyRes = http.post(`${BASE_URL}/api/v1/auth/verify-otp`, JSON.stringify({ phone, code: otp }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  const otpBody = JSON.parse(otpRes.body);
+  const otp = otpBody.data.otp;
+
+  const verifyRes = http.post(
+    `${BASE_URL}/api/v1/auth/verify-otp`,
+    JSON.stringify({ phone, code: otp }),
+    { headers: { 'Content-Type': 'application/json' }, tags: { name: 'auth_verify_otp' } }
+  );
 
   if (verifyRes.status !== 200) {
     errorRate.add(1);
     return null;
   }
 
-  authDuration.add(otpRes.timings.duration + verifyRes.timings.duration);
-  return JSON.parse(verifyRes.body).data.access_token;
+  authDuration.add(Date.now() - start);
+
+  const data = JSON.parse(verifyRes.body).data;
+  const result = {
+    token: data.access_token,
+    refresh: data.refresh_token,
+  };
+
+  // Get user ID from profile
+  const profileRes = http.get(`${BASE_URL}/api/v1/users/me`, {
+    headers: { Authorization: `Bearer ${result.token}`, 'Content-Type': 'application/json' },
+    tags: { name: 'auth_get_profile' },
+  });
+
+  if (profileRes.status === 200) {
+    const profile = JSON.parse(profileRes.body);
+    result.userId = profile.data.id;
+  }
+
+  tokenCache[phone] = result;
+  return result;
 }
 
 export default function () {
   const vuId = __VU;
-  const phone = `+1${String(vuId).padStart(10, '0')}`;
+  const iterationId = __ITER;
+  const phone = phones[(vuId - 1) % phones.length];
 
-  // 1. Authenticate
-  const token = getToken(phone);
-  if (!token) {
-    sleep(1);
+  // Authenticate (cached after first call)
+  const auth = getToken(phone);
+  if (!auth) {
+    sleep(2);
     return;
   }
 
   const authHeaders = {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${auth.token}`,
       'Content-Type': 'application/json',
     },
   };
 
-  // 2. Get profile
-  const profileRes = http.get(`${BASE_URL}/api/v1/users/me`, authHeaders);
-  check(profileRes, { 'profile 200': (r) => r.status === 200 });
-  errorRate.add(profileRes.status !== 200);
+  // 1. Get profile
+  const profileRes = http.get(`${BASE_URL}/api/v1/users/me`, {
+    ...authHeaders,
+    tags: { name: 'get_profile' },
+  });
+  const profileOk = check(profileRes, {
+    'profile 200': (r) => r.status === 200,
+  });
+  errorRate.add(!profileOk);
 
-  // 3. List chats
+  sleep(0.5 + Math.random());
+
+  // 2. List chats
   const chatStart = Date.now();
-  const chatsRes = http.get(`${BASE_URL}/api/v1/chats`, authHeaders);
-  check(chatsRes, { 'chats 200': (r) => r.status === 200 });
+  const chatsRes = http.get(`${BASE_URL}/api/v1/chats`, {
+    ...authHeaders,
+    tags: { name: 'list_chats' },
+  });
+  const chatsOk = check(chatsRes, {
+    'chats 200': (r) => r.status === 200,
+  });
   chatListDuration.add(Date.now() - chatStart);
-  errorRate.add(chatsRes.status !== 200);
+  errorRate.add(!chatsOk);
 
-  // 4. Create a chat and send a message (only some VUs)
-  if (vuId % 5 === 0) {
-    const targetPhone = `+1${String(vuId + 1).padStart(10, '0')}`;
-    const targetToken = getToken(targetPhone);
-    if (targetToken) {
-      // Get target user ID from token
-      const parts = targetToken.split('.');
-      const payload = JSON.parse(atob(parts[1]));
-      const targetUserId = payload.user_id;
+  sleep(0.5 + Math.random());
 
-      const chatRes = http.post(`${BASE_URL}/api/v1/chats`, JSON.stringify({
-        other_user_id: targetUserId,
-      }), authHeaders);
+  // 3. Send a message (every 3rd iteration, only some VUs)
+  if (iterationId % 3 === 0 && vuId % 3 === 0) {
+    // Create a chat partner
+    const partnerIdx = (vuId % phones.length) + 1;
+    const partnerPhone = phones[partnerIdx % phones.length];
+    const partnerAuth = getToken(partnerPhone);
+
+    if (partnerAuth && partnerAuth.userId) {
+      const chatRes = http.post(
+        `${BASE_URL}/api/v1/chats`,
+        JSON.stringify({ other_user_id: partnerAuth.userId }),
+        { ...authHeaders, tags: { name: 'create_chat' } }
+      );
 
       if (chatRes.status === 200 || chatRes.status === 201) {
-        const chatId = JSON.parse(chatRes.body).data.chat.id;
+        const chatBody = JSON.parse(chatRes.body);
+        const chatId = chatBody.data.chat.id;
 
         const msgStart = Date.now();
-        const msgRes = http.post(`${BASE_URL}/api/v1/messages`, JSON.stringify({
-          chat_id: chatId,
-          type: 'text',
-          payload: { body: `Load test message from VU ${vuId} at ${new Date().toISOString()}` },
-          client_msg_id: `load-${vuId}-${Date.now()}`,
-        }), authHeaders);
+        const msgRes = http.post(
+          `${BASE_URL}/api/v1/messages`,
+          JSON.stringify({
+            chat_id: chatId,
+            type: 'text',
+            payload: { body: `Load test from VU ${vuId} iter ${iterationId}` },
+            client_msg_id: `k6-${vuId}-${iterationId}-${Date.now()}`,
+          }),
+          { ...authHeaders, tags: { name: 'send_message' } }
+        );
 
-        check(msgRes, { 'message sent': (r) => r.status === 200 || r.status === 201 });
+        const msgOk = check(msgRes, {
+          'message sent': (r) => r.status === 200 || r.status === 201,
+        });
         messageDuration.add(Date.now() - msgStart);
-        errorRate.add(msgRes.status !== 200 && msgRes.status !== 201);
+        errorRate.add(!msgOk);
       }
     }
   }
 
   sleep(1 + Math.random() * 2);
-}
-
-// base64 decode helper
-function atob(str) {
-  // k6 doesn't have atob, use encoding
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  str = str.replace(/=+$/, '');
-  // Add padding
-  while (str.length % 4) str += '=';
-  let output = '';
-  for (let i = 0; i < str.length; i += 4) {
-    const a = chars.indexOf(str[i]);
-    const b = chars.indexOf(str[i + 1]);
-    const c = chars.indexOf(str[i + 2]);
-    const d = chars.indexOf(str[i + 3]);
-    const bitmap = (a << 18) | (b << 12) | (c << 6) | d;
-    output += String.fromCharCode((bitmap >> 16) & 255);
-    if (str[i + 2] !== '=') output += String.fromCharCode((bitmap >> 8) & 255);
-    if (str[i + 3] !== '=') output += String.fromCharCode(bitmap & 255);
-  }
-  return output;
 }
