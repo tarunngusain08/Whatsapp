@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "chat-service" "root" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.chatService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "chat-service" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "chat-service" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: chat-service
+          image: {{ include "whatsapp.serviceImage" (dict "root" . "image" .Values.services.chatService.image) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.chatService.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.services.chatService.grpcPort }}
+              protocol: TCP
+          env:
+            - name: CHAT_POSTGRES_DSN
+              value: "postgres://{{ .Values.postgres.user }}:{{ .Values.secrets.postgresPassword }}@postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}?sslmode=disable"
+            - name: CHAT_NATS_URL
+              value: "nats://nats:{{ .Values.nats.clientPort }}"
+            - name: CHAT_MESSAGE_GRPC_ADDR
+              value: "message-service:{{ .Values.services.messageService.grpcPort }}"
+            - name: CHAT_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.services.chatService.resources | nindent 12 }}
