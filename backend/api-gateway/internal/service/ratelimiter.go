@@ -1,0 +1,7 @@
+package service
+
+import "context"
+
+type RateLimiter interface {
+	Allow(ctx context.Context, key string, limit int, windowSec int) (bool, error)
+}
