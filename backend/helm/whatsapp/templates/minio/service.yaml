@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "minio" "root" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: {{ .Values.minio.apiPort }}
+      targetPort: api
+      protocol: TCP
+    - name: console
+      port: {{ .Values.minio.consolePort }}
+      targetPort: console
+      protocol: TCP
+  selector:
+    {{- include "whatsapp.selectorLabels" (dict "name" "minio" "root" .) | nindent 4 }}
