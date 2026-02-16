@@ -3,7 +3,9 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"testing"
@@ -20,6 +22,11 @@ func init() {
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}
+}
+
+// uniqueID returns a unique ID for test deduplication across runs.
+func uniqueID(prefix string) string {
+	return fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), rand.Intn(100000))
 }
 
 // doRequest builds and executes an HTTP request against the API gateway.
