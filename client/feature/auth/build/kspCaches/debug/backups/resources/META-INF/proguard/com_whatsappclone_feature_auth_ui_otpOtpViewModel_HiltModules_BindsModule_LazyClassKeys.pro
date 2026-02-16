@@ -1,0 +1,1 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.auth.ui.otp.OtpViewModel
