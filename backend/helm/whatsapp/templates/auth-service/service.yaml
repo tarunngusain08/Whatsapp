@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "auth-service" "root" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.services.authService.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.services.authService.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    {{- include "whatsapp.selectorLabels" (dict "name" "auth-service" "root" .) | nindent 4 }}
