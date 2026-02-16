@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package chat.v1;
+
+option go_package = "github.com/whatsapp-clone/backend/proto/chat/v1;chatv1";
+
+service ChatService {
+  rpc GetChatParticipants(GetChatParticipantsRequest) returns (GetChatParticipantsResponse);
+  rpc IsMember(IsMemberRequest) returns (IsMemberResponse);
+  rpc CheckChatPermission(CheckChatPermissionRequest) returns (CheckChatPermissionResponse);
+}
+
+message GetChatParticipantsRequest {
+  string chat_id = 1;
+}
+
+message GetChatParticipantsResponse {
+  repeated string user_ids = 1;
+}
+
+message IsMemberRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message IsMemberResponse {
+  bool is_member = 1;
+}
+
+message CheckChatPermissionRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message CheckChatPermissionResponse {
+  bool   is_member     = 1;
+  bool   is_admin      = 2;
+  bool   is_admin_only = 3; // true if only admins can send messages
+  string chat_type     = 4; // "direct" or "group"
+}
