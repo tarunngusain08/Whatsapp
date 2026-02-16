@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "api-gateway" "root" .) | nindent 4 }}
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: {{ .Values.services.apiGateway.httpPort }}
+      targetPort: http
+      nodePort: 30080
+      protocol: TCP
+  selector:
+    {{- include "whatsapp.selectorLabels" (dict "name" "api-gateway" "root" .) | nindent 4 }}
