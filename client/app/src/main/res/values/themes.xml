@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for the Activity. Compose handles the actual theme. -->
+    <style name="Theme.WhatsAppClone" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background_light</item>
+        <item name="android:statusBarColor">@color/whatsapp_primary</item>
+        <item name="android:navigationBarColor">@color/surface_light</item>
+    </style>
+</resources>
