@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/whatsapp-clone/backend/proto/user/v1;userv1";
+
+import "google/protobuf/timestamp.proto";
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+  rpc CheckPresence(CheckPresenceRequest) returns (CheckPresenceResponse);
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns (GetPrivacySettingsResponse);
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  UserProfile user = 1;
+}
+
+message GetUsersRequest {
+  repeated string user_ids = 1;
+}
+
+message GetUsersResponse {
+  repeated UserProfile users = 1;
+}
+
+message UserProfile {
+  string user_id      = 1;
+  string phone        = 2;
+  string display_name = 3;
+  string avatar_url   = 4;
+  string status_text  = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message CheckPresenceRequest {
+  string user_id = 1;
+}
+
+message CheckPresenceResponse {
+  bool   online    = 1;
+  google.protobuf.Timestamp last_seen = 2;
+}
+
+message GetPrivacySettingsRequest {
+  string user_id = 1;
+}
+
+message GetPrivacySettingsResponse {
+  string last_seen     = 1; // "everyone", "contacts", "nobody"
+  string profile_photo = 2;
+  string about         = 3;
+  bool   read_receipts = 4;
+}
