@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "redis" "root" .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: {{ .Values.redis.port }}
+      targetPort: redis
+      protocol: TCP
+  selector:
+    {{- include "whatsapp.selectorLabels" (dict "name" "redis" "root" .) | nindent 4 }}
