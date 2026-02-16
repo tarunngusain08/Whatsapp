@@ -1,0 +1,8 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel
