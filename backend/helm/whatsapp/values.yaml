@@ -1,0 +1,188 @@
+namespace: whatsapp
+
+# Image settings
+image:
+  registry: ""
+  pullPolicy: IfNotPresent
+
+# Secrets
+secrets:
+  postgresPassword: whatsapp_secret
+  jwtSecret: super-secret-jwt-key-change-in-production
+  minioAccessKey: minioadmin
+  minioSecretKey: minioadmin
+  redisPassword: ""
+
+# PostgreSQL
+postgres:
+  image: postgres:16-alpine
+  port: 5432
+  database: whatsapp
+  user: whatsapp
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# MongoDB
+mongodb:
+  image: mongo:7
+  port: 27017
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Redis
+redis:
+  image: redis:7-alpine
+  port: 6379
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# NATS
+nats:
+  image: nats:2-alpine
+  clientPort: 4222
+  monitorPort: 8222
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# MinIO
+minio:
+  image: minio/minio:latest
+  apiPort: 9000
+  consolePort: 9001
+  storage: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Services
+services:
+  apiGateway:
+    replicas: 1
+    httpPort: 8080
+    image: whatsapp-api-gateway
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  authService:
+    replicas: 1
+    httpPort: 8081
+    grpcPort: 9081
+    image: whatsapp-auth-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  userService:
+    replicas: 1
+    httpPort: 8082
+    grpcPort: 9082
+    image: whatsapp-user-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  chatService:
+    replicas: 1
+    httpPort: 8083
+    grpcPort: 9083
+    image: whatsapp-chat-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  messageService:
+    replicas: 1
+    httpPort: 8084
+    grpcPort: 9084
+    image: whatsapp-message-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  notificationService:
+    replicas: 1
+    httpPort: 8085
+    image: whatsapp-notification-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  mediaService:
+    replicas: 1
+    httpPort: 8086
+    grpcPort: 9086
+    image: whatsapp-media-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  websocketService:
+    replicas: 1
+    httpPort: 8087
+    image: whatsapp-websocket-service
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+logLevel: debug
+logFormat: pretty
