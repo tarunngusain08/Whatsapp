@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "nats" "root" .) | nindent 4 }}
+spec:
+  serviceName: nats
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "nats" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "nats" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: nats
+          image: {{ .Values.nats.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--js"
+            - "--sd"
+            - "/data"
+            - "--http_port"
+            - {{ .Values.nats.monitorPort | quote }}
+          ports:
+            - name: client
+              containerPort: {{ .Values.nats.clientPort }}
+              protocol: TCP
+            - name: monitor
+              containerPort: {{ .Values.nats.monitorPort }}
+              protocol: TCP
+          volumeMounts:
+            - name: nats-data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.nats.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.nats.storage }}
