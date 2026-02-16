@@ -1,0 +1,46 @@
+package com.whatsappclone.core.database
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import com.whatsappclone.core.database.converter.Converters
+import com.whatsappclone.core.database.dao.ChatDao
+import com.whatsappclone.core.database.dao.ChatParticipantDao
+import com.whatsappclone.core.database.dao.ContactDao
+import com.whatsappclone.core.database.dao.GroupDao
+import com.whatsappclone.core.database.dao.MediaDao
+import com.whatsappclone.core.database.dao.MessageDao
+import com.whatsappclone.core.database.dao.UserDao
+import com.whatsappclone.core.database.entity.ChatEntity
+import com.whatsappclone.core.database.entity.ChatParticipantEntity
+import com.whatsappclone.core.database.entity.ContactEntity
+import com.whatsappclone.core.database.entity.GroupEntity
+import com.whatsappclone.core.database.entity.MediaEntity
+import com.whatsappclone.core.database.entity.MessageEntity
+import com.whatsappclone.core.database.entity.MessageFts
+import com.whatsappclone.core.database.entity.UserEntity
+
+@Database(
+    entities = [
+        UserEntity::class,
+        ContactEntity::class,
+        ChatEntity::class,
+        ChatParticipantEntity::class,
+        MessageEntity::class,
+        GroupEntity::class,
+        MediaEntity::class,
+        MessageFts::class
+    ],
+    version = 2,
+    exportSchema = true
+)
+@TypeConverters(Converters::class)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun userDao(): UserDao
+    abstract fun contactDao(): ContactDao
+    abstract fun chatDao(): ChatDao
+    abstract fun chatParticipantDao(): ChatParticipantDao
+    abstract fun messageDao(): MessageDao
+    abstract fun groupDao(): GroupDao
+    abstract fun mediaDao(): MediaDao
+}
