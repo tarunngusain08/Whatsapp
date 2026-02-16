@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whatsapp-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.logFormat | quote }}
