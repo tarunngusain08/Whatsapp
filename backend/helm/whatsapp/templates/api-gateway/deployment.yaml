@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "whatsapp.labels" . | nindent 4 }}
+    {{- include "whatsapp.selectorLabels" (dict "name" "api-gateway" "root" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.apiGateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "whatsapp.selectorLabels" (dict "name" "api-gateway" "root" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "whatsapp.selectorLabels" (dict "name" "api-gateway" "root" .) | nindent 8 }}
+    spec:
+      containers:
+        - name: api-gateway
+          image: {{ include "whatsapp.serviceImage" (dict "root" . "image" .Values.services.apiGateway.image) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.apiGateway.httpPort }}
+              protocol: TCP
+          env:
+            - name: GATEWAY_REDIS_ADDR
+              value: "redis:{{ .Values.redis.port }}"
+            - name: AUTH_GRPC_ADDR
+              value: "auth-service:{{ .Values.services.authService.grpcPort }}"
+            - name: AUTH_HTTP_ADDR
+              value: "http://auth-service:{{ .Values.services.authService.httpPort }}"
+            - name: USER_HTTP_ADDR
+              value: "http://user-service:{{ .Values.services.userService.httpPort }}"
+            - name: CHAT_HTTP_ADDR
+              value: "http://chat-service:{{ .Values.services.chatService.httpPort }}"
+            - name: MESSAGE_HTTP_ADDR
+              value: "http://message-service:{{ .Values.services.messageService.httpPort }}"
+            - name: MEDIA_HTTP_ADDR
+              value: "http://media-service:{{ .Values.services.mediaService.httpPort }}"
+            - name: WS_ADDR
+              value: "ws://websocket-service:{{ .Values.services.websocketService.httpPort }}/ws"
+            - name: GATEWAY_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logFormat | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.services.apiGateway.resources | nindent 12 }}
