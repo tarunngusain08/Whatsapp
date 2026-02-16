@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package message.v1;
+
+option go_package = "github.com/whatsapp-clone/backend/proto/message/v1;messagev1";
+
+import "google/protobuf/timestamp.proto";
+
+service MessageService {
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc UpdateMessageStatus(UpdateMessageStatusRequest) returns (UpdateMessageStatusResponse);
+  rpc GetLastMessages(GetLastMessagesRequest) returns (GetLastMessagesResponse);
+  rpc GetUnreadCounts(GetUnreadCountsRequest) returns (GetUnreadCountsResponse);
+}
+
+message SendMessageRequest {
+  string chat_id       = 1;
+  string sender_id     = 2;
+  string type          = 3;
+  MessagePayload payload = 4;
+  string client_msg_id = 5;
+  string reply_to_message_id = 6;
+  ForwardedFrom forwarded_from = 7;
+}
+
+message MessagePayload {
+  string body        = 1;
+  string media_id    = 2;
+  string caption     = 3;
+  string filename    = 4;
+  int64  duration_ms = 5;
+}
+
+message ForwardedFrom {
+  string chat_id    = 1;
+  string message_id = 2;
+}
+
+message SendMessageResponse {
+  string message_id = 1;
+  google.protobuf.Timestamp created_at = 2;
+}
+
+message UpdateMessageStatusRequest {
+  string message_id = 1;
+  string user_id    = 2;
+  string status     = 3;
+}
+
+message UpdateMessageStatusResponse {
+  bool success = 1;
+}
+
+message GetLastMessagesRequest {
+  repeated string chat_ids = 1;
+}
+
+message GetLastMessagesResponse {
+  map<string, MessagePreview> messages = 1;
+}
+
+message MessagePreview {
+  string message_id = 1;
+  string sender_id  = 2;
+  string type       = 3;
+  string body       = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message GetUnreadCountsRequest {
+  string user_id            = 1;
+  repeated string chat_ids  = 2;
+}
+
+message GetUnreadCountsResponse {
+  map<string, int64> counts = 1;
+}
