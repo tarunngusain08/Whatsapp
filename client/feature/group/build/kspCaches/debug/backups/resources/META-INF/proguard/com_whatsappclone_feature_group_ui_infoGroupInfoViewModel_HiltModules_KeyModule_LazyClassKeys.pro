@@ -1,0 +1,2 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.group.ui.info.GroupInfoViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.group.ui.info.GroupInfoViewModel
