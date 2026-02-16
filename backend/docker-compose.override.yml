@@ -1,0 +1,96 @@
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./api-gateway:/app/api-gateway
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/api-gateway/.air.toml
+    working_dir: /app/api-gateway
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./auth-service:/app/auth-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/auth-service/.air.toml
+    working_dir: /app/auth-service
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./user-service:/app/user-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/user-service/.air.toml
+    working_dir: /app/user-service
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./chat-service:/app/chat-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/chat-service/.air.toml
+    working_dir: /app/chat-service
+
+  message-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./message-service:/app/message-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/message-service/.air.toml
+    working_dir: /app/message-service
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./notification-service:/app/notification-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/notification-service/.air.toml
+    working_dir: /app/notification-service
+
+  media-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./media-service:/app/media-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/media-service/.air.toml
+    working_dir: /app/media-service
+
+  websocket-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["air", "-c", ".air.toml"]
+    volumes:
+      - ./websocket-service:/app/websocket-service
+      - ./pkg:/app/pkg
+      - ./proto:/app/proto
+      - ./.air.toml:/app/websocket-service/.air.toml
+    working_dir: /app/websocket-service
