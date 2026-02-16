@@ -1,0 +1,4 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.ContactInfoViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.ContactInfoViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.ContactPickerViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.ContactPickerViewModel
