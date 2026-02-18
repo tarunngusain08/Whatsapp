@@ -1,8 +1,9 @@
 package com.whatsappclone.feature.auth.data;
 
+import android.content.SharedPreferences;
 import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.api.AuthApi;
-import com.whatsappclone.core.network.api.NotificationApi;
+import com.whatsappclone.core.network.token.DeviceTokenManager;
 import com.whatsappclone.core.network.token.TokenManager;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -12,7 +13,7 @@ import javax.annotation.processing.Generated;
 import javax.inject.Provider;
 
 @ScopeMetadata
-@QualifierMetadata
+@QualifierMetadata("javax.inject.Named")
 @DaggerGenerated
 @Generated(
     value = "dagger.internal.codegen.ComponentProcessor",
@@ -34,30 +35,35 @@ public final class AuthRepositoryImpl_Factory implements Factory<AuthRepositoryI
 
   private final Provider<UserDao> userDaoProvider;
 
-  private final Provider<NotificationApi> notificationApiProvider;
+  private final Provider<DeviceTokenManager> deviceTokenManagerProvider;
+
+  private final Provider<SharedPreferences> encryptedPrefsProvider;
 
   public AuthRepositoryImpl_Factory(Provider<AuthApi> authApiProvider,
       Provider<TokenManager> tokenManagerProvider, Provider<UserDao> userDaoProvider,
-      Provider<NotificationApi> notificationApiProvider) {
+      Provider<DeviceTokenManager> deviceTokenManagerProvider,
+      Provider<SharedPreferences> encryptedPrefsProvider) {
     this.authApiProvider = authApiProvider;
     this.tokenManagerProvider = tokenManagerProvider;
     this.userDaoProvider = userDaoProvider;
-    this.notificationApiProvider = notificationApiProvider;
+    this.deviceTokenManagerProvider = deviceTokenManagerProvider;
+    this.encryptedPrefsProvider = encryptedPrefsProvider;
   }
 
   @Override
   public AuthRepositoryImpl get() {
-    return newInstance(authApiProvider.get(), tokenManagerProvider.get(), userDaoProvider.get(), notificationApiProvider.get());
+    return newInstance(authApiProvider.get(), tokenManagerProvider.get(), userDaoProvider.get(), deviceTokenManagerProvider.get(), encryptedPrefsProvider.get());
   }
 
   public static AuthRepositoryImpl_Factory create(Provider<AuthApi> authApiProvider,
       Provider<TokenManager> tokenManagerProvider, Provider<UserDao> userDaoProvider,
-      Provider<NotificationApi> notificationApiProvider) {
-    return new AuthRepositoryImpl_Factory(authApiProvider, tokenManagerProvider, userDaoProvider, notificationApiProvider);
+      Provider<DeviceTokenManager> deviceTokenManagerProvider,
+      Provider<SharedPreferences> encryptedPrefsProvider) {
+    return new AuthRepositoryImpl_Factory(authApiProvider, tokenManagerProvider, userDaoProvider, deviceTokenManagerProvider, encryptedPrefsProvider);
   }
 
   public static AuthRepositoryImpl newInstance(AuthApi authApi, TokenManager tokenManager,
-      UserDao userDao, NotificationApi notificationApi) {
-    return new AuthRepositoryImpl(authApi, tokenManager, userDao, notificationApi);
+      UserDao userDao, DeviceTokenManager deviceTokenManager, SharedPreferences encryptedPrefs) {
+    return new AuthRepositoryImpl(authApi, tokenManager, userDao, deviceTokenManager, encryptedPrefs);
   }
 }
