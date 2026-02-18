@@ -1,26 +1,25 @@
 package com.whatsappclone.feature.chat.ui.chatlist
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -53,6 +52,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -133,9 +133,10 @@ fun ChatListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = viewModel::onNewChatClicked,
+                modifier = Modifier.padding(bottom = 16.dp),
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = MaterialTheme.colorScheme.onSecondary,
-                shape = CircleShape
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Filled.Chat,
@@ -243,6 +244,14 @@ private fun MainTopBar(
                 )
             }
 
+            IconButton(onClick = { /* Camera placeholder */ }) {
+                Icon(
+                    imageVector = Icons.Filled.CameraAlt,
+                    contentDescription = "Camera",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
             Box {
                 IconButton(onClick = onOverflowClicked) {
                     Icon(
@@ -254,19 +263,57 @@ private fun MainTopBar(
 
                 DropdownMenu(
                     expanded = showOverflowMenu,
-                    onDismissRequest = onDismissOverflow
+                    onDismissRequest = onDismissOverflow,
+                    modifier = Modifier.width(220.dp),
+                    offset = DpOffset(x = 0.dp, y = 0.dp),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Settings") },
+                    OverflowMenuItem(
+                        text = "New group",
+                        onClick = onDismissOverflow
+                    )
+                    OverflowMenuItem(
+                        text = "New broadcast",
+                        onClick = onDismissOverflow
+                    )
+                    OverflowMenuItem(
+                        text = "Linked devices",
+                        onClick = onDismissOverflow
+                    )
+                    OverflowMenuItem(
+                        text = "Starred messages",
+                        onClick = onDismissOverflow
+                    )
+                    OverflowMenuItem(
+                        text = "Settings",
                         onClick = onSettingsClicked
                     )
-                    DropdownMenuItem(
-                        text = { Text("Server URL") },
+                    OverflowMenuItem(
+                        text = "Server URL",
                         onClick = onServerUrlClicked
                     )
                 }
             }
         }
+    )
+}
+
+@Composable
+private fun OverflowMenuItem(
+    text: String,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        onClick = onClick,
+        modifier = Modifier.height(48.dp)
     )
 }
 
