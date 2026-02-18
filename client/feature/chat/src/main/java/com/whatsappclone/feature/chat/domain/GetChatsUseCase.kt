@@ -21,10 +21,20 @@ class GetChatsUseCase @Inject constructor(
     }
 
     private fun ChatWithLastMessage.toUiModel(): ChatItemUi {
+        val resolvedName = if (chat.chatType == "direct") {
+            directChatOtherUserName ?: chat.name ?: "Unknown"
+        } else {
+            chat.name ?: "Group"
+        }
+        val resolvedAvatar = if (chat.chatType == "direct") {
+            directChatOtherUserAvatarUrl ?: chat.avatarUrl
+        } else {
+            chat.avatarUrl
+        }
         return ChatItemUi(
             chatId = chat.chatId,
-            name = chat.name ?: "Unknown",
-            avatarUrl = chat.avatarUrl,
+            name = resolvedName,
+            avatarUrl = resolvedAvatar,
             lastMessagePreview = formatPreview(lastMessageType, lastMessageText),
             lastMessageTimestamp = chat.lastMessageTimestamp,
             lastMessageSenderName = lastMessageSenderName,
