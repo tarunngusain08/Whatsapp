@@ -91,9 +91,16 @@ func (h *HTTPHandler) CreateChat(c *gin.Context) {
 			return
 		}
 
+		// Include both participants so the client can persist them locally
+		participants := []model.ChatParticipant{
+			{ChatID: chat.ID, UserID: userID, Role: "member", JoinedAt: chat.CreatedAt},
+			{ChatID: chat.ID, UserID: otherUserID, Role: "member", JoinedAt: chat.CreatedAt},
+		}
+
 		// Return flattened ChatDto for client compatibility
 		response.Created(c, flattenChat(&model.ChatListItem{
-			Chat: *chat,
+			Chat:         *chat,
+			Participants: participants,
 		}))
 	} else {
 		// Group chat
@@ -442,14 +449,14 @@ func flattenChat(item *model.ChatListItem) gin.H {
 		avatarURL = item.Group.AvatarURL
 	}
 
-	// Build flat participant list
+	// Build flat participant list -- only include fields the chat-service
+	// actually knows.  display_name / avatar_url are NOT sent so the client
+	// won't overwrite existing local user records with empty values.
 	participants := make([]gin.H, 0, len(item.Participants))
 	for _, p := range item.Participants {
 		participants = append(participants, gin.H{
-			"user_id":      p.UserID,
-			"display_name": nil,
-			"avatar_url":   nil,
-			"role":         p.Role,
+			"user_id": p.UserID,
+			"role":    p.Role,
 		})
 	}
 
