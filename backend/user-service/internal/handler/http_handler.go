@@ -22,6 +22,7 @@ func NewHTTPHandler(userSvc service.UserService, log zerolog.Logger) *HTTPHandle
 func (h *HTTPHandler) RegisterRoutes(r *gin.RouterGroup) {
 	r.GET("/me", h.GetMyProfile)
 	r.PUT("/me", h.UpdateMyProfile)
+	r.PATCH("/me", h.UpdateMyProfile) // Client-compatible alias
 	r.PUT("/me/avatar", h.UploadAvatar)
 	r.GET("/:id", h.GetUserProfile)
 	r.POST("/contacts/sync", h.ContactSync)
@@ -122,12 +123,26 @@ func (h *HTTPHandler) ContactSync(c *gin.Context) {
 		response.Error(c, apperr.NewBadRequest("invalid request body"))
 		return
 	}
-	results, err := h.userSvc.ContactSync(c.Request.Context(), userID, req.Phones)
+	// Coalesce: client sends "phone_numbers", backend expects "phones"
+	phones := req.Phones
+	if len(phones) == 0 {
+		phones = req.PhoneNumbers
+	}
+	if len(phones) == 0 {
+		response.Error(c, apperr.NewBadRequest("phones or phone_numbers is required"))
+		return
+	}
+
+	results, err := h.userSvc.ContactSync(c.Request.Context(), userID, phones)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
-	response.OK(c, results)
+
+	// Wrap in registered_users for client compatibility
+	response.OK(c, gin.H{
+		"registered_users": results,
+	})
 }
 
 func (h *HTTPHandler) GetContacts(c *gin.Context) {
