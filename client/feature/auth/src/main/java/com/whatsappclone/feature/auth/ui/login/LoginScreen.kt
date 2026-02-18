@@ -81,7 +81,7 @@ private val COUNTRY_CODES = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onNavigateToOtp: (String) -> Unit,
+    onNavigateToOtp: (phone: String, devOtp: String?) -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -92,7 +92,7 @@ fun LoginScreen(
         viewModel.navigationEvent.collect { event ->
             when (event) {
                 is LoginNavigationEvent.NavigateToOtp -> {
-                    onNavigateToOtp(event.phone)
+                    onNavigateToOtp(event.phone, event.devOtp)
                 }
             }
         }
