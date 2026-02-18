@@ -10,8 +10,11 @@ sealed class AppRoute(val route: String) {
 
     data object Login : AppRoute("login")
 
-    data object OtpVerification : AppRoute("otp_verification/{phone}") {
-        fun create(phone: String): String = "otp_verification/${Uri.encode(phone)}"
+    data object OtpVerification : AppRoute("otp_verification/{phone}?devOtp={devOtp}") {
+        fun create(phone: String, devOtp: String? = null): String {
+            val base = "otp_verification/${Uri.encode(phone)}"
+            return if (devOtp != null) "$base?devOtp=${Uri.encode(devOtp)}" else base
+        }
     }
 
     data object ProfileSetup : AppRoute("profile_setup")
