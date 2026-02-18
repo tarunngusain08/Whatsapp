@@ -31,6 +31,9 @@ class ChatRepositoryImpl @Inject constructor(
     @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) : ChatRepository {
 
+    @Volatile
+    private var cachedCurrentUserId: String? = null
+
     // ── Observe ──────────────────────────────────────────────────────────
 
     override fun observeChats(currentUserId: String?): Flow<List<ChatWithLastMessage>> {
@@ -85,6 +88,28 @@ class ChatRepositoryImpl @Inject constructor(
             is AppResult.Success -> {
                 val chatDto = result.data
                 upsertChatWithRelations(chatDto)
+
+                // Ensure participants are persisted locally even if the
+                // backend response omitted them, so findDirectChatWithUser
+                // works on subsequent lookups.
+                if (chatDto.participants.isNullOrEmpty() && currentUserId != null) {
+                    val now = System.currentTimeMillis()
+                    chatParticipantDao.upsertAll(listOf(
+                        ChatParticipantEntity(
+                            chatId = chatDto.chatId,
+                            userId = currentUserId,
+                            role = "member",
+                            joinedAt = now
+                        ),
+                        ChatParticipantEntity(
+                            chatId = chatDto.chatId,
+                            userId = otherUserId,
+                            role = "member",
+                            joinedAt = now
+                        )
+                    ))
+                }
+
                 AppResult.Success(chatDto.chatId)
             }
             is AppResult.Error -> result
@@ -195,25 +220,40 @@ class ChatRepositoryImpl @Inject constructor(
             val participantEntities = participants.map { it.toEntity(chatDto.chatId) }
             chatParticipantDao.upsertAll(participantEntities)
 
-            val userEntities = participants.map { it.toUserEntity() }
-            userDao.upsertAll(userEntities)
+            for (p in participants) {
+                val existing = userDao.getById(p.userId)
+                if (existing != null && p.displayName.isNullOrBlank()) {
+                    continue
+                }
+                userDao.upsert(p.toUserEntity())
+            }
         }
     }
 
     private fun getCurrentUserId(): String? {
-        return try {
-            encryptedPrefs.getString(KEY_CURRENT_USER_ID, null)?.let { return it }
-            extractUserIdFromJwt()?.also { userId ->
-                try {
-                    encryptedPrefs.edit()
-                        .putString(KEY_CURRENT_USER_ID, userId)
-                        .apply()
-                } catch (_: Exception) { /* best-effort cache */ }
-            }
+        cachedCurrentUserId?.let { return it }
+
+        val fromPrefs = try {
+            encryptedPrefs.getString(KEY_CURRENT_USER_ID, null)
         } catch (e: Exception) {
             android.util.Log.w(TAG, "Failed to read current user id from prefs", e)
-            extractUserIdFromJwt()
+            null
         }
+        if (fromPrefs != null) {
+            cachedCurrentUserId = fromPrefs
+            return fromPrefs
+        }
+
+        val fromJwt = extractUserIdFromJwt()
+        if (fromJwt != null) {
+            cachedCurrentUserId = fromJwt
+            try {
+                encryptedPrefs.edit()
+                    .putString(KEY_CURRENT_USER_ID, fromJwt)
+                    .apply()
+            } catch (_: Exception) { /* best-effort persist */ }
+        }
+        return fromJwt
     }
 
     private fun extractUserIdFromJwt(): String? {
