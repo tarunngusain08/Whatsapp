@@ -12,7 +12,8 @@ data class SendOtpRequest(
 data class SendOtpResponse(
     val message: String,
     @SerialName("expires_in_seconds")
-    val expiresInSeconds: Int
+    val expiresInSeconds: Int,
+    val otp: String? = null
 )
 
 @Serializable
