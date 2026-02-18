@@ -34,6 +34,7 @@ class OtpViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val phone: String = checkNotNull(savedStateHandle["phone"])
+    private val devOtp: String? = savedStateHandle["devOtp"]
 
     private val _uiState = MutableStateFlow(OtpUiState(phone = phone))
     val uiState: StateFlow<OtpUiState> = _uiState.asStateFlow()
@@ -45,6 +46,9 @@ class OtpViewModel @Inject constructor(
 
     init {
         startCountdown()
+        if (!devOtp.isNullOrBlank()) {
+            onOtpChanged(devOtp)
+        }
     }
 
     fun onOtpChanged(otp: String) {
