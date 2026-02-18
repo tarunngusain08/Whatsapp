@@ -6,9 +6,11 @@ import androidx.lifecycle.LifecycleOwner
 import coil3.ImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.whatsappclone.app.notification.FCMTokenManager
 import com.whatsappclone.core.network.token.DeviceTokenManager
+import okhttp3.OkHttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -73,9 +75,13 @@ object AppModule {
     @Provides
     @Singleton
     fun provideImageLoader(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient
     ): ImageLoader {
         return ImageLoader.Builder(context)
+            .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = { okHttpClient }))
+            }
             .crossfade(true)
             .memoryCache {
                 MemoryCache.Builder()
