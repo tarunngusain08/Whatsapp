@@ -2,6 +2,7 @@ package com.whatsappclone.feature.profile.ui;
 
 import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.api.UserApi;
+import com.whatsappclone.core.network.url.BaseUrlProvider;
 import com.whatsappclone.feature.media.data.MediaRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -33,25 +34,30 @@ public final class ProfileEditViewModel_Factory implements Factory<ProfileEditVi
 
   private final Provider<MediaRepository> mediaRepositoryProvider;
 
+  private final Provider<BaseUrlProvider> baseUrlProvider;
+
   public ProfileEditViewModel_Factory(Provider<UserApi> userApiProvider,
-      Provider<UserDao> userDaoProvider, Provider<MediaRepository> mediaRepositoryProvider) {
+      Provider<UserDao> userDaoProvider, Provider<MediaRepository> mediaRepositoryProvider,
+      Provider<BaseUrlProvider> baseUrlProvider) {
     this.userApiProvider = userApiProvider;
     this.userDaoProvider = userDaoProvider;
     this.mediaRepositoryProvider = mediaRepositoryProvider;
+    this.baseUrlProvider = baseUrlProvider;
   }
 
   @Override
   public ProfileEditViewModel get() {
-    return newInstance(userApiProvider.get(), userDaoProvider.get(), mediaRepositoryProvider.get());
+    return newInstance(userApiProvider.get(), userDaoProvider.get(), mediaRepositoryProvider.get(), baseUrlProvider.get());
   }
 
   public static ProfileEditViewModel_Factory create(Provider<UserApi> userApiProvider,
-      Provider<UserDao> userDaoProvider, Provider<MediaRepository> mediaRepositoryProvider) {
-    return new ProfileEditViewModel_Factory(userApiProvider, userDaoProvider, mediaRepositoryProvider);
+      Provider<UserDao> userDaoProvider, Provider<MediaRepository> mediaRepositoryProvider,
+      Provider<BaseUrlProvider> baseUrlProvider) {
+    return new ProfileEditViewModel_Factory(userApiProvider, userDaoProvider, mediaRepositoryProvider, baseUrlProvider);
   }
 
   public static ProfileEditViewModel newInstance(UserApi userApi, UserDao userDao,
-      MediaRepository mediaRepository) {
-    return new ProfileEditViewModel(userApi, userDao, mediaRepository);
+      MediaRepository mediaRepository, BaseUrlProvider baseUrlProvider) {
+    return new ProfileEditViewModel(userApi, userDao, mediaRepository, baseUrlProvider);
   }
 }
