@@ -50,11 +50,12 @@ func (p *EventPublisher) PublishNewMessage(ctx context.Context, msg *model.Messa
 }
 
 // PublishStatusUpdate publishes a msg.status.updated event.
-func (p *EventPublisher) PublishStatusUpdate(ctx context.Context, msgID, userID, status string) error {
+func (p *EventPublisher) PublishStatusUpdate(ctx context.Context, msgID, userID, status, senderID string) error {
 	data, err := json.Marshal(map[string]string{
 		"message_id": msgID,
 		"user_id":    userID,
 		"status":     status,
+		"sender_id":  senderID,
 	})
 	if err != nil {
 		return err
