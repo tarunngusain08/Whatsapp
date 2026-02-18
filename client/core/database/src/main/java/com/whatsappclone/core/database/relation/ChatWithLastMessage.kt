@@ -9,5 +9,7 @@ data class ChatWithLastMessage(
     val lastMessageText: String?,
     val lastMessageType: String?,
     val lastMessageSenderId: String?,
-    val lastMessageSenderName: String?
+    val lastMessageSenderName: String?,
+    val directChatOtherUserName: String? = null,
+    val directChatOtherUserAvatarUrl: String? = null
 )
