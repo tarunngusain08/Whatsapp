@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.contacts.ui
 
 import android.Manifest
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -67,6 +69,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -102,9 +105,13 @@ fun ContactPickerScreen(
         }
     }
 
-    // Request permission on first launch if not granted
-    LaunchedEffect(uiState.hasContactPermission) {
-        if (!uiState.hasContactPermission && !uiState.isLoading) {
+    // Track whether we've already asked for permission this session
+    var hasRequestedPermission by rememberSaveable { mutableStateOf(false) }
+
+    // Request permission when screen opens if not already granted
+    LaunchedEffect(uiState.hasContactPermission, uiState.isLoading) {
+        if (!uiState.hasContactPermission && !hasRequestedPermission) {
+            hasRequestedPermission = true
             permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
         }
     }
@@ -254,6 +261,7 @@ private fun ContactListWithSectionIndex(
     val sectionLetters = uiState.sectionLetters
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // Build a flat list with section headers for indexing
     val flatItems = remember(groupedContacts) {
@@ -277,6 +285,26 @@ private fun ContactListWithSectionIndex(
                     isSyncing = uiState.isSyncing,
                     onClick = onSyncClicked
                 )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 72.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
+
+            // Invite a friend row
+            item(key = "invite_friend") {
+                InviteFriendRow(onClick = {
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            "Hey! I'm using WhatsApp Clone. Download it and chat with me!\nhttps://drive.google.com/drive/folders/1RNxcgI2TzRoa0MDKwCsbpl8aTj8i5nDR"
+                        )
+                    }
+                    context.startActivity(
+                        Intent.createChooser(sendIntent, "Invite a friend")
+                    )
+                })
                 HorizontalDivider(
                     modifier = Modifier.padding(start = 72.dp),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -540,6 +568,44 @@ private fun ContactRow(
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+@Composable
+private fun InviteFriendRow(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier.size(48.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.secondary
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Filled.Share,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Text(
+            text = "Invite a friend",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
