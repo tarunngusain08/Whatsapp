@@ -1,16 +1,28 @@
 FROM golang:1.24-alpine
 
 RUN apk add --no-cache git gcc musl-dev
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.61.7
 
 WORKDIR /app
 
 # Copy go workspace files
 COPY go.work go.work.sum ./
+
+# Copy all go.mod and go.sum files so go mod download works
 COPY pkg/go.mod pkg/go.sum ./pkg/
 COPY proto/go.mod proto/go.sum ./proto/
+COPY api-gateway/go.mod api-gateway/go.sum ./api-gateway/
+COPY auth-service/go.mod auth-service/go.sum ./auth-service/
+COPY user-service/go.mod user-service/go.sum ./user-service/
+COPY chat-service/go.mod chat-service/go.sum ./chat-service/
+COPY message-service/go.mod message-service/go.sum ./message-service/
+COPY media-service/go.mod media-service/go.sum ./media-service/
+COPY notification-service/go.mod notification-service/go.sum ./notification-service/
+COPY websocket-service/go.mod websocket-service/go.sum ./websocket-service/
+COPY tests/go.mod tests/go.sum ./tests/
 
-# Download shared deps
+# Download all deps
+RUN go mod download -x 2>&1 | tail -1 || true
 RUN cd pkg && go mod download
 RUN cd proto && go mod download
 
