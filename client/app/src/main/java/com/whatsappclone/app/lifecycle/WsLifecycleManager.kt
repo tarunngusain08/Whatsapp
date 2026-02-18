@@ -1,5 +1,6 @@
 package com.whatsappclone.app.lifecycle
 
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.whatsappclone.core.network.token.TokenManager
@@ -33,26 +34,38 @@ class WsLifecycleManager @Inject constructor(
      * been started already.
      */
     fun startIfAuthenticated() {
-        if (!tokenManager.isLoggedIn() || isStarted) return
-        isStarted = true
-        webSocketManager.connect()
-        wsEventRouter.start()
-        syncOnReconnectManager.start()
+        try {
+            if (!tokenManager.isLoggedIn() || isStarted) return
+            isStarted = true
+            webSocketManager.connect()
+            wsEventRouter.start()
+            syncOnReconnectManager.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start WebSocket pipeline", e)
+        }
     }
 
     /**
      * Tears down the WebSocket connection. Call on logout or when the session expires.
      */
     fun stop() {
-        isStarted = false
-        webSocketManager.disconnect()
+        try {
+            isStarted = false
+            webSocketManager.disconnect()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop WebSocket pipeline", e)
+        }
     }
 
     // ── Lifecycle callbacks ──────────────────────────────────────────────
 
     override fun onStart(owner: LifecycleOwner) {
-        if (tokenManager.isLoggedIn()) {
-            startIfAuthenticated()
+        try {
+            if (tokenManager.isLoggedIn()) {
+                startIfAuthenticated()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onStart lifecycle callback", e)
         }
     }
 
@@ -60,5 +73,9 @@ class WsLifecycleManager @Inject constructor(
         // Keep the WebSocket connected when backgrounded.
         // The server-side idle timeout will eventually close the connection.
         // A future enhancement could add a delayed disconnect here.
+    }
+
+    companion object {
+        private const val TAG = "WsLifecycleManager"
     }
 }
