@@ -1,5 +1,6 @@
 package com.whatsappclone.app.data.websocket
 
+import android.content.SharedPreferences
 import android.util.Log
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ChatParticipantDao
@@ -13,6 +14,8 @@ import com.whatsappclone.core.network.model.dto.MessageDto
 import com.whatsappclone.core.network.websocket.ServerWsEvent
 import com.whatsappclone.core.network.websocket.TypingStateHolder
 import com.whatsappclone.core.network.websocket.WebSocketManager
+import com.whatsappclone.core.network.websocket.WsConnectionState
+import com.whatsappclone.core.network.websocket.WsFrame
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +23,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Singleton
@@ -33,7 +39,8 @@ class WsEventRouter @Inject constructor(
     private val userDao: UserDao,
     private val chatParticipantDao: ChatParticipantDao,
     private val typingStateHolder: TypingStateHolder,
-    private val json: Json
+    private val json: Json,
+    @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) {
 
     companion object {
@@ -91,6 +98,24 @@ class WsEventRouter @Inject constructor(
             updatedAt = System.currentTimeMillis()
         )
         chatDao.incrementUnreadCount(chatId = event.chatId, updatedAt = System.currentTimeMillis())
+
+        sendDeliveryReceipt(messageDto.messageId, messageDto.senderId, event.chatId)
+    }
+
+    private fun sendDeliveryReceipt(messageId: String, senderId: String, chatId: String) {
+        try {
+            val currentUserId = encryptedPrefs.getString("current_user_id", null)
+            if (currentUserId == null || senderId == currentUserId) return
+            if (webSocketManager.connectionState.value != WsConnectionState.CONNECTED) return
+
+            val payload = buildJsonObject {
+                put("message_id", JsonPrimitive(messageId))
+                put("chat_id", JsonPrimitive(chatId))
+            }
+            webSocketManager.send(WsFrame(event = "message.delivered", data = payload))
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send delivery receipt for $messageId", e)
+        }
     }
 
     private suspend fun handleMessageSent(event: ServerWsEvent.MessageSent) {
