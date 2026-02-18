@@ -1,6 +1,7 @@
 package com.whatsappclone.core.network.token
 
 import android.content.SharedPreferences
+import android.util.Log
 import com.whatsappclone.core.network.api.AuthApi
 import com.whatsappclone.core.network.model.dto.RefreshRequest
 import kotlinx.coroutines.sync.Mutex
@@ -16,18 +17,32 @@ class TokenManagerImpl @Inject constructor(
     private val mutex = Mutex()
 
     override fun getAccessToken(): String? {
-        return encryptedPrefs.getString(KEY_ACCESS_TOKEN, null)
+        return try {
+            encryptedPrefs.getString(KEY_ACCESS_TOKEN, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read access token", e)
+            null
+        }
     }
 
     override fun getRefreshToken(): String? {
-        return encryptedPrefs.getString(KEY_REFRESH_TOKEN, null)
+        return try {
+            encryptedPrefs.getString(KEY_REFRESH_TOKEN, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read refresh token", e)
+            null
+        }
     }
 
     override fun saveTokens(accessToken: String, refreshToken: String) {
-        encryptedPrefs.edit()
-            .putString(KEY_ACCESS_TOKEN, accessToken)
-            .putString(KEY_REFRESH_TOKEN, refreshToken)
-            .apply()
+        try {
+            encryptedPrefs.edit()
+                .putString(KEY_ACCESS_TOKEN, accessToken)
+                .putString(KEY_REFRESH_TOKEN, refreshToken)
+                .apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save tokens", e)
+        }
     }
 
     override suspend fun refreshToken(): Boolean {
@@ -49,16 +64,21 @@ class TokenManagerImpl @Inject constructor(
                 }
                 false
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to refresh token", e)
                 false
             }
         }
     }
 
     override suspend fun clearTokens() {
-        encryptedPrefs.edit()
-            .remove(KEY_ACCESS_TOKEN)
-            .remove(KEY_REFRESH_TOKEN)
-            .apply()
+        try {
+            encryptedPrefs.edit()
+                .remove(KEY_ACCESS_TOKEN)
+                .remove(KEY_REFRESH_TOKEN)
+                .apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear tokens", e)
+        }
     }
 
     override fun isLoggedIn(): Boolean {
@@ -66,6 +86,7 @@ class TokenManagerImpl @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "TokenManager"
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
     }
