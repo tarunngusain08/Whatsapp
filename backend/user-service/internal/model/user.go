@@ -19,7 +19,8 @@ type UpdateProfileRequest struct {
 }
 
 type ContactSyncRequest struct {
-	Phones []string `json:"phones" binding:"required"`
+	Phones       []string `json:"phones"`
+	PhoneNumbers []string `json:"phone_numbers"`
 }
 
 type ContactSyncResult struct {
