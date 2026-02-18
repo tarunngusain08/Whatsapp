@@ -13,6 +13,8 @@ import com.whatsappclone.feature.contacts.data.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -119,8 +121,26 @@ class ContactPickerViewModel @Inject constructor(
         }
     }
 
+    private var serverSearchJob: Job? = null
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+        maybeSearchServer(query)
+    }
+
+    /**
+     * When the query contains digits (likely a phone number), debounce
+     * and query the backend to find registered users not in device contacts.
+     */
+    private fun maybeSearchServer(query: String) {
+        serverSearchJob?.cancel()
+        val digits = query.filter { it.isDigit() || it == '+' }
+        if (digits.length < 4) return
+
+        serverSearchJob = viewModelScope.launch {
+            delay(600)
+            contactRepository.searchByPhone(digits)
+        }
     }
 
     fun onContactClicked(contact: ContactWithUser) {
