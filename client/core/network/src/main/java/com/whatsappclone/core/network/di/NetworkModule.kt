@@ -2,6 +2,7 @@ package com.whatsappclone.core.network.di
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -9,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.io.File
 import com.whatsappclone.core.network.api.AuthApi
 import com.whatsappclone.core.network.api.ChatApi
 import com.whatsappclone.core.network.api.MediaApi
@@ -40,6 +42,8 @@ object NetworkModule {
     private const val CONNECT_TIMEOUT_SECONDS = 30L
     private const val READ_TIMEOUT_SECONDS = 30L
     private const val WRITE_TIMEOUT_SECONDS = 30L
+    private const val ENCRYPTED_PREFS_NAME = "whatsapp_clone_encrypted_prefs"
+    private const val TAG = "NetworkModule"
 
     @Provides
     @Singleton
@@ -57,9 +61,33 @@ object NetworkModule {
     fun provideEncryptedSharedPreferences(
         @ApplicationContext context: Context
     ): SharedPreferences {
+        return try {
+            createEncryptedPrefs(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "EncryptedSharedPreferences corrupted, recreating", e)
+            try {
+                val prefsFile = File(
+                    context.filesDir.parent,
+                    "shared_prefs/$ENCRYPTED_PREFS_NAME.xml"
+                )
+                prefsFile.delete()
+            } catch (_: Exception) { /* best-effort cleanup */ }
+            try {
+                createEncryptedPrefs(context)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to recreate encrypted prefs, falling back to plain prefs", e2)
+                context.getSharedPreferences(
+                    "${ENCRYPTED_PREFS_NAME}_fallback",
+                    Context.MODE_PRIVATE
+                )
+            }
+        }
+    }
+
+    private fun createEncryptedPrefs(context: Context): SharedPreferences {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
         return EncryptedSharedPreferences.create(
-            "whatsapp_clone_encrypted_prefs",
+            ENCRYPTED_PREFS_NAME,
             masterKeyAlias,
             context,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
