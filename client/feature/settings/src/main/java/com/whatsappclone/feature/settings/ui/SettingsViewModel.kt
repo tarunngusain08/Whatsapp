@@ -1,11 +1,14 @@
 package com.whatsappclone.feature.settings.ui
 
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.database.dao.UserDao
 import com.whatsappclone.core.database.entity.UserEntity
+import com.whatsappclone.core.network.api.UserApi
+import com.whatsappclone.core.network.model.safeApiCall
 import com.whatsappclone.feature.auth.data.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -42,6 +45,7 @@ sealed class SettingsNavigationEvent {
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userDao: UserDao,
+    private val userApi: UserApi,
     @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) : ViewModel() {
 
@@ -53,6 +57,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         loadCurrentUser()
+        refreshProfileFromServer()
     }
 
     private fun loadCurrentUser() {
@@ -69,6 +74,34 @@ class SettingsViewModel @Inject constructor(
             }
         } else {
             _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    private fun refreshProfileFromServer() {
+        viewModelScope.launch {
+            try {
+                when (val result = safeApiCall { userApi.getMe() }) {
+                    is AppResult.Success -> {
+                        val dto = result.data
+                        val entity = UserEntity(
+                            id = dto.id,
+                            phone = dto.phone,
+                            displayName = dto.displayName,
+                            statusText = dto.statusText,
+                            avatarUrl = dto.avatarUrl,
+                            isOnline = dto.isOnline ?: false,
+                            lastSeen = null,
+                            isBlocked = false,
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        userDao.upsert(entity)
+                    }
+                    else -> { }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to refresh profile from server", e)
+            }
         }
     }
 
@@ -139,5 +172,9 @@ class SettingsViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    companion object {
+        private const val TAG = "SettingsViewModel"
     }
 }
