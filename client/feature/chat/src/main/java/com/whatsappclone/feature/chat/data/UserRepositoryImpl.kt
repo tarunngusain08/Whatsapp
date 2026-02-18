@@ -23,6 +23,7 @@ class UserRepositoryImpl @Inject constructor(
 ) : UserRepository {
 
     companion object {
+        private const val TAG = "UserRepository"
         private const val KEY_CURRENT_USER_ID = "current_user_id"
     }
 
@@ -128,13 +129,40 @@ class UserRepositoryImpl @Inject constructor(
 
     // ── Current user id ──────────────────────────────────────────────────
 
-    override fun getCurrentUserId(): String? =
-        encryptedPrefs.getString(KEY_CURRENT_USER_ID, null)
+    override fun getCurrentUserId(): String? {
+        return try {
+            encryptedPrefs.getString(KEY_CURRENT_USER_ID, null)?.let { return it }
+            extractUserIdFromJwt()?.also { userId ->
+                saveCurrentUserId(userId)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "Failed to read current user id from prefs", e)
+            extractUserIdFromJwt()
+        }
+    }
 
     private fun saveCurrentUserId(userId: String) {
-        encryptedPrefs.edit()
-            .putString(KEY_CURRENT_USER_ID, userId)
-            .apply()
+        try {
+            encryptedPrefs.edit()
+                .putString(KEY_CURRENT_USER_ID, userId)
+                .apply()
+        } catch (_: Exception) { /* best-effort cache */ }
+    }
+
+    private fun extractUserIdFromJwt(): String? {
+        return try {
+            val token = encryptedPrefs.getString("access_token", null)
+                ?: return null
+            val parts = token.split(".")
+            if (parts.size < 2) return null
+            val payload = String(
+                android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE),
+                Charsets.UTF_8
+            )
+            org.json.JSONObject(payload).optString("user_id", null)
+        } catch (_: Exception) {
+            null
+        }
     }
 }
 
