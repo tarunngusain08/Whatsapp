@@ -17,6 +17,7 @@ import com.whatsappclone.core.network.model.dto.MessagePayloadDto
 import com.whatsappclone.core.network.model.dto.SendMessageRequest
 import com.whatsappclone.core.network.websocket.WebSocketManager
 import com.whatsappclone.core.network.websocket.WsConnectionState
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,7 +42,10 @@ class SyncOnReconnectManager @Inject constructor(
         private val KEY_LAST_SYNC = longPreferencesKey("ws_last_sync_timestamp")
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Uncaught coroutine exception", throwable)
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private var started = false
 
     fun start() {
