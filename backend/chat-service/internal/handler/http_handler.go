@@ -51,56 +51,93 @@ func (h *HTTPHandler) CreateChat(c *gin.Context) {
 	}
 
 	// Peek at the body to determine if this is a direct chat or group creation.
-	// If "name" is present, it's a group; otherwise it's a direct chat.
+	// Supports both backend format (name + member_ids / other_user_id) and
+	// client format (type + participant_ids + optional name).
 	var raw map[string]interface{}
 	if err := c.ShouldBindJSON(&raw); err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	if _, hasName := raw["name"]; hasName {
-		var req model.CreateGroupRequest
-		req.Name, _ = raw["name"].(string)
-		req.Description, _ = raw["description"].(string)
-		if memberIDsRaw, ok := raw["member_ids"].([]interface{}); ok {
-			for _, v := range memberIDsRaw {
-				if s, ok := v.(string); ok {
-					req.MemberIDs = append(req.MemberIDs, s)
-				}
-			}
+	// Extract participant_ids (client format) and member_ids (backend format)
+	participantIDs := extractStringSlice(raw, "participant_ids")
+	memberIDs := extractStringSlice(raw, "member_ids")
+
+	chatType, _ := raw["type"].(string)
+	name, _ := raw["name"].(string)
+	description, _ := raw["description"].(string)
+	otherUserID, _ := raw["other_user_id"].(string)
+
+	// Determine whether this is a direct or group chat:
+	// - Explicit "type": "group" or "type": "direct" from client
+	// - Presence of "name" (without other_user_id) implies group
+	// - Presence of "other_user_id" implies direct
+	isGroup := chatType == "group" || (name != "" && chatType != "direct" && otherUserID == "")
+	isDirect := chatType == "direct" || otherUserID != "" || (!isGroup && len(participantIDs) == 1)
+
+	if isDirect {
+		if otherUserID == "" && len(participantIDs) > 0 {
+			otherUserID = participantIDs[0]
 		}
-		if req.Name == "" {
-			response.Error(c, &validationErr{msg: "name is required"})
-			return
-		}
-		if len(req.MemberIDs) == 0 {
-			response.Error(c, &validationErr{msg: "member_ids is required"})
+		if otherUserID == "" {
+			response.Error(c, &validationErr{msg: "other_user_id or participant_ids is required"})
 			return
 		}
 
-		chat, group, err := h.chatSvc.CreateGroup(c.Request.Context(), userID, &req)
-		if err != nil {
-			response.Error(c, err)
-			return
-		}
-		response.Created(c, gin.H{"chat": chat, "group": group})
-	} else {
-		var req model.CreateDirectChatRequest
-		if otherID, ok := raw["other_user_id"].(string); ok {
-			req.OtherUserID = otherID
-		}
-		if req.OtherUserID == "" {
-			response.Error(c, &validationErr{msg: "other_user_id is required"})
-			return
-		}
-
+		req := model.CreateDirectChatRequest{OtherUserID: otherUserID}
 		chat, err := h.chatSvc.CreateDirectChat(c.Request.Context(), userID, &req)
 		if err != nil {
 			response.Error(c, err)
 			return
 		}
-		response.Created(c, gin.H{"chat": chat})
+
+		// Return flattened ChatDto for client compatibility
+		response.Created(c, flattenChat(&model.ChatListItem{
+			Chat: *chat,
+		}))
+	} else {
+		// Group chat
+		if len(memberIDs) == 0 {
+			memberIDs = participantIDs
+		}
+		if name == "" {
+			response.Error(c, &validationErr{msg: "name is required for group chats"})
+			return
+		}
+		if len(memberIDs) == 0 {
+			response.Error(c, &validationErr{msg: "member_ids or participant_ids is required"})
+			return
+		}
+
+		req := model.CreateGroupRequest{
+			Name:        name,
+			Description: description,
+			MemberIDs:   memberIDs,
+		}
+		chat, group, err := h.chatSvc.CreateGroup(c.Request.Context(), userID, &req)
+		if err != nil {
+			response.Error(c, err)
+			return
+		}
+
+		response.Created(c, flattenChat(&model.ChatListItem{
+			Chat:  *chat,
+			Group: group,
+		}))
 	}
+}
+
+// extractStringSlice extracts a []string from a map value that may be []interface{}.
+func extractStringSlice(raw map[string]interface{}, key string) []string {
+	var result []string
+	if arr, ok := raw[key].([]interface{}); ok {
+		for _, v := range arr {
+			if s, ok := v.(string); ok {
+				result = append(result, s)
+			}
+		}
+	}
+	return result
 }
 
 func (h *HTTPHandler) ListChats(c *gin.Context) {
@@ -116,7 +153,18 @@ func (h *HTTPHandler) ListChats(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, items)
+	// Return in PaginatedData format the client expects:
+	// { success: true, data: { items: [...], hasMore: false } }
+	flat := make([]gin.H, 0, len(items))
+	for _, item := range items {
+		flat = append(flat, flattenChat(item))
+	}
+
+	response.OK(c, gin.H{
+		"items":      flat,
+		"nextCursor": nil,
+		"hasMore":    false,
+	})
 }
 
 func (h *HTTPHandler) GetChat(c *gin.Context) {
@@ -133,7 +181,7 @@ func (h *HTTPHandler) GetChat(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, item)
+	response.OK(c, flattenChat(item))
 }
 
 func (h *HTTPHandler) UpdateGroup(c *gin.Context) {
@@ -379,4 +427,64 @@ type validationErr struct {
 
 func (e *validationErr) Error() string {
 	return e.msg
+}
+
+// flattenChat transforms a ChatListItem into a flat ChatDto-like map
+// matching the client's expected shape.
+func flattenChat(item *model.ChatListItem) gin.H {
+	name := ""
+	description := ""
+	avatarURL := ""
+
+	if item.Group != nil {
+		name = item.Group.Name
+		description = item.Group.Description
+		avatarURL = item.Group.AvatarURL
+	}
+
+	// Build flat participant list
+	participants := make([]gin.H, 0, len(item.Participants))
+	for _, p := range item.Participants {
+		participants = append(participants, gin.H{
+			"user_id":      p.UserID,
+			"display_name": nil,
+			"avatar_url":   nil,
+			"role":         p.Role,
+		})
+	}
+
+	// Build flat last_message
+	var lastMessage interface{}
+	if item.LastMessage != nil {
+		lastMessage = gin.H{
+			"message_id": item.LastMessage.MessageID,
+			"preview":    item.LastMessage.Body,
+			"sender_id":  item.LastMessage.SenderID,
+			"type":       item.LastMessage.Type,
+			"timestamp":  item.LastMessage.CreatedAt,
+		}
+	}
+
+	// Determine muted status from participants
+	isMuted := false
+	for _, p := range item.Participants {
+		if p.IsMuted {
+			isMuted = true
+			break
+		}
+	}
+
+	return gin.H{
+		"chat_id":      item.Chat.ID,
+		"type":         string(item.Chat.Type),
+		"name":         name,
+		"description":  description,
+		"avatar_url":   avatarURL,
+		"participants": participants,
+		"last_message": lastMessage,
+		"unread_count": item.UnreadCount,
+		"is_muted":     isMuted,
+		"created_at":   item.Chat.CreatedAt.Format(time.RFC3339),
+		"updated_at":   item.Chat.UpdatedAt.Format(time.RFC3339),
+	}
 }
