@@ -10,6 +10,7 @@ import com.whatsappclone.core.database.entity.UserEntity
 import com.whatsappclone.core.network.api.UserApi
 import com.whatsappclone.core.network.model.dto.UpdateProfileRequest
 import com.whatsappclone.core.network.model.safeApiCall
+import com.whatsappclone.core.network.url.BaseUrlProvider
 import com.whatsappclone.feature.media.data.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,8 @@ data class ProfileEditUiState(
 class ProfileEditViewModel @Inject constructor(
     private val userApi: UserApi,
     private val userDao: UserDao,
-    private val mediaRepository: MediaRepository
+    private val mediaRepository: MediaRepository,
+    private val baseUrlProvider: BaseUrlProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileEditUiState())
@@ -94,9 +96,10 @@ class ProfileEditViewModel @Inject constructor(
             val uploaderId = _uiState.value.userId
             when (val result = mediaRepository.uploadImage(uri, uploaderId)) {
                 is AppResult.Success -> {
-                    val newAvatarUrl = result.data.storageUrl
+                    val mediaId = result.data.mediaId
+                    val base = baseUrlProvider.getBaseUrl().trimEnd('/')
+                    val newAvatarUrl = "$base/media/$mediaId/download"
 
-                    // Update the profile on the server with the new avatar URL
                     when (val updateResult = safeApiCall {
                         userApi.updateProfile(
                             UpdateProfileRequest(avatarUrl = newAvatarUrl)
