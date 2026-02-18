@@ -113,6 +113,60 @@ func registerUser(t *testing.T, phone string) (accessToken, refreshToken, userID
 	return accessToken, refreshToken, userID
 }
 
+// extractChatInfo extracts chat_id and type from either flattened or nested format.
+func extractChatInfo(data map[string]interface{}) (chatID, chatType string) {
+	// Flattened format: { chat_id, type, ... }
+	if id, ok := data["chat_id"].(string); ok {
+		t, _ := data["type"].(string)
+		return id, t
+	}
+	// Nested format: { chat: { id, type } }
+	if chat, ok := data["chat"].(map[string]interface{}); ok {
+		id, _ := chat["id"].(string)
+		t, _ := chat["type"].(string)
+		return id, t
+	}
+	return "", ""
+}
+
+// extractChatList extracts the chat array from either PaginatedData format
+// (data.items) or legacy format (data as array directly).
+func extractChatList(t *testing.T, data interface{}) []interface{} {
+	t.Helper()
+
+	if dataMap, ok := data.(map[string]interface{}); ok {
+		if items, ok := dataMap["items"].([]interface{}); ok {
+			return items
+		}
+	}
+	if arr, ok := data.([]interface{}); ok {
+		return arr
+	}
+	t.Fatal("chat data should be either PaginatedData or array")
+	return nil
+}
+
+// extractMessageList extracts the message array from either PaginatedData format
+// (data.items) or the legacy format (data as array directly).
+func extractMessageList(t *testing.T, data interface{}) []interface{} {
+	t.Helper()
+
+	// New PaginatedData format: { items: [...], nextCursor, hasMore }
+	if dataMap, ok := data.(map[string]interface{}); ok {
+		if items, ok := dataMap["items"].([]interface{}); ok {
+			return items
+		}
+	}
+
+	// Legacy format: data is the array directly
+	if arr, ok := data.([]interface{}); ok {
+		return arr
+	}
+
+	t.Fatal("data should be either PaginatedData or array")
+	return nil
+}
+
 // createDirectChat creates a direct chat between the caller and otherUserID.
 // Returns the chat ID.
 func createDirectChat(t *testing.T, token, otherUserID string) string {
@@ -124,6 +178,12 @@ func createDirectChat(t *testing.T, token, otherUserID string) string {
 	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.StatusCode, "create direct chat should return 200 or 201")
 	body := parseResponse(t, resp)
 	data := body["data"].(map[string]interface{})
+
+	// Support both flattened format (chat_id) and nested format (chat.id)
+	if chatID, ok := data["chat_id"].(string); ok {
+		require.NotEmpty(t, chatID)
+		return chatID
+	}
 	chat := data["chat"].(map[string]interface{})
 	chatID := chat["id"].(string)
 	require.NotEmpty(t, chatID)
