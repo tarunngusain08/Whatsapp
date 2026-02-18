@@ -36,6 +36,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -44,6 +46,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.whatsappclone.core.ui.components.LoadingOverlay
 import com.whatsappclone.core.ui.components.UserAvatar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +75,11 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val showComingSoon: () -> Unit = {
+        scope.launch { snackbarHostState.showSnackbar("Coming soon") }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
@@ -94,6 +104,7 @@ fun SettingsScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -156,7 +167,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF00BFA5),
                     title = "Two-step verification",
                     subtitle = "Enable two-step verification for security",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -164,7 +175,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF00BFA5),
                     title = "Change number",
                     subtitle = "Change your phone number",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -172,7 +183,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF00BFA5),
                     title = "Request account info",
                     subtitle = "Request your account information",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsSectionDivider()
@@ -185,7 +196,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF25D366),
                     title = "Theme",
                     subtitle = "System default",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -193,7 +204,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF25D366),
                     title = "Wallpaper",
                     subtitle = "Change chat wallpaper",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -201,7 +212,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF25D366),
                     title = "Chat backup",
                     subtitle = "Back up your chat history",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsSectionDivider()
@@ -227,7 +238,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF7C4DFF),
                     title = "Storage usage",
                     subtitle = "Manage your storage",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -235,7 +246,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF7C4DFF),
                     title = "Network usage",
                     subtitle = "View network usage statistics",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -243,7 +254,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF7C4DFF),
                     title = "Auto-download media",
                     subtitle = "Configure when to download media",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsSectionDivider()
@@ -256,7 +267,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF039BE5),
                     title = "Help center",
                     subtitle = "Get help, contact us, privacy policy",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 SettingsItem(
@@ -264,7 +275,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF039BE5),
                     title = "Terms and Privacy Policy",
                     subtitle = "Read our terms and privacy policy",
-                    onClick = { /* Placeholder */ }
+                    onClick = showComingSoon
                 )
 
                 // Debug-only server URL option
