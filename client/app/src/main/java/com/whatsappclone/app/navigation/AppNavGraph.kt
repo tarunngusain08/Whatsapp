@@ -7,16 +7,26 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -235,28 +245,25 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
-            PlaceholderScreen(label = "Contact Info\nuserId: $userId")
+            ComingSoonScreen(
+                title = "Contact Info",
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         // ── New Group ────────────────────────────────────────────────────────
         composable(AppRoute.NewGroup.route) {
-            PlaceholderScreen(
-                label = "New Group",
-                onNavigate = {
-                    navController.navigate(AppRoute.GroupSetup.route)
-                }
+            ComingSoonScreen(
+                title = "New Group",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
         // ── Group Setup ──────────────────────────────────────────────────────
         composable(AppRoute.GroupSetup.route) {
-            PlaceholderScreen(
-                label = "Group Setup",
-                onNavigate = {
-                    navController.navigate(AppRoute.Main.route) {
-                        popUpTo(AppRoute.Main.route) { inclusive = true }
-                    }
-                }
+            ComingSoonScreen(
+                title = "Group Setup",
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -387,39 +394,65 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
-            PlaceholderScreen(label = "Forward Picker\nmessageId: $messageId")
+            ComingSoonScreen(
+                title = "Forward Message",
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }
 
-/**
- * Temporary placeholder screen for features not yet implemented.
- * Will be replaced as each feature is built out in subsequent phases.
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlaceholderScreen(
-    label: String,
-    onNavigate: (() -> Unit)? = null
+private fun ComingSoonScreen(
+    title: String,
+    onNavigateBack: () -> Unit
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = label,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.headlineSmall
-            )
-        }
-    }
-
-    if (onNavigate != null) {
-        LaunchedEffect(Unit) {
-            // Placeholder screens don't auto-navigate; real screens handle
-            // navigation via user actions and ViewModel events.
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Coming Soon",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    text = "This feature is under development",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
