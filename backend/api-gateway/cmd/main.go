@@ -102,8 +102,6 @@ func main() {
 
 	// Protected routes (auth + rate limit required)
 	protectedRoutes := []model.RouteTarget{
-		{PathPrefix: "/api/v1/users", TargetURL: cfg.UserHTTPAddr, StripPrefix: false, RequireAuth: true},
-		{PathPrefix: "/api/v1/chats", TargetURL: cfg.ChatHTTPAddr, StripPrefix: false, RequireAuth: true},
 		{PathPrefix: "/api/v1/messages", TargetURL: cfg.MessageHTTPAddr, StripPrefix: false, RequireAuth: true},
 		{PathPrefix: "/api/v1/media", TargetURL: cfg.MediaHTTPAddr, StripPrefix: false, RequireAuth: true},
 	}
@@ -111,6 +109,18 @@ func main() {
 	// Register proxy routes
 	handler.RegisterProxyRoutes(engine, publicRoutes, nil, nil)
 	handler.RegisterProxyRoutes(engine, protectedRoutes, authMW, rateLimitMW)
+
+	// User routes with path rewriting for client-compatible block/unblock paths
+	handler.RegisterUserRoutes(engine, cfg.UserHTTPAddr, authMW, rateLimitMW)
+
+	// Chat routes with sub-path rewriting for chat-scoped messages.
+	// Client calls /api/v1/chats/:chatId/messages/* which needs to go to
+	// the message-service, while other /api/v1/chats/* paths go to chat-service.
+	handler.RegisterChatRoutes(engine, cfg.ChatHTTPAddr, cfg.MessageHTTPAddr, authMW, rateLimitMW)
+
+	// Notification device routes: client calls /api/v1/notifications/devices/*
+	// which map to user-service /api/v1/users/devices/*
+	handler.RegisterNotificationRoutes(engine, cfg.UserHTTPAddr, authMW, rateLimitMW)
 
 	// WebSocket proxy (protected)
 	engine.GET("/ws", authMW, handler.WSProxyHandler(cfg.WSAddr))
