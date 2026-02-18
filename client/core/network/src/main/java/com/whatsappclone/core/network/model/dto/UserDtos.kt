@@ -51,5 +51,24 @@ data class ContactSyncRequest(
 @Serializable
 data class ContactSyncResponse(
     @SerialName("registered_users")
-    val registeredUsers: List<UserDto>
+    val registeredUsers: List<ContactSyncUserDto>
+)
+
+/**
+ * Matches the backend ContactSyncResult shape which uses `user_id`
+ * instead of `id` and only includes a subset of user fields.
+ */
+@Serializable
+data class ContactSyncUserDto(
+    @SerialName("user_id")
+    val id: String,
+    val phone: String,
+    @SerialName("display_name")
+    val displayName: String? = null,
+    @SerialName("avatar_url")
+    val avatarUrl: String? = null,
+    @SerialName("status_text")
+    val statusText: String? = null,
+    @SerialName("is_online")
+    val isOnline: Boolean? = null
 )
