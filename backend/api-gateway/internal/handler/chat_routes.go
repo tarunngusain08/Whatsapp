@@ -1,0 +1,170 @@
+package handler
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"regexp"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+)
+
+// Patterns for chat-scoped message paths
+var (
+	chatMessagesPattern = regexp.MustCompile(
+		`^/api/v1/chats/([^/]+)/messages(?:/(.*))?$`,
+	)
+)
+
+// RegisterChatRoutes registers a smart proxy under /api/v1/chats that inspects
+// the full path and routes chat-scoped message requests to message-service,
+// while all other chat paths go to chat-service.
+func RegisterChatRoutes(
+	engine *gin.Engine,
+	chatHTTPAddr string,
+	messageHTTPAddr string,
+	authMW, rateLimitMW gin.HandlerFunc,
+) {
+	chatTarget, err := url.Parse(chatHTTPAddr)
+	if err != nil {
+		panic("invalid chat target URL: " + chatHTTPAddr)
+	}
+	msgTarget, err := url.Parse(messageHTTPAddr)
+	if err != nil {
+		panic("invalid message target URL: " + messageHTTPAddr)
+	}
+
+	chatProxy := httputil.NewSingleHostReverseProxy(chatTarget)
+	chatProxy.ErrorHandler = proxyErrorHandler
+
+	msgProxy := httputil.NewSingleHostReverseProxy(msgTarget)
+	msgProxy.ErrorHandler = proxyErrorHandler
+
+	mws := buildMiddlewareChain(authMW, rateLimitMW)
+
+	smartProxy := func(c *gin.Context) {
+		setUserHeaders(c)
+		fullPath := c.Request.URL.Path
+
+		// Check if this is a chat-scoped message path
+		if matches := chatMessagesPattern.FindStringSubmatch(fullPath); matches != nil {
+			chatID := matches[1]
+			remainder := matches[2] // e.g., "", "read", ":messageId", ":messageId/star"
+
+			rewriteChatScopedMessage(c, chatID, remainder)
+			msgProxy.ServeHTTP(c.Writer, c.Request)
+			return
+		}
+
+		// All other chat paths go to chat-service as-is
+		chatProxy.ServeHTTP(c.Writer, c.Request)
+	}
+
+	handlers := append(mws, smartProxy)
+	engine.Any("/api/v1/chats", handlers...)
+	engine.Any("/api/v1/chats/*path", handlers...)
+}
+
+// rewriteChatScopedMessage rewrites chat-scoped message paths into
+// the message-service's flat format.
+func rewriteChatScopedMessage(c *gin.Context, chatID, remainder string) {
+	method := c.Request.Method
+
+	switch {
+	case remainder == "" && method == http.MethodGet:
+		// GET /api/v1/chats/:chatId/messages -> GET /api/v1/messages?chat_id=chatId
+		q := c.Request.URL.Query()
+		q.Set("chat_id", chatID)
+		c.Request.URL.Path = "/api/v1/messages"
+		c.Request.URL.RawQuery = q.Encode()
+
+	case remainder == "" && method == http.MethodPost:
+		// POST /api/v1/chats/:chatId/messages -> POST /api/v1/messages (inject chat_id)
+		c.Request.URL.Path = "/api/v1/messages"
+		injectChatIDIntoBody(c, chatID)
+
+	case remainder == "read" && method == http.MethodPost:
+		// POST /api/v1/chats/:chatId/messages/read -> POST /api/v1/messages/read
+		c.Request.URL.Path = "/api/v1/messages/read"
+		injectChatIDIntoBody(c, chatID)
+
+	case strings.Contains(remainder, "/star"):
+		// PUT|DELETE /api/v1/chats/:chatId/messages/:messageId/star
+		messageID := strings.Split(remainder, "/")[0]
+		c.Request.URL.Path = fmt.Sprintf("/api/v1/messages/%s/star", messageID)
+
+	case strings.Contains(remainder, "/react"):
+		// POST|DELETE /api/v1/chats/:chatId/messages/:messageId/react
+		messageID := strings.Split(remainder, "/")[0]
+		c.Request.URL.Path = fmt.Sprintf("/api/v1/messages/%s/react", messageID)
+
+	case strings.Contains(remainder, "/forward"):
+		messageID := strings.Split(remainder, "/")[0]
+		c.Request.URL.Path = fmt.Sprintf("/api/v1/messages/%s/forward", messageID)
+
+	case strings.Contains(remainder, "/receipts"):
+		messageID := strings.Split(remainder, "/")[0]
+		c.Request.URL.Path = fmt.Sprintf("/api/v1/messages/%s/receipts", messageID)
+
+	default:
+		// DELETE /api/v1/chats/:chatId/messages/:messageId -> DELETE /api/v1/messages/:messageId
+		if method == http.MethodDelete && remainder != "" && !strings.Contains(remainder, "/") {
+			c.Request.URL.Path = fmt.Sprintf("/api/v1/messages/%s", remainder)
+		} else {
+			// Fallback: pass through to message-service
+			c.Request.URL.Path = fmt.Sprintf("/api/v1/messages/%s", remainder)
+		}
+	}
+}
+
+func proxyErrorHandler(w http.ResponseWriter, _ *http.Request, _ error) {
+	w.WriteHeader(http.StatusBadGateway)
+	w.Write([]byte(`{"success":false,"error":{"code":"BAD_GATEWAY","message":"service unavailable"}}`))
+}
+
+func setUserHeaders(c *gin.Context) {
+	if uid, exists := c.Get("user_id"); exists {
+		c.Request.Header.Set("X-User-ID", uid.(string))
+	}
+	if phone, exists := c.Get("phone"); exists {
+		c.Request.Header.Set("X-User-Phone", phone.(string))
+	}
+	if rid, exists := c.Get("request_id"); exists {
+		c.Request.Header.Set("X-Request-ID", rid.(string))
+	}
+}
+
+func buildMiddlewareChain(authMW, rateLimitMW gin.HandlerFunc) []gin.HandlerFunc {
+	var mws []gin.HandlerFunc
+	if rateLimitMW != nil {
+		mws = append(mws, rateLimitMW)
+	}
+	if authMW != nil {
+		mws = append(mws, authMW)
+	}
+	return mws
+}
+
+// injectChatIDIntoBody reads the request body, injects "chat_id" into the JSON,
+// and replaces the body with the modified version.
+func injectChatIDIntoBody(c *gin.Context, chatID string) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return
+	}
+	defer c.Request.Body.Close()
+
+	bodyStr := string(body)
+	if bodyStr == "" || bodyStr == "{}" {
+		bodyStr = fmt.Sprintf(`{"chat_id":"%s"}`, chatID)
+	} else {
+		// Insert chat_id after opening brace
+		bodyStr = fmt.Sprintf(`{"chat_id":"%s",%s`, chatID, bodyStr[1:])
+	}
+
+	c.Request.Body = io.NopCloser(strings.NewReader(bodyStr))
+	c.Request.ContentLength = int64(len(bodyStr))
+}
