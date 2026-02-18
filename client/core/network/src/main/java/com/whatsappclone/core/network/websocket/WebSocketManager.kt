@@ -4,6 +4,7 @@ import android.util.Log
 import com.whatsappclone.core.common.util.Constants
 import com.whatsappclone.core.network.token.TokenManager
 import com.whatsappclone.core.network.url.BaseUrlProvider
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -47,7 +48,10 @@ class WebSocketManager @Inject constructor(
         private const val INITIAL_RECONNECT_DELAY_MS = 1_000L
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Uncaught coroutine exception", throwable)
+    }
+    private val scope = CoroutineScope(SupervisorJob() + kotlinx.coroutines.Dispatchers.IO + exceptionHandler)
 
     private val _connectionState = MutableStateFlow(WsConnectionState.DISCONNECTED)
     val connectionState: StateFlow<WsConnectionState> = _connectionState.asStateFlow()
@@ -126,27 +130,32 @@ class WebSocketManager @Inject constructor(
     // ── Connection ──────────────────────────────────────────────────────
 
     private fun doConnect() {
-        val token = tokenManager.getAccessToken()
-        if (token.isNullOrBlank()) {
-            Log.w(TAG, "No access token available, cannot connect")
+        try {
+            val token = tokenManager.getAccessToken()
+            if (token.isNullOrBlank()) {
+                Log.w(TAG, "No access token available, cannot connect")
+                _connectionState.value = WsConnectionState.DISCONNECTED
+                return
+            }
+
+            val wsUrl = buildString {
+                append(baseUrlProvider.getWsUrl())
+                append("?token=")
+                append(token)
+            }
+
+            _connectionState.value = WsConnectionState.CONNECTING
+            Log.d(TAG, "Connecting to WebSocket...")
+
+            val request = Request.Builder()
+                .url(wsUrl)
+                .build()
+
+            webSocket = okHttpClient.newWebSocket(request, createListener())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initiate WebSocket connection", e)
             _connectionState.value = WsConnectionState.DISCONNECTED
-            return
         }
-
-        val wsUrl = buildString {
-            append(baseUrlProvider.getWsUrl())
-            append("?token=")
-            append(token)
-        }
-
-        _connectionState.value = WsConnectionState.CONNECTING
-        Log.d(TAG, "Connecting to WebSocket...")
-
-        val request = Request.Builder()
-            .url(wsUrl)
-            .build()
-
-        webSocket = okHttpClient.newWebSocket(request, createListener())
     }
 
     private fun createListener(): WebSocketListener = object : WebSocketListener() {
