@@ -33,8 +33,8 @@ func TestMessage_SendAndRetrieve(t *testing.T) {
 
 	dataRaw := body["data"]
 	require.NotNil(t, dataRaw, "data should not be nil, chatID=%s", chatID)
-	messages, ok := dataRaw.([]interface{})
-	require.True(t, ok, "data should be an array")
+
+	messages := extractMessageList(t, dataRaw)
 	assert.GreaterOrEqual(t, len(messages), 1, "should have at least one message")
 
 	// Verify message content
@@ -78,7 +78,7 @@ func TestMessage_Idempotent(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	body := parseResponse(t, resp)
 	require.NotNil(t, body["data"], "data should not be nil")
-	messages := body["data"].([]interface{})
+	messages := extractMessageList(t, body["data"])
 
 	count := 0
 	for _, m := range messages {
@@ -138,11 +138,15 @@ func TestMessage_Pagination(t *testing.T) {
 
 	body := parseResponse(t, resp)
 	require.NotNil(t, body["data"], "data should not be nil")
-	messages := body["data"].([]interface{})
+	messages := extractMessageList(t, body["data"])
 	assert.LessOrEqual(t, len(messages), 3, "limit should be respected")
 
-	// Check meta for pagination info
-	if meta, ok := body["meta"].(map[string]interface{}); ok {
+	// Check pagination info in PaginatedData format or legacy meta
+	data := body["data"].(map[string]interface{})
+	if data["hasMore"] != nil || data["nextCursor"] != nil {
+		// New PaginatedData format
+		assert.NotNil(t, data["hasMore"], "hasMore should be present in PaginatedData")
+	} else if meta, ok := body["meta"].(map[string]interface{}); ok {
 		_, hasNextCursor := meta["next_cursor"]
 		assert.True(t, hasNextCursor || meta["has_more"] != nil, "pagination metadata should be present")
 	}
