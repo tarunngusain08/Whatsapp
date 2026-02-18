@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ChatRepository {
 
-    fun observeChats(): Flow<List<ChatWithLastMessage>>
+    fun observeChats(currentUserId: String? = null): Flow<List<ChatWithLastMessage>>
 
     suspend fun syncChats(): AppResult<Unit>
 
