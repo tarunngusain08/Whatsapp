@@ -53,3 +53,18 @@ func (r *storageMinIORepo) PresignedURL(ctx context.Context, key string, expiry 
 	}
 	return presignedURL.String(), nil
 }
+
+func (r *storageMinIORepo) GetObject(ctx context.Context, key string) (io.ReadCloser, string, int64, error) {
+	obj, err := r.client.GetObject(ctx, r.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		r.log.Error().Err(err).Str("key", key).Msg("failed to get object from MinIO")
+		return nil, "", 0, err
+	}
+	info, err := obj.Stat()
+	if err != nil {
+		obj.Close()
+		r.log.Error().Err(err).Str("key", key).Msg("failed to stat object from MinIO")
+		return nil, "", 0, err
+	}
+	return obj, info.ContentType, info.Size, nil
+}
