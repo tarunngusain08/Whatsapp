@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class LoginNavigationEvent {
-    data class NavigateToOtp(val phone: String) : LoginNavigationEvent()
+    data class NavigateToOtp(val phone: String, val devOtp: String? = null) : LoginNavigationEvent()
 }
 
 @HiltViewModel
@@ -53,7 +53,10 @@ class LoginViewModel @Inject constructor(
                 is AppResult.Success -> {
                     _uiState.update { it.copy(isLoading = false) }
                     _navigationEvent.emit(
-                        LoginNavigationEvent.NavigateToOtp(state.fullPhoneNumber)
+                        LoginNavigationEvent.NavigateToOtp(
+                            phone = state.fullPhoneNumber,
+                            devOtp = result.data.otp
+                        )
                     )
                 }
 
