@@ -3,6 +3,7 @@ package com.whatsappclone.app.notification
 import android.util.Log
 import com.whatsappclone.core.network.api.NotificationApi
 import com.whatsappclone.core.network.model.dto.DeviceTokenRequest
+import com.whatsappclone.core.network.token.DeviceTokenManager
 import com.whatsappclone.core.network.token.TokenManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -27,7 +28,7 @@ class FCMTokenManager @Inject constructor(
     private val notificationApi: NotificationApi,
     private val tokenManager: TokenManager,
     @Named("appScope") private val coroutineScope: CoroutineScope
-) {
+) : DeviceTokenManager {
 
     @Volatile
     private var cachedToken: String? = null
@@ -54,7 +55,7 @@ class FCMTokenManager @Inject constructor(
      * Retrieves the current FCM token and registers it with the backend.
      * No-op if the user is not logged in or Firebase is unavailable.
      */
-    suspend fun registerWithBackend() {
+    override suspend fun registerWithBackend() {
         if (!tokenManager.isLoggedIn()) {
             Log.d(TAG, "Skipping FCM registration — user not logged in")
             return
@@ -84,7 +85,7 @@ class FCMTokenManager @Inject constructor(
      * Unregisters the current device token from the backend.
      * Call on logout to stop receiving push notifications.
      */
-    suspend fun unregisterFromBackend() {
+    override suspend fun unregisterFromBackend() {
         val token = cachedToken ?: getToken()
         if (token == null) {
             Log.w(TAG, "Skipping FCM unregistration — no token available")
