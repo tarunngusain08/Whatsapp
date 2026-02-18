@@ -2,6 +2,7 @@ package com.whatsappclone.feature.contacts.data
 
 import android.content.ContentResolver
 import android.provider.ContactsContract
+import android.util.Log
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.result.ErrorCode
 import com.whatsappclone.core.common.util.PhoneUtils
@@ -29,11 +30,13 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun syncContacts(): AppResult<Int> {
         return try {
             val deviceContacts = readDeviceContacts()
+            Log.d(TAG, "Read ${deviceContacts.size} device contacts")
             if (deviceContacts.isEmpty()) {
                 return AppResult.Success(0)
             }
 
             val phoneNumbers = deviceContacts.map { it.phone }
+            Log.d(TAG, "Syncing ${phoneNumbers.size} phone numbers with backend")
             val result = safeApiCall {
                 userApi.syncContacts(ContactSyncRequest(phoneNumbers = phoneNumbers))
             }
@@ -41,6 +44,7 @@ class ContactRepositoryImpl @Inject constructor(
             when (result) {
                 is AppResult.Success -> {
                     val registeredUsers = result.data.registeredUsers
+                    Log.d(TAG, "Backend returned ${registeredUsers.size} registered users")
                     val registeredPhoneSet = registeredUsers.associateBy { it.phone }
                     val now = System.currentTimeMillis()
 
@@ -48,7 +52,7 @@ class ContactRepositoryImpl @Inject constructor(
                         UserEntity(
                             id = dto.id,
                             phone = dto.phone,
-                            displayName = dto.displayName,
+                            displayName = dto.displayName ?: dto.phone,
                             statusText = dto.statusText,
                             avatarUrl = dto.avatarUrl,
                             isOnline = dto.isOnline ?: false,
@@ -95,6 +99,64 @@ class ContactRepositoryImpl @Inject constructor(
 
     override fun searchContacts(query: String): Flow<List<ContactWithUser>> =
         contactDao.searchRegisteredContacts(query)
+
+    override suspend fun searchByPhone(phone: String): AppResult<Int> {
+        return try {
+            val normalized = normalizePhoneNumber(phone)
+                ?: return AppResult.Success(0)
+
+            val result = safeApiCall {
+                userApi.syncContacts(ContactSyncRequest(phoneNumbers = listOf(normalized)))
+            }
+
+            when (result) {
+                is AppResult.Success -> {
+                    val registeredUsers = result.data.registeredUsers
+                    if (registeredUsers.isEmpty()) return AppResult.Success(0)
+
+                    val now = System.currentTimeMillis()
+                    val userEntities = registeredUsers.map { dto ->
+                        UserEntity(
+                            id = dto.id,
+                            phone = dto.phone,
+                            displayName = dto.displayName ?: dto.phone,
+                            statusText = dto.statusText,
+                            avatarUrl = dto.avatarUrl,
+                            isOnline = dto.isOnline ?: false,
+                            lastSeen = null,
+                            isBlocked = false,
+                            createdAt = now,
+                            updatedAt = now
+                        )
+                    }
+                    userDao.upsertAll(userEntities)
+
+                    val contactEntities = registeredUsers.map { dto ->
+                        ContactEntity(
+                            contactId = UUID.nameUUIDFromBytes(
+                                dto.phone.toByteArray()
+                            ).toString(),
+                            phone = dto.phone,
+                            deviceName = dto.displayName ?: dto.phone,
+                            registeredUserId = dto.id,
+                            updatedAt = now
+                        )
+                    }
+                    contactDao.upsertAll(contactEntities)
+
+                    AppResult.Success(registeredUsers.size)
+                }
+                is AppResult.Error -> result
+                is AppResult.Loading -> AppResult.Success(0)
+            }
+        } catch (e: Exception) {
+            AppResult.Error(
+                code = ErrorCode.UNKNOWN,
+                message = e.message ?: "Failed to search by phone",
+                cause = e
+            )
+        }
+    }
 
     /**
      * Reads contacts from the device via ContentResolver.
@@ -168,10 +230,14 @@ class ContactRepositoryImpl @Inject constructor(
             val digits = cleaned.replace(Regex("[^\\d+]"), "")
             if (PhoneUtils.isValidE164(digits)) digits else null
         } else {
-            // Assume +91 (India) as default country code; in production
-            // this would come from the user's SIM/locale
-            val withCountryCode = "+$cleaned"
-            if (PhoneUtils.isValidE164(withCountryCode)) withCountryCode else null
+            val digitsOnly = cleaned.replace(Regex("[^\\d]"), "")
+            if (digitsOnly.length == 10) {
+                val withCountryCode = "+91$digitsOnly"
+                if (PhoneUtils.isValidE164(withCountryCode)) withCountryCode else null
+            } else {
+                val withPlus = "+$digitsOnly"
+                if (PhoneUtils.isValidE164(withPlus)) withPlus else null
+            }
         }
     }
 
@@ -186,4 +252,8 @@ class ContactRepositoryImpl @Inject constructor(
         var name: String,
         val phone: String
     )
+
+    companion object {
+        private const val TAG = "ContactRepository"
+    }
 }
