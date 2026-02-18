@@ -11,7 +11,9 @@ import androidx.paging.map
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.util.Constants
 import com.whatsappclone.core.common.util.TimeUtils
+import com.whatsappclone.core.database.dao.ChatParticipantDao
 import com.whatsappclone.core.database.dao.MessageDao
+import com.whatsappclone.core.database.dao.UserDao
 import com.whatsappclone.core.database.entity.MessageEntity
 import com.whatsappclone.core.network.websocket.TypingStateHolder
 import com.whatsappclone.core.network.websocket.WebSocketManager
@@ -49,6 +51,8 @@ class ChatDetailViewModel @Inject constructor(
     private val webSocketManager: WebSocketManager,
     private val typingStateHolder: TypingStateHolder,
     private val messageDao: MessageDao,
+    private val chatParticipantDao: ChatParticipantDao,
+    private val userDao: UserDao,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -80,10 +84,28 @@ class ChatDetailViewModel @Inject constructor(
             when (val result = chatRepository.getChatDetail(chatId)) {
                 is AppResult.Success -> {
                     val chat = result.data
+                    var chatName = chat.name ?: "Chat"
+                    var chatAvatar = chat.avatarUrl
+
+                    if (chat.chatType == "direct" && currentUserId.isNotBlank()) {
+                        try {
+                            val participants = chatParticipantDao.getParticipants(chatId)
+                            val otherUserId = participants
+                                .firstOrNull { it.userId != currentUserId }?.userId
+                            if (otherUserId != null) {
+                                val otherUser = userDao.getById(otherUserId)
+                                if (otherUser != null) {
+                                    chatName = otherUser.displayName
+                                    chatAvatar = otherUser.avatarUrl ?: chatAvatar
+                                }
+                            }
+                        } catch (_: Exception) { }
+                    }
+
                     _uiState.update {
                         it.copy(
-                            chatName = chat.name ?: "Chat",
-                            chatAvatarUrl = chat.avatarUrl,
+                            chatName = chatName,
+                            chatAvatarUrl = chatAvatar,
                             chatType = chat.chatType,
                             isLoading = false
                         )
