@@ -6,6 +6,7 @@ import (
 
 	"github.com/whatsapp-clone/backend/auth-service/internal/model"
 	"github.com/whatsapp-clone/backend/auth-service/internal/service"
+	apperr "github.com/whatsapp-clone/backend/pkg/errors"
 	"github.com/whatsapp-clone/backend/pkg/response"
 )
 
@@ -21,10 +22,16 @@ func NewHTTPHandler(authSvc service.AuthService, log zerolog.Logger) *HTTPHandle
 func (h *HTTPHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	auth := rg.Group("/auth")
 	{
+		// Original backend routes
 		auth.POST("/request-otp", h.RequestOTP)
 		auth.POST("/verify-otp", h.VerifyOTP)
 		auth.POST("/refresh", h.Refresh)
 		auth.POST("/logout", h.Logout)
+
+		// Client-compatible aliases
+		auth.POST("/otp/send", h.RequestOTP)
+		auth.POST("/otp/verify", h.VerifyOTP)
+		auth.POST("/token/refresh", h.Refresh)
 	}
 }
 
@@ -41,10 +48,12 @@ func (h *HTTPHandler) RequestOTP(c *gin.Context) {
 		return
 	}
 
-	// In production, OTP would be sent via SMS; returning it here for dev/testing
+	// In production, OTP would be sent via SMS; returning it here for dev/testing.
+	// Client expects { message, expires_in_seconds }; dev also gets otp for testing.
 	response.OK(c, gin.H{
-		"message": "OTP sent successfully",
-		"otp":     otp,
+		"message":            "OTP sent successfully",
+		"otp":                otp,
+		"expires_in_seconds": 300,
 	})
 }
 
@@ -55,13 +64,23 @@ func (h *HTTPHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authSvc.VerifyOTP(c.Request.Context(), req.Phone, req.Code)
+	// Coalesce: client sends "otp", backend expects "code"
+	if req.Code == "" {
+		req.Code = req.OTP
+	}
+
+	if req.Code == "" {
+		response.Error(c, apperr.NewBadRequest("code or otp is required"))
+		return
+	}
+
+	result, err := h.authSvc.VerifyOTP(c.Request.Context(), req.Phone, req.Code)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.OK(c, tokens)
+	response.OK(c, result)
 }
 
 func (h *HTTPHandler) Refresh(c *gin.Context) {
@@ -77,7 +96,13 @@ func (h *HTTPHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, tokens)
+	// Return both expires_in and expires_in_seconds for client compatibility
+	response.OK(c, gin.H{
+		"access_token":       tokens.AccessToken,
+		"refresh_token":      tokens.RefreshToken,
+		"expires_in":         tokens.ExpiresIn,
+		"expires_in_seconds": tokens.ExpiresIn,
+	})
 }
 
 func (h *HTTPHandler) Logout(c *gin.Context) {
