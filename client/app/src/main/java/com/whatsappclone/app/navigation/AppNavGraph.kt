@@ -1,5 +1,11 @@
 package com.whatsappclone.app.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -67,10 +73,35 @@ fun AppNavGraph(
         }
     }
 
+    val navDuration = 300
     NavHost(
         navController = navController,
         startDestination = AppRoute.Splash.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(navDuration)
+            ) + fadeIn(tween(navDuration))
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(navDuration)
+            ) + fadeOut(tween(navDuration / 2))
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(navDuration)
+            ) + fadeIn(tween(navDuration))
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(navDuration)
+            ) + fadeOut(tween(navDuration / 2))
+        }
     ) {
 
         // ── Splash ───────────────────────────────────────────────────────────
@@ -94,8 +125,10 @@ fun AppNavGraph(
         // ── Login ────────────────────────────────────────────────────────────
         composable(AppRoute.Login.route) {
             LoginScreen(
-                onNavigateToOtp = { phone ->
-                    navController.navigate(AppRoute.OtpVerification.create(phone))
+                onNavigateToOtp = { phone, devOtp ->
+                    navController.navigate(
+                        AppRoute.OtpVerification.create(phone, devOtp)
+                    )
                 }
             )
         }
@@ -104,7 +137,12 @@ fun AppNavGraph(
         composable(
             route = AppRoute.OtpVerification.route,
             arguments = listOf(
-                navArgument("phone") { type = NavType.StringType }
+                navArgument("phone") { type = NavType.StringType },
+                navArgument("devOtp") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
             )
         ) {
             OtpScreen(
