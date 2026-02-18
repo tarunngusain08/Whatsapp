@@ -17,14 +17,19 @@ interface ChatDao {
             m.content AS lastMessageText,
             m.messageType AS lastMessageType,
             m.senderId AS lastMessageSenderId,
-            u.displayName AS lastMessageSenderName
+            u.displayName AS lastMessageSenderName,
+            pu.displayName AS directChatOtherUserName,
+            pu.avatarUrl AS directChatOtherUserAvatarUrl
         FROM chats c
         LEFT JOIN messages m ON c.lastMessageId = m.messageId
         LEFT JOIN users u ON m.senderId = u.id
+        LEFT JOIN chat_participants cp 
+            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != :currentUserId
+        LEFT JOIN users pu ON cp.userId = pu.id
         ORDER BY c.isPinned DESC, c.lastMessageTimestamp DESC
         """
     )
-    fun observeChatsWithLastMessage(): Flow<List<ChatWithLastMessage>>
+    fun observeChatsWithLastMessage(currentUserId: String): Flow<List<ChatWithLastMessage>>
 
     @Query("SELECT * FROM chats WHERE chatId = :chatId")
     suspend fun getChatById(chatId: String): ChatEntity?
