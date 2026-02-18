@@ -49,7 +49,7 @@ interface MessageDao {
         """
         UPDATE messages 
         SET messageId = :serverMessageId, status = 'sent' 
-        WHERE clientMsgId = :clientMsgId AND status = 'pending'
+        WHERE clientMsgId = :clientMsgId AND status IN ('pending', 'sending')
         """
     )
     suspend fun confirmSent(clientMsgId: String, serverMessageId: String)
