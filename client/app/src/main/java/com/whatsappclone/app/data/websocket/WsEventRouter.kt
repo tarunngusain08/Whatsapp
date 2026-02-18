@@ -13,6 +13,7 @@ import com.whatsappclone.core.network.model.dto.MessageDto
 import com.whatsappclone.core.network.websocket.ServerWsEvent
 import com.whatsappclone.core.network.websocket.TypingStateHolder
 import com.whatsappclone.core.network.websocket.WebSocketManager
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,7 +40,10 @@ class WsEventRouter @Inject constructor(
         private const val TAG = "WsEventRouter"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Uncaught coroutine exception", throwable)
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private var started = false
 
     fun start() {
