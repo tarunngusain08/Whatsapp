@@ -132,7 +132,7 @@ public class MessageDao_Impl(
             |
             |        UPDATE messages 
             |        SET messageId = ?, status = 'sent' 
-            |        WHERE clientMsgId = ? AND status = 'pending'
+            |        WHERE clientMsgId = ? AND status IN ('pending', 'sending')
             |        
             """.trimMargin()
         return _query
