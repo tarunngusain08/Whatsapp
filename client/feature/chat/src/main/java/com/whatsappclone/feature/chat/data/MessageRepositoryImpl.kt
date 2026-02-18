@@ -120,7 +120,9 @@ class MessageRepositoryImpl @Inject constructor(
             val sent = webSocketManager.send(
                 WsFrame(event = "message.send", data = payload, ref = clientMsgId)
             )
-            if (!sent) {
+            if (sent) {
+                messageDao.updateStatus(clientMsgId, "sending")
+            } else {
                 Log.w(TAG, "WebSocket send failed for $clientMsgId, will retry via REST")
             }
         } else {
@@ -188,8 +190,7 @@ class MessageRepositoryImpl @Inject constructor(
 
         if (webSocketManager.connectionState.value == WsConnectionState.CONNECTED) {
             val payload = buildJsonObject {
-                put("chat_id", JsonPrimitive(chatId))
-                put("up_to_message_id", JsonPrimitive(upToMessageId))
+                put("message_id", JsonPrimitive(upToMessageId))
             }
             webSocketManager.send(WsFrame(event = "message.read", data = payload))
         }
