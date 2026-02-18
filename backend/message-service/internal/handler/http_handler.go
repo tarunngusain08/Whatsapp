@@ -15,6 +15,84 @@ import (
 	"github.com/whatsapp-clone/backend/message-service/internal/service"
 )
 
+// clientMessage is the client-compatible message shape.
+// It flattens status (map -> string) and is_starred_by ([]string -> bool).
+type clientMessage struct {
+	MessageID        string               `json:"message_id"`
+	ChatID           string               `json:"chat_id"`
+	SenderID         string               `json:"sender_id"`
+	ClientMsgID      string               `json:"client_msg_id,omitempty"`
+	Type             model.MessageType    `json:"type"`
+	ReplyToMessageID string               `json:"reply_to_message_id,omitempty"`
+	Payload          model.MessagePayload `json:"payload"`
+	Status           string               `json:"status"`
+	IsDeleted        bool                 `json:"is_deleted"`
+	IsStarred        bool                 `json:"is_starred"`
+	CreatedAt        string               `json:"created_at"`
+}
+
+// toClientMessage converts a backend Message to client-friendly shape.
+func toClientMessage(m *model.Message, currentUserID string) *clientMessage {
+	// Aggregate status: use the lowest status among all recipients.
+	// Priority: sent < delivered < read
+	aggStatus := aggregateStatus(m.Status)
+
+	isStarred := false
+	for _, uid := range m.IsStarredBy {
+		if uid == currentUserID {
+			isStarred = true
+			break
+		}
+	}
+
+	return &clientMessage{
+		MessageID:        m.MessageID,
+		ChatID:           m.ChatID,
+		SenderID:         m.SenderID,
+		ClientMsgID:      m.ClientMsgID,
+		Type:             m.Type,
+		ReplyToMessageID: m.ReplyToMessageID,
+		Payload:          m.Payload,
+		Status:           aggStatus,
+		IsDeleted:        m.IsDeleted,
+		IsStarred:        isStarred,
+		CreatedAt:        m.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+func toClientMessages(msgs []*model.Message, currentUserID string) []*clientMessage {
+	result := make([]*clientMessage, 0, len(msgs))
+	for _, m := range msgs {
+		result = append(result, toClientMessage(m, currentUserID))
+	}
+	return result
+}
+
+// aggregateStatus returns the aggregate delivery status for the message.
+// It picks the "lowest" status among all recipients.
+func aggregateStatus(statusMap map[string]model.RecipientStatus) string {
+	if len(statusMap) == 0 {
+		return string(model.StatusSent)
+	}
+	allRead := true
+	allDelivered := true
+	for _, rs := range statusMap {
+		if rs.Status != model.StatusRead {
+			allRead = false
+		}
+		if rs.Status == model.StatusSent {
+			allDelivered = false
+		}
+	}
+	if allRead {
+		return string(model.StatusRead)
+	}
+	if allDelivered {
+		return string(model.StatusDelivered)
+	}
+	return string(model.StatusSent)
+}
+
 type HTTPHandler struct {
 	msgSvc service.MessageService
 	log    zerolog.Logger
@@ -72,18 +150,24 @@ func (h *HTTPHandler) ListMessages(c *gin.Context) {
 		return
 	}
 
-	var meta *response.Meta
+	userID := c.GetHeader("X-User-ID")
+	clientMsgs := toClientMessages(msgs, userID)
+
+	var nextCursor string
+	hasMore := false
 	if len(msgs) > 0 {
 		last := msgs[len(msgs)-1]
-		meta = &response.Meta{
-			NextCursor: last.CreatedAt.Format(time.RFC3339Nano),
-			HasMore:    len(msgs) == limit,
-		}
-	} else {
-		meta = &response.Meta{HasMore: false}
+		nextCursor = last.CreatedAt.Format(time.RFC3339Nano)
+		hasMore = len(msgs) == limit
 	}
 
-	response.OKWithMeta(c, msgs, meta)
+	// Return in PaginatedData format the client expects:
+	// { success: true, data: { items: [...], nextCursor: "...", hasMore: true } }
+	response.OK(c, gin.H{
+		"items":      clientMsgs,
+		"nextCursor": nextCursor,
+		"hasMore":    hasMore,
+	})
 }
 
 func (h *HTTPHandler) SendMessage(c *gin.Context) {
@@ -109,7 +193,7 @@ func (h *HTTPHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	response.Created(c, msg)
+	response.Created(c, toClientMessage(msg, userID))
 }
 
 func (h *HTTPHandler) DeleteMessage(c *gin.Context) {
@@ -262,7 +346,8 @@ func (h *HTTPHandler) SearchMessages(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, msgs)
+	userID := c.GetHeader("X-User-ID")
+	response.OK(c, toClientMessages(msgs, userID))
 }
 
 // ReactToMessage adds or replaces a user's reaction on a message.
@@ -361,5 +446,5 @@ func (h *HTTPHandler) SearchGlobal(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, msgs)
+	response.OK(c, toClientMessages(msgs, userID))
 }
