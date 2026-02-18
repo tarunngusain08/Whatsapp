@@ -74,8 +74,18 @@ func TestUserProfile_ContactSync(t *testing.T) {
 
 	body := parseResponse(t, resp)
 	assert.True(t, body["success"].(bool))
-	results := body["data"].([]interface{})
-	// Only the registered user phone should match
+
+	// Support both formats: new { registered_users: [...] } or legacy [...]
+	data := body["data"]
+	var results []interface{}
+	if dataMap, ok := data.(map[string]interface{}); ok {
+		if ru, ok := dataMap["registered_users"].([]interface{}); ok {
+			results = ru
+		}
+	} else if arr, ok := data.([]interface{}); ok {
+		results = arr
+	}
+	require.NotNil(t, results, "contact sync results should not be nil")
 	assert.GreaterOrEqual(t, len(results), 1, "at least one contact should be found")
 
 	found := false
