@@ -87,7 +87,8 @@ func (h *HTTPHandler) GetMetadata(c *gin.Context) {
 	})
 }
 
-// Download issues a 302 redirect to a presigned download URL.
+// Download streams the file content directly from object storage so that
+// clients never need to reach the internal MinIO hostname.
 func (h *HTTPHandler) Download(c *gin.Context) {
 	mediaID := c.Param("mediaId")
 	if mediaID == "" {
@@ -95,11 +96,17 @@ func (h *HTTPHandler) Download(c *gin.Context) {
 		return
 	}
 
-	downloadURL, err := h.mediaSvc.GetDownloadURL(c.Request.Context(), mediaID, h.presignedExpiry)
+	reader, contentType, size, err := h.mediaSvc.StreamFile(c.Request.Context(), mediaID)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
+	defer reader.Close()
 
-	c.Redirect(http.StatusFound, downloadURL)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
 }
