@@ -178,6 +178,22 @@ func (s *mediaServiceImpl) GetDownloadURL(ctx context.Context, mediaID string, e
 	return url, nil
 }
 
+func (s *mediaServiceImpl) StreamFile(ctx context.Context, mediaID string) (io.ReadCloser, string, int64, error) {
+	media, err := s.mediaRepo.GetByID(ctx, mediaID)
+	if err != nil {
+		return nil, "", 0, apperr.NewInternal("failed to get media", err)
+	}
+	if media == nil {
+		return nil, "", 0, apperr.NewNotFound("media not found")
+	}
+
+	reader, contentType, size, err := s.storageRepo.GetObject(ctx, media.StorageKey)
+	if err != nil {
+		return nil, "", 0, apperr.NewInternal("failed to stream file from storage", err)
+	}
+	return reader, contentType, size, nil
+}
+
 func (s *mediaServiceImpl) DeleteMedia(ctx context.Context, mediaID string) error {
 	media, err := s.mediaRepo.GetByID(ctx, mediaID)
 	if err != nil {
