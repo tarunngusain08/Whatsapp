@@ -6,14 +6,21 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
 @HiltAndroidApp
-class WhatsAppApplication : Application(), Configuration.Provider {
+class WhatsAppApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var imageLoader: ImageLoader
+
+    override fun newImageLoader(context: coil3.PlatformContext): ImageLoader = imageLoader
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
