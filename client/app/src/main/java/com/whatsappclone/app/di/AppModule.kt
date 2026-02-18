@@ -7,6 +7,8 @@ import coil3.ImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import com.whatsappclone.app.notification.FCMTokenManager
+import com.whatsappclone.core.network.token.DeviceTokenManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -61,6 +63,12 @@ object AppModule {
     @Provides
     @DefaultDispatcher
     fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
+
+    @Provides
+    @Singleton
+    fun provideDeviceTokenManager(
+        fcmTokenManager: FCMTokenManager
+    ): DeviceTokenManager = fcmTokenManager
 
     @Provides
     @Singleton
