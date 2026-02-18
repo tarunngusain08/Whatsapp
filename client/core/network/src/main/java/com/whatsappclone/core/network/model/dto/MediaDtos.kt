@@ -12,6 +12,7 @@ data class MediaUploadResponse(
     val thumbnailUrl: String? = null,
     @SerialName("mime_type")
     val mimeType: String,
+    @SerialName("file_type")
     val type: String,
     @SerialName("size_bytes")
     val sizeBytes: Long,
