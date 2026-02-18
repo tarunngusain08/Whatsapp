@@ -2,7 +2,9 @@ package com.whatsappclone.feature.chat.ui.chatdetail;
 
 import android.content.Context;
 import androidx.lifecycle.SavedStateHandle;
+import com.whatsappclone.core.database.dao.ChatParticipantDao;
 import com.whatsappclone.core.database.dao.MessageDao;
+import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.websocket.TypingStateHolder;
 import com.whatsappclone.core.network.websocket.WebSocketManager;
 import com.whatsappclone.feature.chat.data.ChatRepository;
@@ -52,6 +54,10 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
 
   private final Provider<MessageDao> messageDaoProvider;
 
+  private final Provider<ChatParticipantDao> chatParticipantDaoProvider;
+
+  private final Provider<UserDao> userDaoProvider;
+
   private final Provider<Context> appContextProvider;
 
   public ChatDetailViewModel_Factory(Provider<SavedStateHandle> savedStateHandleProvider,
@@ -62,7 +68,9 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
       Provider<MarkMessagesReadUseCase> markMessagesReadUseCaseProvider,
       Provider<WebSocketManager> webSocketManagerProvider,
       Provider<TypingStateHolder> typingStateHolderProvider,
-      Provider<MessageDao> messageDaoProvider, Provider<Context> appContextProvider) {
+      Provider<MessageDao> messageDaoProvider,
+      Provider<ChatParticipantDao> chatParticipantDaoProvider, Provider<UserDao> userDaoProvider,
+      Provider<Context> appContextProvider) {
     this.savedStateHandleProvider = savedStateHandleProvider;
     this.messageRepositoryProvider = messageRepositoryProvider;
     this.chatRepositoryProvider = chatRepositoryProvider;
@@ -72,12 +80,14 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
     this.webSocketManagerProvider = webSocketManagerProvider;
     this.typingStateHolderProvider = typingStateHolderProvider;
     this.messageDaoProvider = messageDaoProvider;
+    this.chatParticipantDaoProvider = chatParticipantDaoProvider;
+    this.userDaoProvider = userDaoProvider;
     this.appContextProvider = appContextProvider;
   }
 
   @Override
   public ChatDetailViewModel get() {
-    return newInstance(savedStateHandleProvider.get(), messageRepositoryProvider.get(), chatRepositoryProvider.get(), userRepositoryProvider.get(), sendMessageUseCaseProvider.get(), markMessagesReadUseCaseProvider.get(), webSocketManagerProvider.get(), typingStateHolderProvider.get(), messageDaoProvider.get(), appContextProvider.get());
+    return newInstance(savedStateHandleProvider.get(), messageRepositoryProvider.get(), chatRepositoryProvider.get(), userRepositoryProvider.get(), sendMessageUseCaseProvider.get(), markMessagesReadUseCaseProvider.get(), webSocketManagerProvider.get(), typingStateHolderProvider.get(), messageDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), appContextProvider.get());
   }
 
   public static ChatDetailViewModel_Factory create(
@@ -89,15 +99,18 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
       Provider<MarkMessagesReadUseCase> markMessagesReadUseCaseProvider,
       Provider<WebSocketManager> webSocketManagerProvider,
       Provider<TypingStateHolder> typingStateHolderProvider,
-      Provider<MessageDao> messageDaoProvider, Provider<Context> appContextProvider) {
-    return new ChatDetailViewModel_Factory(savedStateHandleProvider, messageRepositoryProvider, chatRepositoryProvider, userRepositoryProvider, sendMessageUseCaseProvider, markMessagesReadUseCaseProvider, webSocketManagerProvider, typingStateHolderProvider, messageDaoProvider, appContextProvider);
+      Provider<MessageDao> messageDaoProvider,
+      Provider<ChatParticipantDao> chatParticipantDaoProvider, Provider<UserDao> userDaoProvider,
+      Provider<Context> appContextProvider) {
+    return new ChatDetailViewModel_Factory(savedStateHandleProvider, messageRepositoryProvider, chatRepositoryProvider, userRepositoryProvider, sendMessageUseCaseProvider, markMessagesReadUseCaseProvider, webSocketManagerProvider, typingStateHolderProvider, messageDaoProvider, chatParticipantDaoProvider, userDaoProvider, appContextProvider);
   }
 
   public static ChatDetailViewModel newInstance(SavedStateHandle savedStateHandle,
       MessageRepository messageRepository, ChatRepository chatRepository,
       UserRepository userRepository, SendMessageUseCase sendMessageUseCase,
       MarkMessagesReadUseCase markMessagesReadUseCase, WebSocketManager webSocketManager,
-      TypingStateHolder typingStateHolder, MessageDao messageDao, Context appContext) {
-    return new ChatDetailViewModel(savedStateHandle, messageRepository, chatRepository, userRepository, sendMessageUseCase, markMessagesReadUseCase, webSocketManager, typingStateHolder, messageDao, appContext);
+      TypingStateHolder typingStateHolder, MessageDao messageDao,
+      ChatParticipantDao chatParticipantDao, UserDao userDao, Context appContext) {
+    return new ChatDetailViewModel(savedStateHandle, messageRepository, chatRepository, userRepository, sendMessageUseCase, markMessagesReadUseCase, webSocketManager, typingStateHolder, messageDao, chatParticipantDao, userDao, appContext);
   }
 }
