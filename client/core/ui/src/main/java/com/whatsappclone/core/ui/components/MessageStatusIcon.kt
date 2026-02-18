@@ -31,6 +31,14 @@ fun MessageStatusIcon(
                 modifier = modifier.size(iconSize)
             )
         }
+        "sending" -> {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = "Sending",
+                tint = GrayStatus.copy(alpha = 0.5f),
+                modifier = modifier.size(iconSize)
+            )
+        }
         "sent" -> {
             Icon(
                 imageVector = Icons.Filled.Check,
