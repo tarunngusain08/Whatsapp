@@ -255,39 +255,44 @@ private fun AvatarSection(
 ) {
     Box(
         modifier = Modifier
-            .size(140.dp)
-            .clip(CircleShape)
+            .size(148.dp)
             .clickable(enabled = !isUploading, onClick = onAvatarClick),
         contentAlignment = Alignment.Center
     ) {
-        if (!avatarUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = "Profile avatar",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-            )
-        } else {
-            // Default avatar background
-            val bgColor = remember(displayName) { generateAvatarColor(displayName) }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(bgColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = "Default avatar",
-                    tint = Color.White,
-                    modifier = Modifier.size(64.dp)
+        // Avatar content - clipped to circle independently
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .align(Alignment.Center)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Profile avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
+            } else {
+                val bgColor = remember(displayName) { generateAvatarColor(displayName) }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(bgColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "Default avatar",
+                        tint = Color.White,
+                        modifier = Modifier.size(64.dp)
+                    )
+                }
             }
         }
 
-        // Camera icon overlay
+        // Camera icon overlay - NOT clipped by the parent
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
