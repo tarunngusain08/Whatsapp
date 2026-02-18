@@ -76,7 +76,7 @@ func (s *authServiceImpl) SendOTP(ctx context.Context, phone string) (string, er
 	return otp, nil
 }
 
-func (s *authServiceImpl) VerifyOTP(ctx context.Context, phone, code string) (*model.TokenPair, error) {
+func (s *authServiceImpl) VerifyOTP(ctx context.Context, phone, code string) (*model.AuthResult, error) {
 	entry, err := s.otpRepo.Get(ctx, phone)
 	if err != nil {
 		return nil, err
@@ -102,14 +102,24 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, phone, code string) (*m
 		return nil, err
 	}
 
+	// Detect new user: if created_at == updated_at (within 1 second), user was just created
+	isNewUser := user.UpdatedAt.Sub(user.CreatedAt) < time.Second
+
 	pair, err := s.issueTokenPair(ctx, user.ID, user.Phone)
 	if err != nil {
 		return nil, err
 	}
 
-	s.log.Info().Str("user_id", user.ID).Str("phone", phone).Msg("OTP verified, tokens issued")
+	s.log.Info().Str("user_id", user.ID).Str("phone", phone).Bool("is_new_user", isNewUser).Msg("OTP verified, tokens issued")
 
-	return pair, nil
+	return &model.AuthResult{
+		AccessToken:      pair.AccessToken,
+		RefreshToken:     pair.RefreshToken,
+		ExpiresIn:        pair.ExpiresIn,
+		ExpiresInSeconds: pair.ExpiresIn,
+		User:             user,
+		IsNewUser:        isNewUser,
+	}, nil
 }
 
 func (s *authServiceImpl) RefreshTokens(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
