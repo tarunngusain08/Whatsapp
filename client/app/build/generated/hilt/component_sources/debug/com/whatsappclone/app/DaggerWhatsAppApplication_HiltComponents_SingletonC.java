@@ -23,6 +23,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.whatsappclone.app.data.websocket.SyncOnReconnectManager;
 import com.whatsappclone.app.data.websocket.WsEventRouter;
 import com.whatsappclone.app.di.AppModule_ProvideAppCoroutineScopeFactory;
+import com.whatsappclone.app.di.AppModule_ProvideDeviceTokenManagerFactory;
 import com.whatsappclone.app.di.AppModule_ProvideImageLoaderFactory;
 import com.whatsappclone.app.error.GlobalErrorHandler;
 import com.whatsappclone.app.lifecycle.WsLifecycleManager;
@@ -72,6 +73,7 @@ import com.whatsappclone.core.network.di.NetworkModule_ProvideRetrofitFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideTokenManagerFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideUserApiFactory;
 import com.whatsappclone.core.network.interceptor.AuthInterceptor;
+import com.whatsappclone.core.network.token.DeviceTokenManager;
 import com.whatsappclone.core.network.token.TokenManager;
 import com.whatsappclone.core.network.url.BaseUrlProvider;
 import com.whatsappclone.core.network.websocket.TypingStateHolder;
@@ -905,6 +907,10 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     private Provider<NotificationApi> provideNotificationApiProvider;
 
+    private Provider<FCMTokenManager> fCMTokenManagerProvider;
+
+    private Provider<DeviceTokenManager> provideDeviceTokenManagerProvider;
+
     private Provider<AuthRepositoryImpl> authRepositoryImplProvider;
 
     private Provider<AuthRepository> bindAuthRepositoryProvider;
@@ -942,8 +948,6 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     private Provider<PrivacyPreferencesStore> privacyPreferencesStoreProvider;
 
     private Provider<ThemePreferencesStore> themePreferencesStoreProvider;
-
-    private Provider<FCMTokenManager> fCMTokenManagerProvider;
 
     private Provider<ImageLoader> provideImageLoaderProvider;
 
@@ -1008,35 +1012,36 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
       this.pendingMessageWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<PendingMessageWorker_AssistedFactory>(singletonCImpl, 19));
       this.provideAppCoroutineScopeProvider = DoubleCheck.provider(new SwitchingProvider<CoroutineScope>(singletonCImpl, 25));
       this.globalErrorHandlerProvider = DoubleCheck.provider(new SwitchingProvider<GlobalErrorHandler>(singletonCImpl, 26));
-      this.provideNotificationApiProvider = DoubleCheck.provider(new SwitchingProvider<NotificationApi>(singletonCImpl, 28));
+      this.provideNotificationApiProvider = DoubleCheck.provider(new SwitchingProvider<NotificationApi>(singletonCImpl, 30));
+      this.fCMTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<FCMTokenManager>(singletonCImpl, 29));
+      this.provideDeviceTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<DeviceTokenManager>(singletonCImpl, 28));
       this.authRepositoryImplProvider = new SwitchingProvider<>(singletonCImpl, 27);
       this.bindAuthRepositoryProvider = DoubleCheck.provider((Provider) authRepositoryImplProvider);
-      this.provideChatParticipantDaoProvider = DoubleCheck.provider(new SwitchingProvider<ChatParticipantDao>(singletonCImpl, 31));
-      this.typingStateHolderProvider = DoubleCheck.provider(new SwitchingProvider<TypingStateHolder>(singletonCImpl, 32));
-      this.wsEventRouterProvider = DoubleCheck.provider(new SwitchingProvider<WsEventRouter>(singletonCImpl, 30));
-      this.provideChatApiProvider = DoubleCheck.provider(new SwitchingProvider<ChatApi>(singletonCImpl, 34));
-      this.syncOnReconnectManagerProvider = DoubleCheck.provider(new SwitchingProvider<SyncOnReconnectManager>(singletonCImpl, 33));
-      this.wsLifecycleManagerProvider = DoubleCheck.provider(new SwitchingProvider<WsLifecycleManager>(singletonCImpl, 29));
-      this.chatRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<ChatRepositoryImpl>(singletonCImpl, 35));
-      this.userRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<UserRepositoryImpl>(singletonCImpl, 36));
-      this.provideGroupDaoProvider = DoubleCheck.provider(new SwitchingProvider<GroupDao>(singletonCImpl, 37));
-      this.provideMediaApiProvider = DoubleCheck.provider(new SwitchingProvider<MediaApi>(singletonCImpl, 39));
-      this.imageCompressorProvider = DoubleCheck.provider(new SwitchingProvider<ImageCompressor>(singletonCImpl, 40));
-      this.videoCompressorProvider = DoubleCheck.provider(new SwitchingProvider<VideoCompressor>(singletonCImpl, 41));
-      this.mediaRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<MediaRepositoryImpl>(singletonCImpl, 38));
-      this.mediaDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<MediaDownloadManager>(singletonCImpl, 42));
-      this.notificationPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<NotificationPreferencesStore>(singletonCImpl, 43));
-      this.privacyPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<PrivacyPreferencesStore>(singletonCImpl, 44));
-      this.themePreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<ThemePreferencesStore>(singletonCImpl, 45));
-      this.fCMTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<FCMTokenManager>(singletonCImpl, 46));
-      this.provideImageLoaderProvider = DoubleCheck.provider(new SwitchingProvider<ImageLoader>(singletonCImpl, 48));
+      this.provideChatParticipantDaoProvider = DoubleCheck.provider(new SwitchingProvider<ChatParticipantDao>(singletonCImpl, 33));
+      this.typingStateHolderProvider = DoubleCheck.provider(new SwitchingProvider<TypingStateHolder>(singletonCImpl, 34));
+      this.wsEventRouterProvider = DoubleCheck.provider(new SwitchingProvider<WsEventRouter>(singletonCImpl, 32));
+      this.provideChatApiProvider = DoubleCheck.provider(new SwitchingProvider<ChatApi>(singletonCImpl, 36));
+      this.syncOnReconnectManagerProvider = DoubleCheck.provider(new SwitchingProvider<SyncOnReconnectManager>(singletonCImpl, 35));
+      this.wsLifecycleManagerProvider = DoubleCheck.provider(new SwitchingProvider<WsLifecycleManager>(singletonCImpl, 31));
+      this.chatRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<ChatRepositoryImpl>(singletonCImpl, 37));
+      this.userRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<UserRepositoryImpl>(singletonCImpl, 38));
+      this.provideGroupDaoProvider = DoubleCheck.provider(new SwitchingProvider<GroupDao>(singletonCImpl, 39));
+      this.provideMediaApiProvider = DoubleCheck.provider(new SwitchingProvider<MediaApi>(singletonCImpl, 41));
+      this.imageCompressorProvider = DoubleCheck.provider(new SwitchingProvider<ImageCompressor>(singletonCImpl, 42));
+      this.videoCompressorProvider = DoubleCheck.provider(new SwitchingProvider<VideoCompressor>(singletonCImpl, 43));
+      this.mediaRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<MediaRepositoryImpl>(singletonCImpl, 40));
+      this.mediaDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<MediaDownloadManager>(singletonCImpl, 44));
+      this.notificationPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<NotificationPreferencesStore>(singletonCImpl, 45));
+      this.privacyPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<PrivacyPreferencesStore>(singletonCImpl, 46));
+      this.themePreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<ThemePreferencesStore>(singletonCImpl, 47));
     }
 
     @SuppressWarnings("unchecked")
     private void initialize3(final ApplicationContextModule applicationContextModuleParam) {
-      this.notificationBuilderProvider = DoubleCheck.provider(new SwitchingProvider<NotificationBuilder>(singletonCImpl, 47));
-      this.activeChatTrackerProvider = DoubleCheck.provider(new SwitchingProvider<ActiveChatTracker>(singletonCImpl, 49));
-      this.inAppNotificationManagerProvider = DoubleCheck.provider(new SwitchingProvider<InAppNotificationManager>(singletonCImpl, 50));
+      this.provideImageLoaderProvider = DoubleCheck.provider(new SwitchingProvider<ImageLoader>(singletonCImpl, 49));
+      this.notificationBuilderProvider = DoubleCheck.provider(new SwitchingProvider<NotificationBuilder>(singletonCImpl, 48));
+      this.activeChatTrackerProvider = DoubleCheck.provider(new SwitchingProvider<ActiveChatTracker>(singletonCImpl, 50));
+      this.inAppNotificationManagerProvider = DoubleCheck.provider(new SwitchingProvider<InAppNotificationManager>(singletonCImpl, 51));
     }
 
     @Override
@@ -1189,75 +1194,78 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           return (T) new GlobalErrorHandler(singletonCImpl.provideTokenManagerProvider.get());
 
           case 27: // com.whatsappclone.feature.auth.data.AuthRepositoryImpl 
-          return (T) new AuthRepositoryImpl(singletonCImpl.provideAuthApiProvider.get(), singletonCImpl.provideTokenManagerProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideNotificationApiProvider.get());
+          return (T) new AuthRepositoryImpl(singletonCImpl.provideAuthApiProvider.get(), singletonCImpl.provideTokenManagerProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideDeviceTokenManagerProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
-          case 28: // com.whatsappclone.core.network.api.NotificationApi 
-          return (T) NetworkModule_ProvideNotificationApiFactory.provideNotificationApi(singletonCImpl.provideRetrofitProvider.get());
+          case 28: // com.whatsappclone.core.network.token.DeviceTokenManager 
+          return (T) AppModule_ProvideDeviceTokenManagerFactory.provideDeviceTokenManager(singletonCImpl.fCMTokenManagerProvider.get());
 
-          case 29: // com.whatsappclone.app.lifecycle.WsLifecycleManager 
-          return (T) new WsLifecycleManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.wsEventRouterProvider.get(), singletonCImpl.syncOnReconnectManagerProvider.get(), singletonCImpl.provideTokenManagerProvider.get());
-
-          case 30: // com.whatsappclone.app.data.websocket.WsEventRouter 
-          return (T) new WsEventRouter(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.provideJsonProvider.get());
-
-          case 31: // com.whatsappclone.core.database.dao.ChatParticipantDao 
-          return (T) DatabaseModule_ProvideChatParticipantDaoFactory.provideChatParticipantDao(singletonCImpl.provideAppDatabaseProvider.get());
-
-          case 32: // com.whatsappclone.core.network.websocket.TypingStateHolder 
-          return (T) new TypingStateHolder();
-
-          case 33: // com.whatsappclone.app.data.websocket.SyncOnReconnectManager 
-          return (T) new SyncOnReconnectManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideNetworkDataStoreProvider.get());
-
-          case 34: // com.whatsappclone.core.network.api.ChatApi 
-          return (T) NetworkModule_ProvideChatApiFactory.provideChatApi(singletonCImpl.provideRetrofitProvider.get());
-
-          case 35: // com.whatsappclone.feature.chat.data.ChatRepositoryImpl 
-          return (T) new ChatRepositoryImpl(singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
-
-          case 36: // com.whatsappclone.feature.chat.data.UserRepositoryImpl 
-          return (T) new UserRepositoryImpl(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
-
-          case 37: // com.whatsappclone.core.database.dao.GroupDao 
-          return (T) DatabaseModule_ProvideGroupDaoFactory.provideGroupDao(singletonCImpl.provideAppDatabaseProvider.get());
-
-          case 38: // com.whatsappclone.feature.media.data.MediaRepositoryImpl 
-          return (T) new MediaRepositoryImpl(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaApiProvider.get(), singletonCImpl.provideMediaDaoProvider.get(), singletonCImpl.imageCompressorProvider.get(), singletonCImpl.videoCompressorProvider.get());
-
-          case 39: // com.whatsappclone.core.network.api.MediaApi 
-          return (T) NetworkModule_ProvideMediaApiFactory.provideMediaApi(singletonCImpl.provideRetrofitProvider.get());
-
-          case 40: // com.whatsappclone.feature.media.util.ImageCompressor 
-          return (T) new ImageCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 41: // com.whatsappclone.feature.media.util.VideoCompressor 
-          return (T) new VideoCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 42: // com.whatsappclone.feature.media.util.MediaDownloadManager 
-          return (T) new MediaDownloadManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaDaoProvider.get());
-
-          case 43: // com.whatsappclone.feature.settings.data.NotificationPreferencesStore 
-          return (T) new NotificationPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 44: // com.whatsappclone.feature.settings.data.PrivacyPreferencesStore 
-          return (T) new PrivacyPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 45: // com.whatsappclone.feature.settings.data.ThemePreferencesStore 
-          return (T) new ThemePreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 46: // com.whatsappclone.app.notification.FCMTokenManager 
+          case 29: // com.whatsappclone.app.notification.FCMTokenManager 
           return (T) new FCMTokenManager(singletonCImpl.provideNotificationApiProvider.get(), singletonCImpl.provideTokenManagerProvider.get(), singletonCImpl.provideAppCoroutineScopeProvider.get());
 
-          case 47: // com.whatsappclone.app.notification.NotificationBuilder 
+          case 30: // com.whatsappclone.core.network.api.NotificationApi 
+          return (T) NetworkModule_ProvideNotificationApiFactory.provideNotificationApi(singletonCImpl.provideRetrofitProvider.get());
+
+          case 31: // com.whatsappclone.app.lifecycle.WsLifecycleManager 
+          return (T) new WsLifecycleManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.wsEventRouterProvider.get(), singletonCImpl.syncOnReconnectManagerProvider.get(), singletonCImpl.provideTokenManagerProvider.get());
+
+          case 32: // com.whatsappclone.app.data.websocket.WsEventRouter 
+          return (T) new WsEventRouter(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.provideJsonProvider.get());
+
+          case 33: // com.whatsappclone.core.database.dao.ChatParticipantDao 
+          return (T) DatabaseModule_ProvideChatParticipantDaoFactory.provideChatParticipantDao(singletonCImpl.provideAppDatabaseProvider.get());
+
+          case 34: // com.whatsappclone.core.network.websocket.TypingStateHolder 
+          return (T) new TypingStateHolder();
+
+          case 35: // com.whatsappclone.app.data.websocket.SyncOnReconnectManager 
+          return (T) new SyncOnReconnectManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideNetworkDataStoreProvider.get());
+
+          case 36: // com.whatsappclone.core.network.api.ChatApi 
+          return (T) NetworkModule_ProvideChatApiFactory.provideChatApi(singletonCImpl.provideRetrofitProvider.get());
+
+          case 37: // com.whatsappclone.feature.chat.data.ChatRepositoryImpl 
+          return (T) new ChatRepositoryImpl(singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+
+          case 38: // com.whatsappclone.feature.chat.data.UserRepositoryImpl 
+          return (T) new UserRepositoryImpl(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+
+          case 39: // com.whatsappclone.core.database.dao.GroupDao 
+          return (T) DatabaseModule_ProvideGroupDaoFactory.provideGroupDao(singletonCImpl.provideAppDatabaseProvider.get());
+
+          case 40: // com.whatsappclone.feature.media.data.MediaRepositoryImpl 
+          return (T) new MediaRepositoryImpl(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaApiProvider.get(), singletonCImpl.provideMediaDaoProvider.get(), singletonCImpl.imageCompressorProvider.get(), singletonCImpl.videoCompressorProvider.get());
+
+          case 41: // com.whatsappclone.core.network.api.MediaApi 
+          return (T) NetworkModule_ProvideMediaApiFactory.provideMediaApi(singletonCImpl.provideRetrofitProvider.get());
+
+          case 42: // com.whatsappclone.feature.media.util.ImageCompressor 
+          return (T) new ImageCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 43: // com.whatsappclone.feature.media.util.VideoCompressor 
+          return (T) new VideoCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 44: // com.whatsappclone.feature.media.util.MediaDownloadManager 
+          return (T) new MediaDownloadManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaDaoProvider.get());
+
+          case 45: // com.whatsappclone.feature.settings.data.NotificationPreferencesStore 
+          return (T) new NotificationPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 46: // com.whatsappclone.feature.settings.data.PrivacyPreferencesStore 
+          return (T) new PrivacyPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 47: // com.whatsappclone.feature.settings.data.ThemePreferencesStore 
+          return (T) new ThemePreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 48: // com.whatsappclone.app.notification.NotificationBuilder 
           return (T) new NotificationBuilder(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideImageLoaderProvider.get());
 
-          case 48: // coil3.ImageLoader 
+          case 49: // coil3.ImageLoader 
           return (T) AppModule_ProvideImageLoaderFactory.provideImageLoader(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 49: // com.whatsappclone.app.notification.ActiveChatTracker 
+          case 50: // com.whatsappclone.app.notification.ActiveChatTracker 
           return (T) new ActiveChatTracker();
 
-          case 50: // com.whatsappclone.app.notification.InAppNotificationManager 
+          case 51: // com.whatsappclone.app.notification.InAppNotificationManager 
           return (T) new InAppNotificationManager();
 
           default: throw new AssertionError(id);
