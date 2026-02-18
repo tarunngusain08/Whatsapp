@@ -357,7 +357,8 @@ public class ChatDao_Impl(
     }
   })
 
-  public override fun observeChatsWithLastMessage(): Flow<List<ChatWithLastMessage>> {
+  public override fun observeChatsWithLastMessage(currentUserId: String):
+      Flow<List<ChatWithLastMessage>> {
     val _sql: String = """
         |
         |        SELECT 
@@ -365,16 +366,23 @@ public class ChatDao_Impl(
         |            m.content AS lastMessageText,
         |            m.messageType AS lastMessageType,
         |            m.senderId AS lastMessageSenderId,
-        |            u.displayName AS lastMessageSenderName
+        |            u.displayName AS lastMessageSenderName,
+        |            pu.displayName AS directChatOtherUserName,
+        |            pu.avatarUrl AS directChatOtherUserAvatarUrl
         |        FROM chats c
         |        LEFT JOIN messages m ON c.lastMessageId = m.messageId
         |        LEFT JOIN users u ON m.senderId = u.id
+        |        LEFT JOIN chat_participants cp 
+        |            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != ?
+        |        LEFT JOIN users pu ON cp.userId = pu.id
         |        ORDER BY c.isPinned DESC, c.lastMessageTimestamp DESC
         |        
         """.trimMargin()
-    val _statement: RoomSQLiteQuery = acquire(_sql, 0)
-    return CoroutinesRoom.createFlow(__db, false, arrayOf("chats", "messages", "users"), object :
-        Callable<List<ChatWithLastMessage>> {
+    val _statement: RoomSQLiteQuery = acquire(_sql, 1)
+    var _argIndex: Int = 1
+    _statement.bindString(_argIndex, currentUserId)
+    return CoroutinesRoom.createFlow(__db, false, arrayOf("chats", "messages", "users",
+        "chat_participants"), object : Callable<List<ChatWithLastMessage>> {
       public override fun call(): List<ChatWithLastMessage> {
         val _cursor: Cursor = query(__db, _statement, false, null)
         try {
@@ -399,6 +407,10 @@ public class ChatDao_Impl(
               "lastMessageSenderId")
           val _cursorIndexOfLastMessageSenderName: Int = getColumnIndexOrThrow(_cursor,
               "lastMessageSenderName")
+          val _cursorIndexOfDirectChatOtherUserName: Int = getColumnIndexOrThrow(_cursor,
+              "directChatOtherUserName")
+          val _cursorIndexOfDirectChatOtherUserAvatarUrl: Int = getColumnIndexOrThrow(_cursor,
+              "directChatOtherUserAvatarUrl")
           val _result: MutableList<ChatWithLastMessage> =
               ArrayList<ChatWithLastMessage>(_cursor.getCount())
           while (_cursor.moveToNext()) {
@@ -426,6 +438,19 @@ public class ChatDao_Impl(
               _tmpLastMessageSenderName = null
             } else {
               _tmpLastMessageSenderName = _cursor.getString(_cursorIndexOfLastMessageSenderName)
+            }
+            val _tmpDirectChatOtherUserName: String?
+            if (_cursor.isNull(_cursorIndexOfDirectChatOtherUserName)) {
+              _tmpDirectChatOtherUserName = null
+            } else {
+              _tmpDirectChatOtherUserName = _cursor.getString(_cursorIndexOfDirectChatOtherUserName)
+            }
+            val _tmpDirectChatOtherUserAvatarUrl: String?
+            if (_cursor.isNull(_cursorIndexOfDirectChatOtherUserAvatarUrl)) {
+              _tmpDirectChatOtherUserAvatarUrl = null
+            } else {
+              _tmpDirectChatOtherUserAvatarUrl =
+                  _cursor.getString(_cursorIndexOfDirectChatOtherUserAvatarUrl)
             }
             val _tmpChat: ChatEntity
             val _tmpChatId: String
@@ -485,7 +510,7 @@ public class ChatDao_Impl(
             _tmpChat =
                 ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpCreatedAt,_tmpUpdatedAt)
             _item =
-                ChatWithLastMessage(_tmpChat,_tmpLastMessageText,_tmpLastMessageType,_tmpLastMessageSenderId,_tmpLastMessageSenderName)
+                ChatWithLastMessage(_tmpChat,_tmpLastMessageText,_tmpLastMessageType,_tmpLastMessageSenderId,_tmpLastMessageSenderName,_tmpDirectChatOtherUserName,_tmpDirectChatOtherUserAvatarUrl)
             _result.add(_item)
           }
           return _result
