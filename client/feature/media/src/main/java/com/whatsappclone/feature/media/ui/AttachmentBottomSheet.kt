@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.sp
 private val CameraColor = Color(0xFF7C4DFF)      // Purple
 private val GalleryColor = Color(0xFF00C853)      // Green
 private val DocumentColor = Color(0xFF2979FF)     // Blue
+private val LocationColor = Color(0xFFE53935)     // Red
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +49,7 @@ fun AttachmentBottomSheet(
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onDocumentClick: () -> Unit,
+    onLocationClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -114,6 +117,16 @@ fun AttachmentBottomSheet(
                     tint = DocumentColor,
                     onClick = {
                         onDocumentClick()
+                        onDismiss()
+                    }
+                )
+
+                AttachmentOption(
+                    icon = Icons.Filled.LocationOn,
+                    label = "Location",
+                    tint = LocationColor,
+                    onClick = {
+                        onLocationClick()
                         onDismiss()
                     }
                 )
