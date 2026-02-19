@@ -203,7 +203,7 @@ Each service owns its data — no shared databases:
 | Service | PostgreSQL | MongoDB | Redis | MinIO | NATS |
 |---------|:----------:|:-------:|:-----:|:-----:|:----:|
 | auth-service | users, refresh_tokens | | OTP store | | |
-| user-service | users, contacts, privacy, devices | | presence | | |
+| user-service | users, contacts, privacy, devices, statuses | | presence | | |
 | chat-service | chats, participants, groups | | | | publish |
 | message-service | | messages | | | publish |
 | media-service | | media metadata | | media files | |
@@ -233,8 +233,36 @@ Services ──logs────► stdout (structured JSON, collected by K8s)
 2. **Token validation**: API Gateway validates every request via gRPC to auth-service; the validated `userId` is injected into downstream headers
 3. **Rate limiting**: Redis-backed token bucket at the API Gateway
 4. **Authorization**: services enforce ownership checks (e.g., "is this user a member of the chat?")
-5. **Client-side**: tokens stored in Android EncryptedSharedPreferences
+5. **Client-side**: tokens stored in Android EncryptedSharedPreferences; optional biometric app lock
 6. **Transport**: HTTPS in production, internal gRPC can use mTLS
+
+---
+
+## Data Flow: Status Updates
+
+Users can post ephemeral status updates (text or media) visible to their contacts:
+
+```
+1. User creates a status
+   └─► POST /api/v1/users/statuses { type: "text", content: "Feeling great!" }
+   └─► User service stores in PostgreSQL (with TTL metadata)
+   └─► Returns status object
+
+2. Contacts fetch statuses
+   └─► GET /api/v1/users/statuses
+   └─► User service queries statuses from contacts list
+   └─► Returns grouped by contact, with viewed/unviewed counts
+
+3. Contact views a status
+   └─► POST /api/v1/users/statuses/:id/view
+   └─► Records view in PostgreSQL (viewer + timestamp)
+
+4. Creator checks who viewed
+   └─► GET /api/v1/users/statuses/me
+   └─► Returns own statuses with per-viewer seen timestamps
+```
+
+Status endpoints live in the **user-service** because statuses are tied to the user's identity and social graph (contact list determines visibility).
 
 ---
 
