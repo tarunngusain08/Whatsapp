@@ -29,5 +29,7 @@ data class MessageUi(
     val replyToType: String? = null,
     val replyToMediaThumbnailUrl: String? = null,
     val isForwarded: Boolean = false,
-    val reactions: List<Reaction> = emptyList()
+    val reactions: List<Reaction> = emptyList(),
+    val isScheduled: Boolean = false,
+    val scheduledAt: Long? = null
 )
