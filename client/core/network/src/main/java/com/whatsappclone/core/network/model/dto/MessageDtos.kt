@@ -20,6 +20,8 @@ data class MessageDto(
     val isDeleted: Boolean = false,
     @SerialName("is_starred")
     val isStarred: Boolean = false,
+    @SerialName("reply_to_message_id")
+    val replyToMessageId: String? = null,
     @SerialName("created_at")
     val createdAt: String
 )
@@ -47,7 +49,9 @@ data class SendMessageRequest(
     @SerialName("client_msg_id")
     val clientMsgId: String,
     val type: String,
-    val payload: MessagePayloadDto
+    val payload: MessagePayloadDto,
+    @SerialName("reply_to_message_id")
+    val replyToMessageId: String? = null
 )
 
 @Serializable
