@@ -26,6 +26,7 @@ interface ChatDao {
         LEFT JOIN chat_participants cp 
             ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != :currentUserId
         LEFT JOIN users pu ON cp.userId = pu.id
+        WHERE c.isArchived = 0
         ORDER BY c.isPinned DESC, c.lastMessageTimestamp DESC
         """
     )
@@ -51,6 +52,9 @@ interface ChatDao {
 
     @Query("UPDATE chats SET isMuted = :isMuted, updatedAt = :updatedAt WHERE chatId = :chatId")
     suspend fun setMuted(chatId: String, isMuted: Boolean, updatedAt: Long)
+
+    @Query("UPDATE chats SET isPinned = :pinned, updatedAt = :updatedAt WHERE chatId = :chatId")
+    suspend fun setPinned(chatId: String, pinned: Boolean, updatedAt: Long)
 
     @Query(
         """
@@ -82,6 +86,37 @@ interface ChatDao {
         """
     )
     suspend fun findDirectChatWithUser(currentUserId: String, otherUserId: String): String?
+
+    @Query(
+        """
+        SELECT 
+            c.*,
+            m.content AS lastMessageText,
+            m.messageType AS lastMessageType,
+            m.senderId AS lastMessageSenderId,
+            u.displayName AS lastMessageSenderName,
+            pu.displayName AS directChatOtherUserName,
+            pu.avatarUrl AS directChatOtherUserAvatarUrl
+        FROM chats c
+        LEFT JOIN messages m ON c.lastMessageId = m.messageId
+        LEFT JOIN users u ON m.senderId = u.id
+        LEFT JOIN chat_participants cp 
+            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != :currentUserId
+        LEFT JOIN users pu ON cp.userId = pu.id
+        WHERE c.isArchived = 1
+        ORDER BY c.lastMessageTimestamp DESC
+        """
+    )
+    fun observeArchivedChats(currentUserId: String): Flow<List<ChatWithLastMessage>>
+
+    @Query("UPDATE chats SET isArchived = :archived, updatedAt = :updatedAt WHERE chatId = :chatId")
+    suspend fun setArchived(chatId: String, archived: Boolean, updatedAt: Long)
+
+    @Query("SELECT COUNT(*) FROM chats WHERE isArchived = 1")
+    fun observeArchivedCount(): Flow<Int>
+
+    @Query("DELETE FROM chats WHERE chatId = :chatId")
+    suspend fun deleteById(chatId: String)
 
     @Query("DELETE FROM chats")
     suspend fun deleteAll()
