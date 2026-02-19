@@ -72,7 +72,13 @@ class MessageRepositoryImpl @Inject constructor(
         chatId: String,
         content: String,
         messageType: String,
-        replyToMessageId: String?
+        replyToMessageId: String?,
+        mediaId: String?,
+        mediaUrl: String?,
+        mediaThumbnailUrl: String?,
+        mediaMimeType: String?,
+        mediaSize: Long?,
+        mediaDuration: Long?
     ): AppResult<Unit> {
         val currentUserId = getCurrentUserId() ?: return AppResult.Error(
             code = ErrorCode.UNAUTHORIZED,
@@ -82,6 +88,14 @@ class MessageRepositoryImpl @Inject constructor(
         val clientMsgId = UuidGenerator.generate()
         val now = System.currentTimeMillis()
 
+        val preview = when (messageType) {
+            "image" -> "\uD83D\uDCF7 Photo"
+            "video" -> "\uD83C\uDFA5 Video"
+            "audio" -> "\uD83C\uDFA4 Voice message"
+            "document" -> "\uD83D\uDCC4 Document"
+            else -> content.take(100)
+        }
+
         val messageEntity = MessageEntity(
             messageId = clientMsgId,
             clientMsgId = clientMsgId,
@@ -90,6 +104,12 @@ class MessageRepositoryImpl @Inject constructor(
             messageType = messageType,
             content = content,
             replyToMessageId = replyToMessageId,
+            mediaId = mediaId,
+            mediaUrl = mediaUrl,
+            mediaThumbnailUrl = mediaThumbnailUrl,
+            mediaMimeType = mediaMimeType,
+            mediaSize = mediaSize,
+            mediaDuration = mediaDuration,
             status = "pending",
             timestamp = now,
             createdAt = now
@@ -100,7 +120,7 @@ class MessageRepositoryImpl @Inject constructor(
         chatDao.updateLastMessage(
             chatId = chatId,
             messageId = clientMsgId,
-            preview = content.take(100),
+            preview = preview,
             timestamp = now,
             updatedAt = now
         )
@@ -112,6 +132,11 @@ class MessageRepositoryImpl @Inject constructor(
                 put("type", JsonPrimitive(messageType))
                 put("payload", buildJsonObject {
                     put("body", JsonPrimitive(content))
+                    mediaId?.let { put("media_id", JsonPrimitive(it)) }
+                    content.takeIf { messageType != "text" && it.isNotBlank() }?.let {
+                        put("caption", JsonPrimitive(it))
+                    }
+                    mediaDuration?.let { put("duration_ms", JsonPrimitive(it)) }
                 })
                 if (replyToMessageId != null) {
                     put("reply_to_message_id", JsonPrimitive(replyToMessageId))
