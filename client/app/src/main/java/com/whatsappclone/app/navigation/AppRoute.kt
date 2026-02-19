@@ -61,6 +61,11 @@ sealed class AppRoute(val route: String) {
         ): String = "media_viewer/$mediaId?senderName=${Uri.encode(senderName)}&timestamp=${Uri.encode(timestamp)}"
     }
 
+    data object ImageViewer : AppRoute("image_viewer?url={url}&title={title}") {
+        fun create(url: String, title: String = ""): String =
+            "image_viewer?url=${Uri.encode(url)}&title=${Uri.encode(title)}"
+    }
+
     // ── Settings ─────────────────────────────────────────────────────────────────
 
     data object Settings : AppRoute("settings")
