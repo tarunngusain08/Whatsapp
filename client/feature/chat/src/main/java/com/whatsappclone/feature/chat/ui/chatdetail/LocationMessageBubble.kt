@@ -91,7 +91,7 @@ fun LocationMessageBubble(
             ) {
                 Icon(
                     imageVector = Icons.Filled.OpenInNew,
-                    contentDescription = null,
+                    contentDescription = "Open in Maps",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(14.dp)
                 )
