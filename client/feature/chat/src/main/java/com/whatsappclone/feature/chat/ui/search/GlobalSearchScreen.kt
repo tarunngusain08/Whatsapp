@@ -172,7 +172,7 @@ private fun SearchTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Search,
-                        contentDescription = null,
+                        contentDescription = "Search",
                         tint = Color.White.copy(alpha = 0.6f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -519,7 +519,7 @@ private fun EmptySearchState(query: String) {
     ) {
         Icon(
             imageVector = Icons.Filled.Search,
-            contentDescription = null,
+            contentDescription = "No results found",
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
             modifier = Modifier.size(64.dp)
         )
@@ -555,7 +555,7 @@ private fun SearchPrompt() {
     ) {
         Icon(
             imageVector = Icons.Filled.Search,
-            contentDescription = null,
+            contentDescription = "Search chats and messages",
             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
             modifier = Modifier.size(72.dp)
         )
