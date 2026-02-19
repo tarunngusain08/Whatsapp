@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.whatsappclone.app-mergeDebugResources-2:/values-v30/values-v30.xml",
+            "outputFile": "com.whatsappclone.app-mergeDebugResources-93:/values-v30/values-v30.xml",
             "map": [
                 {
-                    "source": "/private/var/folders/yw/2qw_kxv53g794sdl6_w9ytp80000gp/T/cursor-sandbox-cache/159254287fce24d091c018e6c5ad89f0/gradle/caches/8.11.1/transforms/a1ebdd8c3acd8614e2b05a7d324075b6/transformed/material3-release/res/values-v30/values-v30.xml",
+                    "source": "/Users/radhakrishna/.gradle/caches/8.11.1/transforms/c23d353bb8e84fda1a97c2856eddb34f/transformed/material3-release/res/values-v30/values-v30.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",
