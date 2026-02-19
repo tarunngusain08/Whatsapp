@@ -1,6 +1,8 @@
 package com.whatsappclone.feature.auth.ui.profile;
 
 import com.whatsappclone.core.network.api.UserApi;
+import com.whatsappclone.core.network.url.BaseUrlProvider;
+import com.whatsappclone.feature.media.data.MediaRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -27,20 +29,31 @@ import javax.inject.Provider;
 public final class ProfileSetupViewModel_Factory implements Factory<ProfileSetupViewModel> {
   private final Provider<UserApi> userApiProvider;
 
-  public ProfileSetupViewModel_Factory(Provider<UserApi> userApiProvider) {
+  private final Provider<MediaRepository> mediaRepositoryProvider;
+
+  private final Provider<BaseUrlProvider> baseUrlProvider;
+
+  public ProfileSetupViewModel_Factory(Provider<UserApi> userApiProvider,
+      Provider<MediaRepository> mediaRepositoryProvider,
+      Provider<BaseUrlProvider> baseUrlProvider) {
     this.userApiProvider = userApiProvider;
+    this.mediaRepositoryProvider = mediaRepositoryProvider;
+    this.baseUrlProvider = baseUrlProvider;
   }
 
   @Override
   public ProfileSetupViewModel get() {
-    return newInstance(userApiProvider.get());
+    return newInstance(userApiProvider.get(), mediaRepositoryProvider.get(), baseUrlProvider.get());
   }
 
-  public static ProfileSetupViewModel_Factory create(Provider<UserApi> userApiProvider) {
-    return new ProfileSetupViewModel_Factory(userApiProvider);
+  public static ProfileSetupViewModel_Factory create(Provider<UserApi> userApiProvider,
+      Provider<MediaRepository> mediaRepositoryProvider,
+      Provider<BaseUrlProvider> baseUrlProvider) {
+    return new ProfileSetupViewModel_Factory(userApiProvider, mediaRepositoryProvider, baseUrlProvider);
   }
 
-  public static ProfileSetupViewModel newInstance(UserApi userApi) {
-    return new ProfileSetupViewModel(userApi);
+  public static ProfileSetupViewModel newInstance(UserApi userApi, MediaRepository mediaRepository,
+      BaseUrlProvider baseUrlProvider) {
+    return new ProfileSetupViewModel(userApi, mediaRepository, baseUrlProvider);
   }
 }
