@@ -451,6 +451,12 @@ fun AppNavGraph(
                 onNavigateToTheme = {
                     navController.navigate(AppRoute.ThemeSettings.route)
                 },
+                onNavigateToStorageUsage = {
+                    navController.navigate(AppRoute.StorageUsage.route)
+                },
+                onNavigateToGlobalWallpaper = {
+                    navController.navigate(AppRoute.Wallpaper.create("global"))
+                },
                 onNavigateToLogin = {
                     wsLifecycleManager.stop()
                     navController.navigate(AppRoute.Login.route) {
@@ -467,6 +473,13 @@ fun AppNavGraph(
         // ── Theme Settings ──────────────────────────────────────────────────
         composable(AppRoute.ThemeSettings.route) {
             ThemeSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Storage Usage ────────────────────────────────────────────────────
+        composable(AppRoute.StorageUsage.route) {
+            com.whatsappclone.feature.settings.ui.StorageUsageScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
