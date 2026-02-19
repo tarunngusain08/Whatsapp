@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whatsappclone.core.common.result.AppResult
+import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.entity.UserEntity
 import com.whatsappclone.feature.chat.data.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +21,7 @@ import javax.inject.Inject
 
 data class ContactInfoUiState(
     val user: UserEntity? = null,
+    val chatId: String? = null,
     val isLoading: Boolean = true,
     val isMuted: Boolean = false,
     val isBlocking: Boolean = false,
@@ -34,7 +36,8 @@ sealed class ContactInfoEvent {
 @HiltViewModel
 class ContactInfoViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val chatDao: ChatDao
 ) : ViewModel() {
 
     private val userId: String = checkNotNull(savedStateHandle["userId"])
@@ -48,6 +51,17 @@ class ContactInfoViewModel @Inject constructor(
     init {
         loadUser()
         observeUser()
+        resolveChatId()
+    }
+
+    private fun resolveChatId() {
+        viewModelScope.launch {
+            val currentUserId = userRepository.getCurrentUserId() ?: return@launch
+            val chatId = chatDao.findDirectChatWithUser(currentUserId, userId)
+            if (chatId != null) {
+                _uiState.update { it.copy(chatId = chatId) }
+            }
+        }
     }
 
     private fun loadUser() {
