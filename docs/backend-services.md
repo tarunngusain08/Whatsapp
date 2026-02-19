@@ -178,7 +178,7 @@ message ValidateTokenResponse {
 
 **Ports**: 8082 (HTTP), 9082 (gRPC)
 **Framework**: Gin + gRPC
-**Databases**: PostgreSQL (profiles, contacts, privacy, devices), Redis (presence)
+**Databases**: PostgreSQL (profiles, contacts, privacy, devices, statuses), Redis (presence)
 
 ### Why It Exists
 
@@ -226,6 +226,23 @@ Per-user controls for who can see their last-seen, profile photo, about text, an
 #### Device Tokens
 Stores FCM device tokens for push notifications. Each user can have multiple devices registered.
 
+#### Status Updates (Stories)
+Users can post ephemeral status updates visible to their contacts. The user service manages the full lifecycle:
+
+- **Create**: text or media statuses with auto-expiry metadata
+- **View**: contacts can view statuses; views are tracked per-viewer with timestamps
+- **List**: fetch all contact statuses (grouped, with viewed/unviewed counts) or the user's own statuses with viewer details
+- **Delete**: users can remove their own statuses before expiry
+
+Status endpoints:
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/statuses` | Create a new status |
+| GET | `/statuses` | Get contact statuses |
+| GET | `/statuses/me` | Get own statuses with view details |
+| DELETE | `/statuses/:id` | Delete a status |
+| POST | `/statuses/:id/view` | Mark a status as viewed |
+
 ### Data Models
 
 **PostgreSQL — `users` table:**
@@ -263,6 +280,25 @@ Stores FCM device tokens for push notifications. Each user can have multiple dev
 | user_id | UUID | FK → users |
 | token | TEXT | FCM registration token |
 | platform | VARCHAR(20) | "android" / "ios" / "web" |
+
+**PostgreSQL — `statuses` table:**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| user_id | UUID | FK → users (creator) |
+| type | ENUM | text / image / video |
+| content | TEXT | Text content or caption |
+| media_url | TEXT | URL to media (if media status) |
+| created_at | TIMESTAMP | Creation time |
+| expires_at | TIMESTAMP | Auto-expiry time |
+
+**PostgreSQL — `status_views` table:**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| status_id | UUID | FK → statuses |
+| viewer_id | UUID | FK → users (who viewed) |
+| viewed_at | TIMESTAMP | When the status was viewed |
 
 ---
 
