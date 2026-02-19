@@ -18,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,7 +48,7 @@ private val StarColor = Color(0xFFFFC107)
 private val DeleteColor = Color(0xFFE53935)
 
 enum class MessageAction {
-    REPLY, FORWARD, COPY, STAR, DELETE
+    REPLY, FORWARD, COPY, STAR, INFO, DELETE, SELECT
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,12 +125,30 @@ fun MessageActionSheet(
                         tint = if (message.isStarred) StarColor else ActionIconTint
                     )
                 )
+                if (message.isOwnMessage) {
+                    add(
+                        ActionItem(
+                            action = MessageAction.INFO,
+                            icon = Icons.Filled.Info,
+                            label = "Info",
+                            tint = ActionIconTint
+                        )
+                    )
+                }
                 add(
                     ActionItem(
                         action = MessageAction.DELETE,
                         icon = Icons.Filled.Delete,
                         label = "Delete",
                         tint = DeleteColor
+                    )
+                )
+                add(
+                    ActionItem(
+                        action = MessageAction.SELECT,
+                        icon = Icons.Filled.SelectAll,
+                        label = "Select",
+                        tint = ActionIconTint
                     )
                 )
             }
