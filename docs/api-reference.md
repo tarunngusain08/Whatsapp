@@ -127,6 +127,11 @@ Invalidate the current refresh token.
 | PUT | `/api/v1/users/privacy` | Update privacy settings | Yes |
 | POST | `/api/v1/users/devices` | Register device token | Yes |
 | DELETE | `/api/v1/users/devices/:token` | Remove device token | Yes |
+| POST | `/api/v1/users/statuses` | Create a status | Yes |
+| GET | `/api/v1/users/statuses` | Get contact statuses | Yes |
+| GET | `/api/v1/users/statuses/me` | Get own statuses | Yes |
+| DELETE | `/api/v1/users/statuses/:id` | Delete a status | Yes |
+| POST | `/api/v1/users/statuses/:id/view` | Mark status as viewed | Yes |
 
 ### GET `/api/v1/users/me`
 
@@ -215,6 +220,100 @@ Register an FCM device token for push notifications.
 {
   "token": "fcm-device-token-here",
   "platform": "android"
+}
+```
+
+### POST `/api/v1/users/statuses`
+
+Create a new status update visible to contacts.
+
+**Request:**
+```json
+{
+  "type": "text",
+  "content": "Feeling great today!"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "status-1",
+  "user_id": "user-1",
+  "type": "text",
+  "content": "Feeling great today!",
+  "created_at": "2026-02-18T12:00:00Z",
+  "expires_at": "2026-02-19T12:00:00Z"
+}
+```
+
+### GET `/api/v1/users/statuses`
+
+Get statuses from the authenticated user's contacts.
+
+**Response (200):**
+```json
+{
+  "statuses": [
+    {
+      "user_id": "user-2",
+      "display_name": "Bob",
+      "avatar_url": "...",
+      "items": [
+        {
+          "id": "status-10",
+          "type": "text",
+          "content": "Hello world",
+          "created_at": "2026-02-18T10:00:00Z",
+          "viewed": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+### GET `/api/v1/users/statuses/me`
+
+Get the authenticated user's own statuses with viewer details.
+
+**Response (200):**
+```json
+{
+  "statuses": [
+    {
+      "id": "status-1",
+      "type": "text",
+      "content": "Feeling great today!",
+      "created_at": "2026-02-18T12:00:00Z",
+      "expires_at": "2026-02-19T12:00:00Z",
+      "views": [
+        { "user_id": "user-2", "display_name": "Bob", "viewed_at": "2026-02-18T12:05:00Z" }
+      ]
+    }
+  ]
+}
+```
+
+### DELETE `/api/v1/users/statuses/:id`
+
+Delete one of the authenticated user's statuses.
+
+**Response (200):**
+```json
+{
+  "message": "Status deleted successfully"
+}
+```
+
+### POST `/api/v1/users/statuses/:id/view`
+
+Mark a contact's status as viewed.
+
+**Response (200):**
+```json
+{
+  "message": "Status viewed"
 }
 ```
 
