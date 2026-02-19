@@ -69,6 +69,7 @@ fun SettingsScreen(
     onNavigateToNotifications: () -> Unit,
     onNavigateToPrivacy: () -> Unit,
     onNavigateToServerUrl: () -> Unit,
+    onNavigateToTheme: () -> Unit = {},
     onNavigateToLogin: () -> Unit,
     onNavigateBack: () -> Unit,
     isDebug: Boolean = false,
@@ -196,7 +197,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF25D366),
                     title = "Theme",
                     subtitle = "System default",
-                    onClick = showComingSoon
+                    onClick = onNavigateToTheme
                 )
 
                 SettingsItem(
