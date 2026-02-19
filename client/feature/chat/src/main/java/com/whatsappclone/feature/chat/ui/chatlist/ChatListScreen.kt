@@ -5,13 +5,17 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.MoreVert
@@ -26,6 +31,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -67,6 +73,9 @@ fun ChatListScreen(
     onNavigateToContactPicker: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToServerUrl: () -> Unit,
+    onNavigateToStarredMessages: () -> Unit = {},
+    onNavigateToArchivedChats: () -> Unit = {},
+    onNavigateToStatus: () -> Unit = {},
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -88,6 +97,15 @@ fun ChatListScreen(
 
                 is ChatListNavigationEvent.NavigateToServerUrl ->
                     onNavigateToServerUrl()
+
+                is ChatListNavigationEvent.NavigateToStarredMessages ->
+                    onNavigateToStarredMessages()
+
+                is ChatListNavigationEvent.NavigateToArchivedChats ->
+                    onNavigateToArchivedChats()
+
+                is ChatListNavigationEvent.NavigateToStatus ->
+                    onNavigateToStatus()
             }
         }
     }
@@ -125,6 +143,13 @@ fun ChatListScreen(
                         onServerUrlClicked = {
                             showOverflowMenu = false
                             viewModel.onServerUrlClicked()
+                        },
+                        onStarredMessagesClicked = {
+                            showOverflowMenu = false
+                            viewModel.onStarredMessagesClicked()
+                        },
+                        onStatusClicked = {
+                            viewModel.onStatusClicked()
                         }
                     )
                 }
@@ -179,6 +204,15 @@ fun ChatListScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 88.dp)
                     ) {
+                        if (uiState.archivedCount > 0 && uiState.searchQuery.isBlank()) {
+                            item(key = "archived_row") {
+                                ArchivedChatsRow(
+                                    count = uiState.archivedCount,
+                                    onClick = viewModel::onArchivedChatsClicked
+                                )
+                            }
+                        }
+
                         items(
                             items = filteredChats,
                             key = { it.chatId }
@@ -186,7 +220,11 @@ fun ChatListScreen(
                             ChatItemRow(
                                 chat = chat,
                                 onClick = { viewModel.onChatClicked(chat.chatId) },
-                                showDivider = chat != filteredChats.lastOrNull()
+                                showDivider = chat != filteredChats.lastOrNull(),
+                                onPinChat = { viewModel.pinChat(chat.chatId) },
+                                onMuteChat = { viewModel.muteChat(chat.chatId) },
+                                onDeleteChat = { viewModel.deleteChat(chat.chatId) },
+                                onArchiveChat = { viewModel.archiveChat(chat.chatId) }
                             )
                         }
                     }
@@ -220,7 +258,9 @@ private fun MainTopBar(
     showOverflowMenu: Boolean,
     onDismissOverflow: () -> Unit,
     onSettingsClicked: () -> Unit,
-    onServerUrlClicked: () -> Unit
+    onServerUrlClicked: () -> Unit,
+    onStarredMessagesClicked: () -> Unit = {},
+    onStatusClicked: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -244,10 +284,10 @@ private fun MainTopBar(
                 )
             }
 
-            IconButton(onClick = { /* Camera placeholder */ }) {
+            IconButton(onClick = onStatusClicked) {
                 Icon(
                     imageVector = Icons.Filled.CameraAlt,
-                    contentDescription = "Camera",
+                    contentDescription = "Status",
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
@@ -282,7 +322,7 @@ private fun MainTopBar(
                     )
                     OverflowMenuItem(
                         text = "Starred messages",
-                        onClick = onDismissOverflow
+                        onClick = onStarredMessagesClicked
                     )
                     OverflowMenuItem(
                         text = "Settings",
@@ -363,5 +403,47 @@ private fun SearchTopBar(
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary
         )
+    )
+}
+
+@Composable
+private fun ArchivedChatsRow(
+    count: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Archive,
+            contentDescription = "Archived",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Text(
+            text = "Archived",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+
+    HorizontalDivider(
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     )
 }
