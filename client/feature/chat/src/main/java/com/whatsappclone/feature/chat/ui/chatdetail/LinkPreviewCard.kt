@@ -76,7 +76,7 @@ fun LinkPreviewCard(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Language,
-                    contentDescription = null,
+                    contentDescription = "Link preview",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp)
                 )
