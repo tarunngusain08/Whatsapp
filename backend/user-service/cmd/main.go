@@ -77,6 +77,7 @@ func main() {
 	privacyRepo := repository.NewPostgresPrivacyRepository(pgPool)
 	deviceTokenRepo := repository.NewPostgresDeviceTokenRepository(pgPool)
 	presenceRepo := repository.NewRedisPresenceRepository(rdb)
+	statusRepo := repository.NewPostgresStatusRepository(pgPool)
 
 	// Service
 	userSvc := service.NewUserService(
@@ -85,6 +86,7 @@ func main() {
 		privacyRepo,
 		deviceTokenRepo,
 		presenceRepo,
+		statusRepo,
 		cfg.PresenceTTL,
 		log,
 	)
