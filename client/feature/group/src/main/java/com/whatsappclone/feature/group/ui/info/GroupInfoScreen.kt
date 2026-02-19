@@ -541,7 +541,7 @@ private fun MuteSection(
     ) {
         Icon(
             imageVector = if (isMuted) Icons.Filled.NotificationsOff else Icons.Filled.Notifications,
-            contentDescription = null,
+            contentDescription = "Mute notifications",
             modifier = Modifier.size(24.dp),
             tint = if (isMuted) {
                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -599,7 +599,7 @@ private fun AdminOnlySection(
     ) {
         Icon(
             imageVector = if (isAdminOnly) Icons.Filled.Lock else Icons.Filled.LockOpen,
-            contentDescription = null,
+            contentDescription = "Admin-only messaging",
             modifier = Modifier.size(24.dp),
             tint = if (isAdminOnly) {
                 MaterialTheme.colorScheme.primary
@@ -852,7 +852,7 @@ private fun MemberListItem(
                     leadingIcon = {
                         Icon(
                             imageVector = if (member.isAdmin) Icons.Outlined.Shield else Icons.Filled.Shield,
-                            contentDescription = null,
+                            contentDescription = "Toggle admin role",
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -871,7 +871,7 @@ private fun MemberListItem(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.PersonRemove,
-                            contentDescription = null,
+                            contentDescription = "Remove from group",
                             modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.error
                         )
@@ -898,7 +898,7 @@ private fun DangerActionItem(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = text,
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.error
         )
