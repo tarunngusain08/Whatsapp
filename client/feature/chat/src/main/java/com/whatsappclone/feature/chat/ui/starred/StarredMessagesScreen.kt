@@ -135,7 +135,7 @@ private fun StarredMessageItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Star,
-                    contentDescription = null,
+                    contentDescription = "Starred message",
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.secondary
                 )
