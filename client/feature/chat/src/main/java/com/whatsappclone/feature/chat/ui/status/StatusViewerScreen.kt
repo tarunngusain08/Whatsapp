@@ -181,7 +181,7 @@ fun StatusViewerScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Text(
-                        text = currentStatus.caption,
+                        text = currentStatus.caption.orEmpty(),
                         color = Color.White,
                         fontSize = 15.sp,
                         textAlign = TextAlign.Center,
