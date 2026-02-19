@@ -26,6 +26,7 @@ A production-grade, real-time messaging platform built with a microservices back
 - Reply, forward, delete (for me / for everyone)
 - Reactions (emoji)
 - Star / bookmark messages
+- Scheduled messages (compose now, send later)
 - Full-text search (in-chat and global)
 - Disappearing messages (24h, 7d, 90d)
 
@@ -43,9 +44,16 @@ A production-grade, real-time messaging platform built with a microservices back
 
 ### Media
 - Upload and share images, videos, audio, documents
+- In-app camera capture and voice note recording with waveform visualization
 - Server-side thumbnail generation (FFmpeg)
 - Presigned download URLs via S3-compatible storage (MinIO)
 - Orphan media cleanup
+
+### Status Updates
+- Create text and media statuses visible to contacts
+- View contact statuses with seen-tracking
+- Auto-expiring statuses
+- Manage and delete your own statuses
 
 ### Notifications
 - Firebase Cloud Messaging (FCM) push notifications
@@ -57,12 +65,20 @@ A production-grade, real-time messaging platform built with a microservices back
 - Local-first architecture on the client (Room database)
 - Optimistic UI updates — messages appear instantly
 - Pending message queue with automatic retry on reconnect
+- Scheduled message delivery via WorkManager
+- Contact sync, media cleanup, and pending-message retry as background workers
 - Full sync on reconnection (chats, messages, status)
+
+### Organization
+- Pin and archive chats
+- Starred messages view
+- Per-chat mute with optional expiry
 
 ### Security
 - Phone-based OTP authentication
 - JWT access + refresh token flow
-- Encrypted token storage on device
+- Encrypted token storage on device (EncryptedSharedPreferences)
+- Biometric app lock (fingerprint / face)
 - Rate limiting at the API gateway
 - Input validation across all services
 
@@ -110,7 +126,7 @@ A production-grade, real-time messaging platform built with a microservices back
 ### Backend
 | Component | Technology |
 |-----------|------------|
-| Language | Go 1.22+ |
+| Language | Go 1.24+ |
 | HTTP Framework | Gin |
 | RPC Framework | gRPC + Protocol Buffers |
 | Relational DB | PostgreSQL 16 |
@@ -146,7 +162,7 @@ A production-grade, real-time messaging platform built with a microservices back
 ├── backend/
 │   ├── api-gateway/           # Single entry point — auth, rate limiting, routing
 │   ├── auth-service/          # OTP, JWT tokens, session management
-│   ├── user-service/          # Profiles, contacts, presence, privacy
+│   ├── user-service/          # Profiles, contacts, presence, privacy, statuses
 │   ├── chat-service/          # Chat & group management, participants
 │   ├── message-service/       # Message CRUD, delivery status, search
 │   ├── media-service/         # File upload, thumbnails, presigned URLs
@@ -157,7 +173,7 @@ A production-grade, real-time messaging platform built with a microservices back
 │   ├── migrations/            # PostgreSQL & MongoDB migration scripts
 │   ├── helm/                  # Kubernetes Helm chart
 │   ├── observability/         # Prometheus & Grafana configuration
-│   ├── tests/                 # Integration tests
+│   ├── tests/                 # Integration & load tests (k6)
 │   └── docker-compose.yml     # Local development environment
 │
 ├── client/                    # Android app (Kotlin / Jetpack Compose)
@@ -172,9 +188,9 @@ A production-grade, real-time messaging platform built with a microservices back
 │       ├── chat/              # Chat list, chat detail, messaging
 │       ├── contacts/          # Contact picker, contact info
 │       ├── group/             # Group creation, info, participants
-│       ├── media/             # Media viewer
+│       ├── media/             # Camera, voice recorder, media viewer
 │       ├── profile/           # Profile editing
-│       └── settings/          # App settings, privacy, notifications
+│       └── settings/          # App settings, privacy, notifications, biometric lock
 │
 ├── docs/                      # Project documentation
 └── LICENSE
@@ -186,7 +202,7 @@ A production-grade, real-time messaging platform built with a microservices back
 
 ### Prerequisites
 
-- **Go** 1.22+
+- **Go** 1.24+
 - **Docker** & **Docker Compose** (for local development)
 - **kubectl** & **Helm 3** (for Kubernetes deployment)
 - **Android Studio** Hedgehog+ (for the client app)
