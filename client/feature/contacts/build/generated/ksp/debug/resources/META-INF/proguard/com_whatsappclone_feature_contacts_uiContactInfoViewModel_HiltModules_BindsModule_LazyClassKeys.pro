@@ -1,1 +1,3 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.contacts.ui.ContactInfoViewModel
