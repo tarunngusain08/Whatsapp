@@ -66,6 +66,20 @@ sealed class AppRoute(val route: String) {
             "image_viewer?url=${Uri.encode(url)}&title=${Uri.encode(title)}"
     }
 
+    // ── Shared Media ─────────────────────────────────────────────────────
+
+    data object SharedMedia : AppRoute("shared_media/{chatId}") {
+        fun create(chatId: String): String = "shared_media/$chatId"
+    }
+
+    // ── Starred Messages ─────────────────────────────────────────────────
+
+    data object StarredMessages : AppRoute("starred_messages")
+
+    // ── Blocked Contacts ──────────────────────────────────────────────────
+
+    data object BlockedContacts : AppRoute("blocked_contacts")
+
     // ── Settings ─────────────────────────────────────────────────────────────────
 
     data object Settings : AppRoute("settings")
@@ -78,9 +92,54 @@ sealed class AppRoute(val route: String) {
 
     data object ServerUrlSettings : AppRoute("server_url_settings")
 
+    data object ThemeSettings : AppRoute("theme_settings")
+
+    data object Wallpaper : AppRoute("wallpaper/{chatId}") {
+        fun create(chatId: String): String = "wallpaper/$chatId"
+    }
+
+    // ── Location ──────────────────────────────────────────────────────────────
+
+    data object LocationPicker : AppRoute("location_picker/{chatId}") {
+        fun create(chatId: String): String = "location_picker/$chatId"
+    }
+
+    // ── Status ─────────────────────────────────────────────────────────────────
+
+    data object StatusList : AppRoute("status_list")
+
+    data object StatusViewer : AppRoute("status_viewer/{userId}?startIndex={startIndex}") {
+        fun create(userId: String, startIndex: Int = 0): String =
+            "status_viewer/$userId?startIndex=$startIndex"
+    }
+
+    data object StatusCreator : AppRoute("status_creator")
+
+    // ── Archived Chats ────────────────────────────────────────────────────────
+
+    data object ArchivedChats : AppRoute("archived_chats")
+
+    // ── Receipt Details ───────────────────────────────────────────────────────
+
+    data object ReceiptDetails : AppRoute("receipt_details/{messageId}") {
+        fun create(messageId: String): String = "receipt_details/$messageId"
+    }
+
     // ── Forward ──────────────────────────────────────────────────────────────────
 
-    data object ForwardPicker : AppRoute("forward_picker/{messageId}") {
-        fun create(messageId: String): String = "forward_picker/$messageId"
+    data object ForwardPicker : AppRoute("forward_picker/{messageId}?content={content}&type={type}") {
+        fun create(messageId: String, content: String = "", type: String = "text"): String =
+            "forward_picker/$messageId?content=${Uri.encode(content)}&type=${Uri.encode(type)}"
     }
+
+    // ── Calls ────────────────────────────────────────────────────────────────
+
+    data object CallScreen : AppRoute("call/{calleeName}?avatarUrl={avatarUrl}&callType={callType}") {
+        fun create(calleeName: String, avatarUrl: String = "", callType: String = "audio"): String =
+            "call/${Uri.encode(calleeName)}?avatarUrl=${Uri.encode(avatarUrl)}&callType=${Uri.encode(callType)}"
+    }
+
+    // ── Camera ───────────────────────────────────────────────────────────────
+
+    data object Camera : AppRoute("camera")
 }
