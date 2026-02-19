@@ -1,9 +1,9 @@
 package com.whatsappclone.feature.chat.ui.chatdetail
 
-import android.content.Intent
-import android.text.format.Formatter
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,19 +43,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.whatsappclone.core.ui.components.MessageStatusIcon
 import com.whatsappclone.core.ui.theme.WhatsAppColors
 import com.whatsappclone.feature.chat.model.MessageUi
-import java.io.File
 
-private val MetaTextColor = Color(0xFF667781)
-private val DurationBadgeColor = Color(0xCC000000)
-private val DownloadOverlayColor = Color(0x80000000)
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaMessageBubble(
     message: MessageUi,
@@ -65,6 +60,7 @@ fun MediaMessageBubble(
     onVideoClick: (MessageUi) -> Unit,
     onDocumentClick: (MessageUi) -> Unit,
     onDownloadClick: (MessageUi) -> Unit,
+    onLongPress: ((MessageUi) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -108,7 +104,16 @@ fun MediaMessageBubble(
             color = bubbleColor,
             shadowElevation = 0.5.dp,
             tonalElevation = 0.dp,
-            modifier = Modifier.widthIn(min = 120.dp, max = maxBubbleWidth)
+            modifier = Modifier
+                .widthIn(min = 120.dp, max = maxBubbleWidth)
+                .then(
+                    if (onLongPress != null) {
+                        Modifier.combinedClickable(
+                            onClick = {},
+                            onLongClick = { onLongPress(message) }
+                        )
+                    } else Modifier
+                )
         ) {
             Column {
                 when (message.messageType) {
@@ -183,7 +188,7 @@ private fun ImageContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(DownloadOverlayColor),
+                    .background(WhatsAppColors.DownloadOverlay),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
@@ -201,7 +206,7 @@ private fun ImageContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(DownloadOverlayColor)
+                    .background(WhatsAppColors.DownloadOverlay)
                     .clickable { onDownloadClick(message) },
                 contentAlignment = Alignment.Center
             ) {
@@ -271,7 +276,7 @@ private fun VideoContent(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(8.dp)
-                    .background(DurationBadgeColor, RoundedCornerShape(4.dp))
+                    .background(WhatsAppColors.DurationBadge, RoundedCornerShape(4.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             )
         }
@@ -281,7 +286,7 @@ private fun VideoContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(DownloadOverlayColor),
+                    .background(WhatsAppColors.DownloadOverlay),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
@@ -299,7 +304,7 @@ private fun VideoContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(DownloadOverlayColor)
+                    .background(WhatsAppColors.DownloadOverlay)
                     .clickable { onDownloadClick(message) },
                 contentAlignment = Alignment.Center
             ) {
@@ -449,7 +454,7 @@ private fun AudioContent(
             Text(
                 text = message.content ?: "0:00",
                 style = MaterialTheme.typography.labelSmall,
-                color = MetaTextColor,
+                color = WhatsAppColors.MessageMeta,
                 fontSize = 11.sp
             )
         }
@@ -491,7 +496,7 @@ private fun CaptionAndTimestamp(
         Text(
             text = message.formattedTime,
             style = MaterialTheme.typography.labelSmall,
-            color = MetaTextColor,
+            color = WhatsAppColors.MessageMeta,
             fontSize = 11.sp
         )
 
