@@ -146,4 +146,16 @@ interface MessageDao {
         query: String,
         limit: Int = 100
     ): List<MessageEntity>
+
+    @Query("UPDATE messages SET reactionsJson = :reactionsJson WHERE messageId = :messageId")
+    suspend fun updateReactions(messageId: String, reactionsJson: String)
+
+    @Query("SELECT reactionsJson FROM messages WHERE messageId = :messageId")
+    suspend fun getReactionsJson(messageId: String): String?
+
+    @Query("SELECT COALESCE(SUM(mediaSize), 0) FROM messages WHERE chatId = :chatId")
+    suspend fun getMediaSizeForChat(chatId: String): Long
+
+    @Query("SELECT COUNT(*) FROM messages WHERE chatId = :chatId")
+    suspend fun getMessageCountForChat(chatId: String): Int
 }
