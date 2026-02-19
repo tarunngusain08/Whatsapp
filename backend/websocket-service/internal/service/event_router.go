@@ -73,12 +73,44 @@ func (s *wsServiceImpl) handleMessageStatus(ctx context.Context, client *model.C
 		return fmt.Errorf("invalid status payload: %w", err)
 	}
 
-	_, err := s.messageClient.UpdateMessageStatus(ctx, &messagev1.UpdateMessageStatusRequest{
-		MessageId: p.MessageID,
-		UserId:    client.UserID,
-		Status:    statusVal,
-	})
-	return err
+	// Fast path: if we have chat_id, resolve participants and push the
+	// status update directly to the sender's WebSocket connection before
+	// persisting to avoid the gRPC -> NATS -> Redis round-trip.
+	if p.ChatID != "" {
+		participants := s.getChatParticipants(ctx, p.ChatID)
+		statusEvent := model.WSEvent{Type: "message.status"}
+		statusEvent.Payload, _ = json.Marshal(map[string]string{
+			"message_id": p.MessageID,
+			"chat_id":    p.ChatID,
+			"user_id":    client.UserID,
+			"status":     statusVal,
+		})
+		data, _ := json.Marshal(statusEvent)
+		for _, uid := range participants {
+			if uid == client.UserID {
+				continue
+			}
+			s.rdb.Publish(ctx, "user:channel:"+uid, data)
+		}
+	}
+
+	// Async persistence via gRPC to message-service (runs in background)
+	go func() {
+		bgCtx := context.Background()
+		_, err := s.messageClient.UpdateMessageStatus(bgCtx, &messagev1.UpdateMessageStatusRequest{
+			MessageId: p.MessageID,
+			UserId:    client.UserID,
+			Status:    statusVal,
+		})
+		if err != nil {
+			s.log.Error().Err(err).
+				Str("message_id", p.MessageID).
+				Str("status", statusVal).
+				Msg("async status persist failed")
+		}
+	}()
+
+	return nil
 }
 
 func (s *wsServiceImpl) handleMessageDelete(ctx context.Context, client *model.Client, payload json.RawMessage) error {
