@@ -4,8 +4,8 @@ import "encoding/json"
 
 // WSEvent represents a WebSocket message envelope (both client->server and server->client).
 type WSEvent struct {
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
+	Type    string          `json:"event"`
+	Payload json.RawMessage `json:"data"`
 }
 
 // --- Client -> Server event payloads ---
@@ -28,6 +28,7 @@ type MessageContent struct {
 
 type MessageStatusPayload struct {
 	MessageID string `json:"message_id"`
+	ChatID    string `json:"chat_id,omitempty"`
 	Status    string `json:"status"` // "delivered" or "read"
 }
 
