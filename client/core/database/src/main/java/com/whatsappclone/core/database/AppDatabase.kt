@@ -31,7 +31,7 @@ import com.whatsappclone.core.database.entity.UserEntity
         MediaEntity::class,
         MessageFts::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
