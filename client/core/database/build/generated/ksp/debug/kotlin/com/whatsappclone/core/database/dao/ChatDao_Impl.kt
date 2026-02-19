@@ -45,7 +45,13 @@ public class ChatDao_Impl(
 
   private val __preparedStmtOfSetMuted: SharedSQLiteStatement
 
+  private val __preparedStmtOfSetPinned: SharedSQLiteStatement
+
   private val __preparedStmtOfUpdateLastMessage: SharedSQLiteStatement
+
+  private val __preparedStmtOfSetArchived: SharedSQLiteStatement
+
+  private val __preparedStmtOfDeleteById: SharedSQLiteStatement
 
   private val __preparedStmtOfDeleteAll: SharedSQLiteStatement
 
@@ -71,6 +77,12 @@ public class ChatDao_Impl(
         return _query
       }
     }
+    this.__preparedStmtOfSetPinned = object : SharedSQLiteStatement(__db) {
+      public override fun createQuery(): String {
+        val _query: String = "UPDATE chats SET isPinned = ?, updatedAt = ? WHERE chatId = ?"
+        return _query
+      }
+    }
     this.__preparedStmtOfUpdateLastMessage = object : SharedSQLiteStatement(__db) {
       public override fun createQuery(): String {
         val _query: String = """
@@ -86,6 +98,18 @@ public class ChatDao_Impl(
         return _query
       }
     }
+    this.__preparedStmtOfSetArchived = object : SharedSQLiteStatement(__db) {
+      public override fun createQuery(): String {
+        val _query: String = "UPDATE chats SET isArchived = ?, updatedAt = ? WHERE chatId = ?"
+        return _query
+      }
+    }
+    this.__preparedStmtOfDeleteById = object : SharedSQLiteStatement(__db) {
+      public override fun createQuery(): String {
+        val _query: String = "DELETE FROM chats WHERE chatId = ?"
+        return _query
+      }
+    }
     this.__preparedStmtOfDeleteAll = object : SharedSQLiteStatement(__db) {
       public override fun createQuery(): String {
         val _query: String = "DELETE FROM chats"
@@ -95,7 +119,7 @@ public class ChatDao_Impl(
     this.__upsertionAdapterOfChatEntity = EntityUpsertionAdapter<ChatEntity>(object :
         EntityInsertionAdapter<ChatEntity>(__db) {
       protected override fun createQuery(): String =
-          "INSERT INTO `chats` (`chatId`,`chatType`,`name`,`description`,`avatarUrl`,`lastMessageId`,`lastMessagePreview`,`lastMessageTimestamp`,`unreadCount`,`isMuted`,`isPinned`,`createdAt`,`updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+          "INSERT INTO `chats` (`chatId`,`chatType`,`name`,`description`,`avatarUrl`,`lastMessageId`,`lastMessagePreview`,`lastMessageTimestamp`,`unreadCount`,`isMuted`,`isPinned`,`isArchived`,`createdAt`,`updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
       protected override fun bind(statement: SupportSQLiteStatement, entity: ChatEntity) {
         statement.bindString(1, entity.chatId)
@@ -141,12 +165,14 @@ public class ChatDao_Impl(
         statement.bindLong(10, _tmp.toLong())
         val _tmp_1: Int = if (entity.isPinned) 1 else 0
         statement.bindLong(11, _tmp_1.toLong())
-        statement.bindLong(12, entity.createdAt)
-        statement.bindLong(13, entity.updatedAt)
+        val _tmp_2: Int = if (entity.isArchived) 1 else 0
+        statement.bindLong(12, _tmp_2.toLong())
+        statement.bindLong(13, entity.createdAt)
+        statement.bindLong(14, entity.updatedAt)
       }
     }, object : EntityDeletionOrUpdateAdapter<ChatEntity>(__db) {
       protected override fun createQuery(): String =
-          "UPDATE `chats` SET `chatId` = ?,`chatType` = ?,`name` = ?,`description` = ?,`avatarUrl` = ?,`lastMessageId` = ?,`lastMessagePreview` = ?,`lastMessageTimestamp` = ?,`unreadCount` = ?,`isMuted` = ?,`isPinned` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `chatId` = ?"
+          "UPDATE `chats` SET `chatId` = ?,`chatType` = ?,`name` = ?,`description` = ?,`avatarUrl` = ?,`lastMessageId` = ?,`lastMessagePreview` = ?,`lastMessageTimestamp` = ?,`unreadCount` = ?,`isMuted` = ?,`isPinned` = ?,`isArchived` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `chatId` = ?"
 
       protected override fun bind(statement: SupportSQLiteStatement, entity: ChatEntity) {
         statement.bindString(1, entity.chatId)
@@ -192,9 +218,11 @@ public class ChatDao_Impl(
         statement.bindLong(10, _tmp.toLong())
         val _tmp_1: Int = if (entity.isPinned) 1 else 0
         statement.bindLong(11, _tmp_1.toLong())
-        statement.bindLong(12, entity.createdAt)
-        statement.bindLong(13, entity.updatedAt)
-        statement.bindString(14, entity.chatId)
+        val _tmp_2: Int = if (entity.isArchived) 1 else 0
+        statement.bindLong(12, _tmp_2.toLong())
+        statement.bindLong(13, entity.createdAt)
+        statement.bindLong(14, entity.updatedAt)
+        statement.bindString(15, entity.chatId)
       }
     })
   }
@@ -276,6 +304,34 @@ public class ChatDao_Impl(
     }
   })
 
+  public override suspend fun setPinned(
+    chatId: String,
+    pinned: Boolean,
+    updatedAt: Long,
+  ): Unit = CoroutinesRoom.execute(__db, true, object : Callable<Unit> {
+    public override fun call() {
+      val _stmt: SupportSQLiteStatement = __preparedStmtOfSetPinned.acquire()
+      var _argIndex: Int = 1
+      val _tmp: Int = if (pinned) 1 else 0
+      _stmt.bindLong(_argIndex, _tmp.toLong())
+      _argIndex = 2
+      _stmt.bindLong(_argIndex, updatedAt)
+      _argIndex = 3
+      _stmt.bindString(_argIndex, chatId)
+      try {
+        __db.beginTransaction()
+        try {
+          _stmt.executeUpdateDelete()
+          __db.setTransactionSuccessful()
+        } finally {
+          __db.endTransaction()
+        }
+      } finally {
+        __preparedStmtOfSetPinned.release(_stmt)
+      }
+    }
+  })
+
   public override suspend fun updateLastMessage(
     chatId: String,
     messageId: String,
@@ -309,6 +365,54 @@ public class ChatDao_Impl(
         }
       } finally {
         __preparedStmtOfUpdateLastMessage.release(_stmt)
+      }
+    }
+  })
+
+  public override suspend fun setArchived(
+    chatId: String,
+    archived: Boolean,
+    updatedAt: Long,
+  ): Unit = CoroutinesRoom.execute(__db, true, object : Callable<Unit> {
+    public override fun call() {
+      val _stmt: SupportSQLiteStatement = __preparedStmtOfSetArchived.acquire()
+      var _argIndex: Int = 1
+      val _tmp: Int = if (archived) 1 else 0
+      _stmt.bindLong(_argIndex, _tmp.toLong())
+      _argIndex = 2
+      _stmt.bindLong(_argIndex, updatedAt)
+      _argIndex = 3
+      _stmt.bindString(_argIndex, chatId)
+      try {
+        __db.beginTransaction()
+        try {
+          _stmt.executeUpdateDelete()
+          __db.setTransactionSuccessful()
+        } finally {
+          __db.endTransaction()
+        }
+      } finally {
+        __preparedStmtOfSetArchived.release(_stmt)
+      }
+    }
+  })
+
+  public override suspend fun deleteById(chatId: String): Unit = CoroutinesRoom.execute(__db, true,
+      object : Callable<Unit> {
+    public override fun call() {
+      val _stmt: SupportSQLiteStatement = __preparedStmtOfDeleteById.acquire()
+      var _argIndex: Int = 1
+      _stmt.bindString(_argIndex, chatId)
+      try {
+        __db.beginTransaction()
+        try {
+          _stmt.executeUpdateDelete()
+          __db.setTransactionSuccessful()
+        } finally {
+          __db.endTransaction()
+        }
+      } finally {
+        __preparedStmtOfDeleteById.release(_stmt)
       }
     }
   })
@@ -368,13 +472,15 @@ public class ChatDao_Impl(
         |            m.senderId AS lastMessageSenderId,
         |            u.displayName AS lastMessageSenderName,
         |            pu.displayName AS directChatOtherUserName,
-        |            pu.avatarUrl AS directChatOtherUserAvatarUrl
+        |            pu.avatarUrl AS directChatOtherUserAvatarUrl,
+        |            pu.isOnline AS otherUserIsOnline
         |        FROM chats c
         |        LEFT JOIN messages m ON c.lastMessageId = m.messageId
         |        LEFT JOIN users u ON m.senderId = u.id
         |        LEFT JOIN chat_participants cp 
         |            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != ?
         |        LEFT JOIN users pu ON cp.userId = pu.id
+        |        WHERE c.isArchived = 0
         |        ORDER BY c.isPinned DESC, c.lastMessageTimestamp DESC
         |        
         """.trimMargin()
@@ -399,6 +505,7 @@ public class ChatDao_Impl(
           val _cursorIndexOfUnreadCount: Int = getColumnIndexOrThrow(_cursor, "unreadCount")
           val _cursorIndexOfIsMuted: Int = getColumnIndexOrThrow(_cursor, "isMuted")
           val _cursorIndexOfIsPinned: Int = getColumnIndexOrThrow(_cursor, "isPinned")
+          val _cursorIndexOfIsArchived: Int = getColumnIndexOrThrow(_cursor, "isArchived")
           val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
           val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
           val _cursorIndexOfLastMessageText: Int = getColumnIndexOrThrow(_cursor, "lastMessageText")
@@ -411,6 +518,8 @@ public class ChatDao_Impl(
               "directChatOtherUserName")
           val _cursorIndexOfDirectChatOtherUserAvatarUrl: Int = getColumnIndexOrThrow(_cursor,
               "directChatOtherUserAvatarUrl")
+          val _cursorIndexOfOtherUserIsOnline: Int = getColumnIndexOrThrow(_cursor,
+              "otherUserIsOnline")
           val _result: MutableList<ChatWithLastMessage> =
               ArrayList<ChatWithLastMessage>(_cursor.getCount())
           while (_cursor.moveToNext()) {
@@ -452,6 +561,14 @@ public class ChatDao_Impl(
               _tmpDirectChatOtherUserAvatarUrl =
                   _cursor.getString(_cursorIndexOfDirectChatOtherUserAvatarUrl)
             }
+            val _tmpOtherUserIsOnline: Boolean?
+            val _tmp: Int?
+            if (_cursor.isNull(_cursorIndexOfOtherUserIsOnline)) {
+              _tmp = null
+            } else {
+              _tmp = _cursor.getInt(_cursorIndexOfOtherUserIsOnline)
+            }
+            _tmpOtherUserIsOnline = _tmp?.let { it != 0 }
             val _tmpChat: ChatEntity
             val _tmpChatId: String
             _tmpChatId = _cursor.getString(_cursorIndexOfChatId)
@@ -496,21 +613,25 @@ public class ChatDao_Impl(
             val _tmpUnreadCount: Int
             _tmpUnreadCount = _cursor.getInt(_cursorIndexOfUnreadCount)
             val _tmpIsMuted: Boolean
-            val _tmp: Int
-            _tmp = _cursor.getInt(_cursorIndexOfIsMuted)
-            _tmpIsMuted = _tmp != 0
-            val _tmpIsPinned: Boolean
             val _tmp_1: Int
-            _tmp_1 = _cursor.getInt(_cursorIndexOfIsPinned)
-            _tmpIsPinned = _tmp_1 != 0
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsMuted)
+            _tmpIsMuted = _tmp_1 != 0
+            val _tmpIsPinned: Boolean
+            val _tmp_2: Int
+            _tmp_2 = _cursor.getInt(_cursorIndexOfIsPinned)
+            _tmpIsPinned = _tmp_2 != 0
+            val _tmpIsArchived: Boolean
+            val _tmp_3: Int
+            _tmp_3 = _cursor.getInt(_cursorIndexOfIsArchived)
+            _tmpIsArchived = _tmp_3 != 0
             val _tmpCreatedAt: Long
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
             val _tmpUpdatedAt: Long
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
             _tmpChat =
-                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpCreatedAt,_tmpUpdatedAt)
+                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpIsArchived,_tmpCreatedAt,_tmpUpdatedAt)
             _item =
-                ChatWithLastMessage(_tmpChat,_tmpLastMessageText,_tmpLastMessageType,_tmpLastMessageSenderId,_tmpLastMessageSenderName,_tmpDirectChatOtherUserName,_tmpDirectChatOtherUserAvatarUrl)
+                ChatWithLastMessage(_tmpChat,_tmpLastMessageText,_tmpLastMessageType,_tmpLastMessageSenderId,_tmpLastMessageSenderName,_tmpDirectChatOtherUserName,_tmpDirectChatOtherUserAvatarUrl,_tmpOtherUserIsOnline)
             _result.add(_item)
           }
           return _result
@@ -548,6 +669,7 @@ public class ChatDao_Impl(
           val _cursorIndexOfUnreadCount: Int = getColumnIndexOrThrow(_cursor, "unreadCount")
           val _cursorIndexOfIsMuted: Int = getColumnIndexOrThrow(_cursor, "isMuted")
           val _cursorIndexOfIsPinned: Int = getColumnIndexOrThrow(_cursor, "isPinned")
+          val _cursorIndexOfIsArchived: Int = getColumnIndexOrThrow(_cursor, "isArchived")
           val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
           val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
           val _result: ChatEntity?
@@ -602,12 +724,16 @@ public class ChatDao_Impl(
             val _tmp_1: Int
             _tmp_1 = _cursor.getInt(_cursorIndexOfIsPinned)
             _tmpIsPinned = _tmp_1 != 0
+            val _tmpIsArchived: Boolean
+            val _tmp_2: Int
+            _tmp_2 = _cursor.getInt(_cursorIndexOfIsArchived)
+            _tmpIsArchived = _tmp_2 != 0
             val _tmpCreatedAt: Long
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
             val _tmpUpdatedAt: Long
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
             _result =
-                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpCreatedAt,_tmpUpdatedAt)
+                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpIsArchived,_tmpCreatedAt,_tmpUpdatedAt)
           } else {
             _result = null
           }
@@ -642,6 +768,7 @@ public class ChatDao_Impl(
           val _cursorIndexOfUnreadCount: Int = getColumnIndexOrThrow(_cursor, "unreadCount")
           val _cursorIndexOfIsMuted: Int = getColumnIndexOrThrow(_cursor, "isMuted")
           val _cursorIndexOfIsPinned: Int = getColumnIndexOrThrow(_cursor, "isPinned")
+          val _cursorIndexOfIsArchived: Int = getColumnIndexOrThrow(_cursor, "isArchived")
           val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
           val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
           val _result: ChatEntity?
@@ -696,12 +823,16 @@ public class ChatDao_Impl(
             val _tmp_1: Int
             _tmp_1 = _cursor.getInt(_cursorIndexOfIsPinned)
             _tmpIsPinned = _tmp_1 != 0
+            val _tmpIsArchived: Boolean
+            val _tmp_2: Int
+            _tmp_2 = _cursor.getInt(_cursorIndexOfIsArchived)
+            _tmpIsArchived = _tmp_2 != 0
             val _tmpCreatedAt: Long
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
             val _tmpUpdatedAt: Long
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
             _result =
-                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpCreatedAt,_tmpUpdatedAt)
+                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpIsArchived,_tmpCreatedAt,_tmpUpdatedAt)
           } else {
             _result = null
           }
@@ -749,6 +880,315 @@ public class ChatDao_Impl(
             }
           } else {
             _result = null
+          }
+          return _result
+        } finally {
+          _cursor.close()
+          _statement.release()
+        }
+      }
+    })
+  }
+
+  public override fun observeArchivedChats(currentUserId: String): Flow<List<ChatWithLastMessage>> {
+    val _sql: String = """
+        |
+        |        SELECT 
+        |            c.*,
+        |            m.content AS lastMessageText,
+        |            m.messageType AS lastMessageType,
+        |            m.senderId AS lastMessageSenderId,
+        |            u.displayName AS lastMessageSenderName,
+        |            pu.displayName AS directChatOtherUserName,
+        |            pu.avatarUrl AS directChatOtherUserAvatarUrl,
+        |            pu.isOnline AS otherUserIsOnline
+        |        FROM chats c
+        |        LEFT JOIN messages m ON c.lastMessageId = m.messageId
+        |        LEFT JOIN users u ON m.senderId = u.id
+        |        LEFT JOIN chat_participants cp 
+        |            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != ?
+        |        LEFT JOIN users pu ON cp.userId = pu.id
+        |        WHERE c.isArchived = 1
+        |        ORDER BY c.lastMessageTimestamp DESC
+        |        
+        """.trimMargin()
+    val _statement: RoomSQLiteQuery = acquire(_sql, 1)
+    var _argIndex: Int = 1
+    _statement.bindString(_argIndex, currentUserId)
+    return CoroutinesRoom.createFlow(__db, false, arrayOf("chats", "messages", "users",
+        "chat_participants"), object : Callable<List<ChatWithLastMessage>> {
+      public override fun call(): List<ChatWithLastMessage> {
+        val _cursor: Cursor = query(__db, _statement, false, null)
+        try {
+          val _cursorIndexOfChatId: Int = getColumnIndexOrThrow(_cursor, "chatId")
+          val _cursorIndexOfChatType: Int = getColumnIndexOrThrow(_cursor, "chatType")
+          val _cursorIndexOfName: Int = getColumnIndexOrThrow(_cursor, "name")
+          val _cursorIndexOfDescription: Int = getColumnIndexOrThrow(_cursor, "description")
+          val _cursorIndexOfAvatarUrl: Int = getColumnIndexOrThrow(_cursor, "avatarUrl")
+          val _cursorIndexOfLastMessageId: Int = getColumnIndexOrThrow(_cursor, "lastMessageId")
+          val _cursorIndexOfLastMessagePreview: Int = getColumnIndexOrThrow(_cursor,
+              "lastMessagePreview")
+          val _cursorIndexOfLastMessageTimestamp: Int = getColumnIndexOrThrow(_cursor,
+              "lastMessageTimestamp")
+          val _cursorIndexOfUnreadCount: Int = getColumnIndexOrThrow(_cursor, "unreadCount")
+          val _cursorIndexOfIsMuted: Int = getColumnIndexOrThrow(_cursor, "isMuted")
+          val _cursorIndexOfIsPinned: Int = getColumnIndexOrThrow(_cursor, "isPinned")
+          val _cursorIndexOfIsArchived: Int = getColumnIndexOrThrow(_cursor, "isArchived")
+          val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
+          val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
+          val _cursorIndexOfLastMessageText: Int = getColumnIndexOrThrow(_cursor, "lastMessageText")
+          val _cursorIndexOfLastMessageType: Int = getColumnIndexOrThrow(_cursor, "lastMessageType")
+          val _cursorIndexOfLastMessageSenderId: Int = getColumnIndexOrThrow(_cursor,
+              "lastMessageSenderId")
+          val _cursorIndexOfLastMessageSenderName: Int = getColumnIndexOrThrow(_cursor,
+              "lastMessageSenderName")
+          val _cursorIndexOfDirectChatOtherUserName: Int = getColumnIndexOrThrow(_cursor,
+              "directChatOtherUserName")
+          val _cursorIndexOfDirectChatOtherUserAvatarUrl: Int = getColumnIndexOrThrow(_cursor,
+              "directChatOtherUserAvatarUrl")
+          val _cursorIndexOfOtherUserIsOnline: Int = getColumnIndexOrThrow(_cursor,
+              "otherUserIsOnline")
+          val _result: MutableList<ChatWithLastMessage> =
+              ArrayList<ChatWithLastMessage>(_cursor.getCount())
+          while (_cursor.moveToNext()) {
+            val _item: ChatWithLastMessage
+            val _tmpLastMessageText: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessageText)) {
+              _tmpLastMessageText = null
+            } else {
+              _tmpLastMessageText = _cursor.getString(_cursorIndexOfLastMessageText)
+            }
+            val _tmpLastMessageType: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessageType)) {
+              _tmpLastMessageType = null
+            } else {
+              _tmpLastMessageType = _cursor.getString(_cursorIndexOfLastMessageType)
+            }
+            val _tmpLastMessageSenderId: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessageSenderId)) {
+              _tmpLastMessageSenderId = null
+            } else {
+              _tmpLastMessageSenderId = _cursor.getString(_cursorIndexOfLastMessageSenderId)
+            }
+            val _tmpLastMessageSenderName: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessageSenderName)) {
+              _tmpLastMessageSenderName = null
+            } else {
+              _tmpLastMessageSenderName = _cursor.getString(_cursorIndexOfLastMessageSenderName)
+            }
+            val _tmpDirectChatOtherUserName: String?
+            if (_cursor.isNull(_cursorIndexOfDirectChatOtherUserName)) {
+              _tmpDirectChatOtherUserName = null
+            } else {
+              _tmpDirectChatOtherUserName = _cursor.getString(_cursorIndexOfDirectChatOtherUserName)
+            }
+            val _tmpDirectChatOtherUserAvatarUrl: String?
+            if (_cursor.isNull(_cursorIndexOfDirectChatOtherUserAvatarUrl)) {
+              _tmpDirectChatOtherUserAvatarUrl = null
+            } else {
+              _tmpDirectChatOtherUserAvatarUrl =
+                  _cursor.getString(_cursorIndexOfDirectChatOtherUserAvatarUrl)
+            }
+            val _tmpOtherUserIsOnline: Boolean?
+            val _tmp: Int?
+            if (_cursor.isNull(_cursorIndexOfOtherUserIsOnline)) {
+              _tmp = null
+            } else {
+              _tmp = _cursor.getInt(_cursorIndexOfOtherUserIsOnline)
+            }
+            _tmpOtherUserIsOnline = _tmp?.let { it != 0 }
+            val _tmpChat: ChatEntity
+            val _tmpChatId: String
+            _tmpChatId = _cursor.getString(_cursorIndexOfChatId)
+            val _tmpChatType: String
+            _tmpChatType = _cursor.getString(_cursorIndexOfChatType)
+            val _tmpName: String?
+            if (_cursor.isNull(_cursorIndexOfName)) {
+              _tmpName = null
+            } else {
+              _tmpName = _cursor.getString(_cursorIndexOfName)
+            }
+            val _tmpDescription: String?
+            if (_cursor.isNull(_cursorIndexOfDescription)) {
+              _tmpDescription = null
+            } else {
+              _tmpDescription = _cursor.getString(_cursorIndexOfDescription)
+            }
+            val _tmpAvatarUrl: String?
+            if (_cursor.isNull(_cursorIndexOfAvatarUrl)) {
+              _tmpAvatarUrl = null
+            } else {
+              _tmpAvatarUrl = _cursor.getString(_cursorIndexOfAvatarUrl)
+            }
+            val _tmpLastMessageId: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessageId)) {
+              _tmpLastMessageId = null
+            } else {
+              _tmpLastMessageId = _cursor.getString(_cursorIndexOfLastMessageId)
+            }
+            val _tmpLastMessagePreview: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessagePreview)) {
+              _tmpLastMessagePreview = null
+            } else {
+              _tmpLastMessagePreview = _cursor.getString(_cursorIndexOfLastMessagePreview)
+            }
+            val _tmpLastMessageTimestamp: Long?
+            if (_cursor.isNull(_cursorIndexOfLastMessageTimestamp)) {
+              _tmpLastMessageTimestamp = null
+            } else {
+              _tmpLastMessageTimestamp = _cursor.getLong(_cursorIndexOfLastMessageTimestamp)
+            }
+            val _tmpUnreadCount: Int
+            _tmpUnreadCount = _cursor.getInt(_cursorIndexOfUnreadCount)
+            val _tmpIsMuted: Boolean
+            val _tmp_1: Int
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsMuted)
+            _tmpIsMuted = _tmp_1 != 0
+            val _tmpIsPinned: Boolean
+            val _tmp_2: Int
+            _tmp_2 = _cursor.getInt(_cursorIndexOfIsPinned)
+            _tmpIsPinned = _tmp_2 != 0
+            val _tmpIsArchived: Boolean
+            val _tmp_3: Int
+            _tmp_3 = _cursor.getInt(_cursorIndexOfIsArchived)
+            _tmpIsArchived = _tmp_3 != 0
+            val _tmpCreatedAt: Long
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
+            val _tmpUpdatedAt: Long
+            _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
+            _tmpChat =
+                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpIsArchived,_tmpCreatedAt,_tmpUpdatedAt)
+            _item =
+                ChatWithLastMessage(_tmpChat,_tmpLastMessageText,_tmpLastMessageType,_tmpLastMessageSenderId,_tmpLastMessageSenderName,_tmpDirectChatOtherUserName,_tmpDirectChatOtherUserAvatarUrl,_tmpOtherUserIsOnline)
+            _result.add(_item)
+          }
+          return _result
+        } finally {
+          _cursor.close()
+        }
+      }
+
+      protected fun finalize() {
+        _statement.release()
+      }
+    })
+  }
+
+  public override fun observeArchivedCount(): Flow<Int> {
+    val _sql: String = "SELECT COUNT(*) FROM chats WHERE isArchived = 1"
+    val _statement: RoomSQLiteQuery = acquire(_sql, 0)
+    return CoroutinesRoom.createFlow(__db, false, arrayOf("chats"), object : Callable<Int> {
+      public override fun call(): Int {
+        val _cursor: Cursor = query(__db, _statement, false, null)
+        try {
+          val _result: Int
+          if (_cursor.moveToFirst()) {
+            val _tmp: Int
+            _tmp = _cursor.getInt(0)
+            _result = _tmp
+          } else {
+            _result = 0
+          }
+          return _result
+        } finally {
+          _cursor.close()
+        }
+      }
+
+      protected fun finalize() {
+        _statement.release()
+      }
+    })
+  }
+
+  public override suspend fun getAllChats(): List<ChatEntity> {
+    val _sql: String = "SELECT * FROM chats ORDER BY lastMessageTimestamp DESC"
+    val _statement: RoomSQLiteQuery = acquire(_sql, 0)
+    val _cancellationSignal: CancellationSignal? = createCancellationSignal()
+    return execute(__db, false, _cancellationSignal, object : Callable<List<ChatEntity>> {
+      public override fun call(): List<ChatEntity> {
+        val _cursor: Cursor = query(__db, _statement, false, null)
+        try {
+          val _cursorIndexOfChatId: Int = getColumnIndexOrThrow(_cursor, "chatId")
+          val _cursorIndexOfChatType: Int = getColumnIndexOrThrow(_cursor, "chatType")
+          val _cursorIndexOfName: Int = getColumnIndexOrThrow(_cursor, "name")
+          val _cursorIndexOfDescription: Int = getColumnIndexOrThrow(_cursor, "description")
+          val _cursorIndexOfAvatarUrl: Int = getColumnIndexOrThrow(_cursor, "avatarUrl")
+          val _cursorIndexOfLastMessageId: Int = getColumnIndexOrThrow(_cursor, "lastMessageId")
+          val _cursorIndexOfLastMessagePreview: Int = getColumnIndexOrThrow(_cursor,
+              "lastMessagePreview")
+          val _cursorIndexOfLastMessageTimestamp: Int = getColumnIndexOrThrow(_cursor,
+              "lastMessageTimestamp")
+          val _cursorIndexOfUnreadCount: Int = getColumnIndexOrThrow(_cursor, "unreadCount")
+          val _cursorIndexOfIsMuted: Int = getColumnIndexOrThrow(_cursor, "isMuted")
+          val _cursorIndexOfIsPinned: Int = getColumnIndexOrThrow(_cursor, "isPinned")
+          val _cursorIndexOfIsArchived: Int = getColumnIndexOrThrow(_cursor, "isArchived")
+          val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
+          val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
+          val _result: MutableList<ChatEntity> = ArrayList<ChatEntity>(_cursor.getCount())
+          while (_cursor.moveToNext()) {
+            val _item: ChatEntity
+            val _tmpChatId: String
+            _tmpChatId = _cursor.getString(_cursorIndexOfChatId)
+            val _tmpChatType: String
+            _tmpChatType = _cursor.getString(_cursorIndexOfChatType)
+            val _tmpName: String?
+            if (_cursor.isNull(_cursorIndexOfName)) {
+              _tmpName = null
+            } else {
+              _tmpName = _cursor.getString(_cursorIndexOfName)
+            }
+            val _tmpDescription: String?
+            if (_cursor.isNull(_cursorIndexOfDescription)) {
+              _tmpDescription = null
+            } else {
+              _tmpDescription = _cursor.getString(_cursorIndexOfDescription)
+            }
+            val _tmpAvatarUrl: String?
+            if (_cursor.isNull(_cursorIndexOfAvatarUrl)) {
+              _tmpAvatarUrl = null
+            } else {
+              _tmpAvatarUrl = _cursor.getString(_cursorIndexOfAvatarUrl)
+            }
+            val _tmpLastMessageId: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessageId)) {
+              _tmpLastMessageId = null
+            } else {
+              _tmpLastMessageId = _cursor.getString(_cursorIndexOfLastMessageId)
+            }
+            val _tmpLastMessagePreview: String?
+            if (_cursor.isNull(_cursorIndexOfLastMessagePreview)) {
+              _tmpLastMessagePreview = null
+            } else {
+              _tmpLastMessagePreview = _cursor.getString(_cursorIndexOfLastMessagePreview)
+            }
+            val _tmpLastMessageTimestamp: Long?
+            if (_cursor.isNull(_cursorIndexOfLastMessageTimestamp)) {
+              _tmpLastMessageTimestamp = null
+            } else {
+              _tmpLastMessageTimestamp = _cursor.getLong(_cursorIndexOfLastMessageTimestamp)
+            }
+            val _tmpUnreadCount: Int
+            _tmpUnreadCount = _cursor.getInt(_cursorIndexOfUnreadCount)
+            val _tmpIsMuted: Boolean
+            val _tmp: Int
+            _tmp = _cursor.getInt(_cursorIndexOfIsMuted)
+            _tmpIsMuted = _tmp != 0
+            val _tmpIsPinned: Boolean
+            val _tmp_1: Int
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsPinned)
+            _tmpIsPinned = _tmp_1 != 0
+            val _tmpIsArchived: Boolean
+            val _tmp_2: Int
+            _tmp_2 = _cursor.getInt(_cursorIndexOfIsArchived)
+            _tmpIsArchived = _tmp_2 != 0
+            val _tmpCreatedAt: Long
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
+            val _tmpUpdatedAt: Long
+            _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
+            _item =
+                ChatEntity(_tmpChatId,_tmpChatType,_tmpName,_tmpDescription,_tmpAvatarUrl,_tmpLastMessageId,_tmpLastMessagePreview,_tmpLastMessageTimestamp,_tmpUnreadCount,_tmpIsMuted,_tmpIsPinned,_tmpIsArchived,_tmpCreatedAt,_tmpUpdatedAt)
+            _result.add(_item)
           }
           return _result
         } finally {
