@@ -1,5 +1,9 @@
 package com.whatsappclone.feature.group.ui.info
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -83,10 +87,18 @@ import com.whatsappclone.core.ui.components.UserAvatar
 fun GroupInfoScreen(
     onNavigateBack: () -> Unit,
     onAddParticipants: (String) -> Unit = {},
+    onNavigateToSharedMedia: (String) -> Unit = {},
     viewModel: GroupInfoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.onAvatarSelected(it) }
+    }
+
     var showLeaveDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showEditNameDialog by remember { mutableStateOf(false) }
@@ -230,7 +242,13 @@ fun GroupInfoScreen(
                 item(key = "header") {
                     GroupHeaderSection(
                         uiState = uiState,
-                        onEditAvatar = { /* TODO: image picker */ },
+                        onEditAvatar = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
                         onEditName = { showEditNameDialog = true }
                     )
                 }
