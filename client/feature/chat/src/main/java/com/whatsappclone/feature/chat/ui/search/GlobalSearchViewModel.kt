@@ -2,6 +2,7 @@ package com.whatsappclone.feature.chat.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.SharedPreferences
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ContactDao
 import com.whatsappclone.core.database.dao.MessageDao
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Named
 
 data class GlobalSearchUiState(
     val query: String = "",
@@ -63,7 +65,8 @@ sealed class GlobalSearchEvent {
 class GlobalSearchViewModel @Inject constructor(
     private val contactDao: ContactDao,
     private val messageDao: MessageDao,
-    private val chatDao: ChatDao
+    private val chatDao: ChatDao,
+    @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GlobalSearchUiState())
@@ -74,6 +77,7 @@ class GlobalSearchViewModel @Inject constructor(
 
     private val queryFlow = MutableStateFlow("")
     private var searchJob: Job? = null
+    private val currentUserId: String? by lazy { resolveCurrentUserId() }
 
     init {
         observeQueryChanges()
@@ -181,8 +185,9 @@ class GlobalSearchViewModel @Inject constructor(
 
         contacts.take(MAX_CONTACT_RESULTS).forEach { contact ->
             val userId = contact.userId ?: return@forEach
+            val meId = currentUserId ?: return@forEach
             val chatId = chatDao.findDirectChatWithUser(
-                currentUserId = "", // Will be resolved at the screen level
+                currentUserId = meId,
                 otherUserId = userId
             )
 
@@ -269,10 +274,36 @@ class GlobalSearchViewModel @Inject constructor(
         }
     }
 
+    private fun resolveCurrentUserId(): String? {
+        return try {
+            encryptedPrefs.getString(KEY_CURRENT_USER_ID, null)
+                ?: extractUserIdFromJwt()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun extractUserIdFromJwt(): String? {
+        return try {
+            val token = encryptedPrefs.getString("access_token", null)
+                ?: return null
+            val parts = token.split(".")
+            if (parts.size < 2) return null
+            val payload = String(
+                android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE),
+                Charsets.UTF_8
+            )
+            org.json.JSONObject(payload).optString("user_id", null)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     companion object {
         private const val SEARCH_DEBOUNCE_MS = 300L
         private const val MIN_QUERY_LENGTH = 2
         private const val MAX_CONTACT_RESULTS = 10
         private const val MAX_MESSAGE_RESULTS = 30
+        private const val KEY_CURRENT_USER_ID = "current_user_id"
     }
 }
