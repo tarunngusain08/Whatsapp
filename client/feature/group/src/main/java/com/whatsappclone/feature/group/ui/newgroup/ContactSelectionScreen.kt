@@ -193,7 +193,7 @@ fun ContactSelectionScreen(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Filled.Search,
-                        contentDescription = null,
+                        contentDescription = "Search contacts",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 },
