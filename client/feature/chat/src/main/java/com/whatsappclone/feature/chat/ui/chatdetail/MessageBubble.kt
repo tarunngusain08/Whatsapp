@@ -58,10 +58,6 @@ private val SenderNameColors = listOf(
     Color(0xFF6A1B9A)
 )
 
-private val MetaTextColor = Color(0xFF667781)
-private val DeletedTextColor = Color(0xFF8696A0)
-private val StarColor = Color(0xFFFFC107)
-private val ForwardedColor = Color(0xFF8696A0)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -158,7 +154,7 @@ fun MessageBubble(
                             text = "\u21AA Forwarded",
                             style = MaterialTheme.typography.labelSmall,
                             fontStyle = FontStyle.Italic,
-                            color = ForwardedColor,
+                            color = WhatsAppColors.ForwardedText,
                             fontSize = 11.5.sp
                         )
                     }
@@ -259,7 +255,7 @@ private fun MessageContent(
                 Icon(
                     imageVector = Icons.Filled.Schedule,
                     contentDescription = "Scheduled",
-                    tint = MetaTextColor,
+                    tint = WhatsAppColors.MessageMeta,
                     modifier = Modifier.size(13.dp)
                 )
                 Spacer(modifier = Modifier.width(2.dp))
@@ -269,7 +265,7 @@ private fun MessageContent(
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = "Starred",
-                    tint = StarColor,
+                    tint = WhatsAppColors.StarColor,
                     modifier = Modifier.size(13.dp)
                 )
                 Spacer(modifier = Modifier.width(2.dp))
@@ -278,7 +274,7 @@ private fun MessageContent(
             Text(
                 text = message.formattedTime,
                 style = MaterialTheme.typography.labelSmall,
-                color = MetaTextColor,
+                color = WhatsAppColors.MessageMeta,
                 fontSize = 11.sp,
                 lineHeight = 11.sp
             )
@@ -330,7 +326,7 @@ private fun LocationContent(
             Text(
                 text = message.formattedTime,
                 style = MaterialTheme.typography.labelSmall,
-                color = MetaTextColor,
+                color = WhatsAppColors.MessageMeta,
                 fontSize = 11.sp,
                 lineHeight = 11.sp
             )
@@ -360,7 +356,7 @@ private fun DeletedMessageContent(
             text = if (isOwnMessage) "You deleted this message" else "\uD83D\uDEAB This message was deleted",
             style = MaterialTheme.typography.bodyMedium,
             fontStyle = FontStyle.Italic,
-            color = DeletedTextColor,
+            color = WhatsAppColors.DeletedText,
             fontSize = 14.5.sp,
             modifier = Modifier.weight(1f, fill = false)
         )
