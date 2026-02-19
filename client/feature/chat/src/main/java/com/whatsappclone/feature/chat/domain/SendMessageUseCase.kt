@@ -18,7 +18,7 @@ class SendMessageUseCase @Inject constructor(
         mediaThumbnailUrl: String? = null,
         mediaMimeType: String? = null,
         mediaSize: Long? = null,
-        mediaDuration: Long? = null
+        mediaDuration: Int? = null
     ): AppResult<Unit> {
         if (content.isBlank() && mediaId == null) {
             return AppResult.Error(
