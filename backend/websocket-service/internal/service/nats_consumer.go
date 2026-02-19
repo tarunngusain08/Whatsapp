@@ -117,6 +117,7 @@ func (s *wsServiceImpl) subscribeStatusUpdates(ctx context.Context) error {
 	_, err := s.js.Subscribe("msg.status.updated", func(m *nats.Msg) {
 		var event struct {
 			MessageID string `json:"message_id"`
+			ChatID    string `json:"chat_id"`
 			UserID    string `json:"user_id"`
 			SenderID  string `json:"sender_id"`
 			Status    string `json:"status"`
@@ -130,6 +131,7 @@ func (s *wsServiceImpl) subscribeStatusUpdates(ctx context.Context) error {
 		wsEvent := model.WSEvent{Type: "message.status"}
 		wsEvent.Payload, _ = json.Marshal(map[string]string{
 			"message_id": event.MessageID,
+			"chat_id":    event.ChatID,
 			"user_id":    event.UserID,
 			"status":     event.Status,
 		})
