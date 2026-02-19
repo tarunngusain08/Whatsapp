@@ -16,6 +16,7 @@ import com.whatsappclone.core.network.api.ChatApi
 import com.whatsappclone.core.network.api.MediaApi
 import com.whatsappclone.core.network.api.MessageApi
 import com.whatsappclone.core.network.api.NotificationApi
+import com.whatsappclone.core.network.api.StatusApi
 import com.whatsappclone.core.network.api.UserApi
 import com.whatsappclone.core.network.interceptor.AuthInterceptor
 import com.whatsappclone.core.network.token.TokenManager
@@ -202,5 +203,11 @@ object NetworkModule {
     @Singleton
     fun provideNotificationApi(retrofit: Retrofit): NotificationApi {
         return retrofit.create(NotificationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStatusApi(retrofit: Retrofit): StatusApi {
+        return retrofit.create(StatusApi::class.java)
     }
 }
