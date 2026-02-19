@@ -442,7 +442,7 @@ private fun NewGroupRow(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Filled.GroupAdd,
-                    contentDescription = null,
+                    contentDescription = "New group",
                     tint = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -481,7 +481,7 @@ private fun SyncRow(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Filled.Sync,
-                    contentDescription = null,
+                    contentDescription = "Sync contacts",
                     tint = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -591,7 +591,7 @@ private fun InviteFriendRow(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Filled.Share,
-                    contentDescription = null,
+                    contentDescription = "Invite a friend",
                     tint = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier.size(24.dp)
                 )
