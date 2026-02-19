@@ -358,6 +358,39 @@ class WebSocketManager @Inject constructor(
                 removedBy = data.string("removed_by")
             )
 
+            "message.reaction" -> ServerWsEvent.MessageReaction(
+                messageId = data.string("message_id"),
+                chatId = data.string("chat_id"),
+                userId = data.string("user_id"),
+                emoji = data.stringOrNull("emoji") ?: "",
+                removed = data["removed"]?.jsonPrimitive?.booleanOrNull ?: false
+            )
+
+            "call.offer" -> ServerWsEvent.CallOffer(
+                callId = data.string("call_id"),
+                callerId = data.string("caller_id"),
+                sdp = data.string("sdp"),
+                callType = data.stringOrNull("call_type") ?: "audio"
+            )
+
+            "call.answer" -> ServerWsEvent.CallAnswer(
+                callId = data.string("call_id"),
+                answererId = data.string("answerer_id"),
+                sdp = data.string("sdp")
+            )
+
+            "call.ice-candidate" -> ServerWsEvent.CallIceCandidate(
+                callId = data.string("call_id"),
+                senderId = data.string("sender_id"),
+                candidate = data.string("candidate")
+            )
+
+            "call.end" -> ServerWsEvent.CallEnd(
+                callId = data.string("call_id"),
+                senderId = data.string("sender_id"),
+                reason = data.stringOrNull("reason") ?: "hangup"
+            )
+
             "error" -> ServerWsEvent.Error(
                 code = data.stringOrNull("code") ?: "UNKNOWN",
                 message = data.stringOrNull("message") ?: "Unknown error"
