@@ -27,10 +27,13 @@ data class MessageEntity(
     val mediaSize: Long? = null,
     val mediaDuration: Int? = null,
     val replyToMessageId: String? = null,
-    val status: String = "pending",  // "pending"|"sent"|"delivered"|"read"
+    val status: String = "pending",  // "pending"|"sent"|"delivered"|"read"|"scheduled"
     val isDeleted: Boolean = false,
     val deletedForEveryone: Boolean = false,
     val isStarred: Boolean = false,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val timestamp: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val scheduledAt: Long? = null
 )
