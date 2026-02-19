@@ -7,6 +7,8 @@ import com.whatsappclone.core.database.dao.ChatParticipantDao;
 import com.whatsappclone.core.database.dao.GroupDao;
 import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.api.ChatApi;
+import com.whatsappclone.core.network.url.BaseUrlProvider;
+import com.whatsappclone.feature.media.data.MediaRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -43,37 +45,47 @@ public final class GroupInfoViewModel_Factory implements Factory<GroupInfoViewMo
 
   private final Provider<ChatApi> chatApiProvider;
 
+  private final Provider<MediaRepository> mediaRepositoryProvider;
+
+  private final Provider<BaseUrlProvider> baseUrlProvider;
+
   private final Provider<SharedPreferences> encryptedPrefsProvider;
 
   public GroupInfoViewModel_Factory(Provider<SavedStateHandle> savedStateHandleProvider,
       Provider<GroupDao> groupDaoProvider, Provider<ChatParticipantDao> chatParticipantDaoProvider,
       Provider<UserDao> userDaoProvider, Provider<ChatDao> chatDaoProvider,
-      Provider<ChatApi> chatApiProvider, Provider<SharedPreferences> encryptedPrefsProvider) {
+      Provider<ChatApi> chatApiProvider, Provider<MediaRepository> mediaRepositoryProvider,
+      Provider<BaseUrlProvider> baseUrlProvider,
+      Provider<SharedPreferences> encryptedPrefsProvider) {
     this.savedStateHandleProvider = savedStateHandleProvider;
     this.groupDaoProvider = groupDaoProvider;
     this.chatParticipantDaoProvider = chatParticipantDaoProvider;
     this.userDaoProvider = userDaoProvider;
     this.chatDaoProvider = chatDaoProvider;
     this.chatApiProvider = chatApiProvider;
+    this.mediaRepositoryProvider = mediaRepositoryProvider;
+    this.baseUrlProvider = baseUrlProvider;
     this.encryptedPrefsProvider = encryptedPrefsProvider;
   }
 
   @Override
   public GroupInfoViewModel get() {
-    return newInstance(savedStateHandleProvider.get(), groupDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), chatDaoProvider.get(), chatApiProvider.get(), encryptedPrefsProvider.get());
+    return newInstance(savedStateHandleProvider.get(), groupDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), chatDaoProvider.get(), chatApiProvider.get(), mediaRepositoryProvider.get(), baseUrlProvider.get(), encryptedPrefsProvider.get());
   }
 
   public static GroupInfoViewModel_Factory create(
       Provider<SavedStateHandle> savedStateHandleProvider, Provider<GroupDao> groupDaoProvider,
       Provider<ChatParticipantDao> chatParticipantDaoProvider, Provider<UserDao> userDaoProvider,
       Provider<ChatDao> chatDaoProvider, Provider<ChatApi> chatApiProvider,
+      Provider<MediaRepository> mediaRepositoryProvider, Provider<BaseUrlProvider> baseUrlProvider,
       Provider<SharedPreferences> encryptedPrefsProvider) {
-    return new GroupInfoViewModel_Factory(savedStateHandleProvider, groupDaoProvider, chatParticipantDaoProvider, userDaoProvider, chatDaoProvider, chatApiProvider, encryptedPrefsProvider);
+    return new GroupInfoViewModel_Factory(savedStateHandleProvider, groupDaoProvider, chatParticipantDaoProvider, userDaoProvider, chatDaoProvider, chatApiProvider, mediaRepositoryProvider, baseUrlProvider, encryptedPrefsProvider);
   }
 
   public static GroupInfoViewModel newInstance(SavedStateHandle savedStateHandle, GroupDao groupDao,
       ChatParticipantDao chatParticipantDao, UserDao userDao, ChatDao chatDao, ChatApi chatApi,
+      MediaRepository mediaRepository, BaseUrlProvider baseUrlProvider,
       SharedPreferences encryptedPrefs) {
-    return new GroupInfoViewModel(savedStateHandle, groupDao, chatParticipantDao, userDao, chatDao, chatApi, encryptedPrefs);
+    return new GroupInfoViewModel(savedStateHandle, groupDao, chatParticipantDao, userDao, chatDao, chatApi, mediaRepository, baseUrlProvider, encryptedPrefs);
   }
 }
