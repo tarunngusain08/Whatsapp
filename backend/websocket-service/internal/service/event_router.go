@@ -27,6 +27,14 @@ func (s *wsServiceImpl) HandleEvent(ctx context.Context, client *model.Client, e
 		return s.handleTyping(ctx, client, event.Payload, false)
 	case "presence.subscribe":
 		return s.handlePresenceSubscribe(ctx, client, event.Payload)
+	case "call.offer":
+		return s.handleCallOffer(ctx, client, event.Payload)
+	case "call.answer":
+		return s.handleCallAnswer(ctx, client, event.Payload)
+	case "call.ice-candidate":
+		return s.handleCallIceCandidate(ctx, client, event.Payload)
+	case "call.end":
+		return s.handleCallEnd(ctx, client, event.Payload)
 	case "ping":
 		return s.handlePing(client)
 	default:
@@ -125,9 +133,9 @@ func (s *wsServiceImpl) handleMessageDelete(ctx context.Context, client *model.C
 		"user_id":      client.UserID,
 		"for_everyone": p.ForEveryone,
 	})
-	_, err := s.js.Publish("msg.delete", data)
+	_, err := s.js.Publish("msg.deleted", data)
 	if err != nil {
-		return fmt.Errorf("publish msg.delete: %w", err)
+		return fmt.Errorf("publish msg.deleted: %w", err)
 	}
 	return nil
 }
@@ -183,6 +191,75 @@ func (s *wsServiceImpl) handlePresenceSubscribe(ctx context.Context, client *mod
 		})
 		s.SendToUser(client.UserID, &event)
 	}
+	return nil
+}
+
+func (s *wsServiceImpl) handleCallOffer(ctx context.Context, client *model.Client, payload json.RawMessage) error {
+	var p model.CallOfferPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("invalid call.offer payload: %w", err)
+	}
+
+	event := model.WSEvent{Type: "call.offer"}
+	event.Payload, _ = json.Marshal(map[string]string{
+		"call_id":   p.CallID,
+		"caller_id": client.UserID,
+		"sdp":       p.SDP,
+		"call_type": p.CallType,
+	})
+	data, _ := json.Marshal(event)
+	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	return nil
+}
+
+func (s *wsServiceImpl) handleCallAnswer(ctx context.Context, client *model.Client, payload json.RawMessage) error {
+	var p model.CallAnswerPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("invalid call.answer payload: %w", err)
+	}
+
+	event := model.WSEvent{Type: "call.answer"}
+	event.Payload, _ = json.Marshal(map[string]string{
+		"call_id":     p.CallID,
+		"answerer_id": client.UserID,
+		"sdp":         p.SDP,
+	})
+	data, _ := json.Marshal(event)
+	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	return nil
+}
+
+func (s *wsServiceImpl) handleCallIceCandidate(ctx context.Context, client *model.Client, payload json.RawMessage) error {
+	var p model.CallIceCandidatePayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("invalid call.ice-candidate payload: %w", err)
+	}
+
+	event := model.WSEvent{Type: "call.ice-candidate"}
+	event.Payload, _ = json.Marshal(map[string]string{
+		"call_id":   p.CallID,
+		"sender_id": client.UserID,
+		"candidate": p.Candidate,
+	})
+	data, _ := json.Marshal(event)
+	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	return nil
+}
+
+func (s *wsServiceImpl) handleCallEnd(ctx context.Context, client *model.Client, payload json.RawMessage) error {
+	var p model.CallEndPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("invalid call.end payload: %w", err)
+	}
+
+	event := model.WSEvent{Type: "call.end"}
+	event.Payload, _ = json.Marshal(map[string]string{
+		"call_id":   p.CallID,
+		"sender_id": client.UserID,
+		"reason":    p.Reason,
+	})
+	data, _ := json.Marshal(event)
+	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
 	return nil
 }
 
