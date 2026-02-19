@@ -1,5 +1,6 @@
 package com.whatsappclone.feature.auth.ui.profile
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whatsappclone.core.common.result.AppResult
@@ -8,6 +9,8 @@ import com.whatsappclone.core.common.util.Constants
 import com.whatsappclone.core.network.api.UserApi
 import com.whatsappclone.core.network.model.dto.UpdateProfileRequest
 import com.whatsappclone.core.network.model.safeApiCall
+import com.whatsappclone.core.network.url.BaseUrlProvider
+import com.whatsappclone.feature.media.data.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +26,7 @@ data class ProfileSetupUiState(
     val displayName: String = "",
     val statusText: String = "",
     val avatarUrl: String? = null,
+    val isUploadingAvatar: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null
 ) {
@@ -36,7 +40,9 @@ sealed class ProfileSetupNavigationEvent {
 
 @HiltViewModel
 class ProfileSetupViewModel @Inject constructor(
-    private val userApi: UserApi
+    private val userApi: UserApi,
+    private val mediaRepository: MediaRepository,
+    private val baseUrlProvider: BaseUrlProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileSetupUiState())
@@ -57,6 +63,43 @@ class ProfileSetupViewModel @Inject constructor(
         }
     }
 
+    fun onAvatarSelected(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUploadingAvatar = true) }
+
+            val uploaderId = "profile-setup"
+            when (val result = mediaRepository.uploadImage(uri, uploaderId)) {
+                is AppResult.Success -> {
+                    val mediaId = result.data.mediaId
+                    val base = baseUrlProvider.getBaseUrl().trimEnd('/')
+                    val newAvatarUrl = "$base/media/$mediaId/download"
+
+                    when (val updateResult = safeApiCall {
+                        userApi.updateProfile(UpdateProfileRequest(avatarUrl = newAvatarUrl))
+                    }) {
+                        is AppResult.Success -> {
+                            _uiState.update {
+                                it.copy(avatarUrl = newAvatarUrl, isUploadingAvatar = false)
+                            }
+                        }
+                        is AppResult.Error -> {
+                            _uiState.update {
+                                it.copy(isUploadingAvatar = false, error = updateResult.message)
+                            }
+                        }
+                        is AppResult.Loading -> Unit
+                    }
+                }
+                is AppResult.Error -> {
+                    _uiState.update {
+                        it.copy(isUploadingAvatar = false, error = result.message)
+                    }
+                }
+                is AppResult.Loading -> Unit
+            }
+        }
+    }
+
     fun onDoneClicked() {
         val state = _uiState.value
         if (!state.isNameValid) {
@@ -69,7 +112,8 @@ class ProfileSetupViewModel @Inject constructor(
 
             val request = UpdateProfileRequest(
                 displayName = state.displayName.trim(),
-                statusText = state.statusText.trim().ifEmpty { null }
+                statusText = state.statusText.trim().ifEmpty { null },
+                avatarUrl = state.avatarUrl
             )
 
             when (val result = safeApiCall { userApi.updateProfile(request) }) {
