@@ -244,7 +244,8 @@ class MessageRepositoryImpl @Inject constructor(
                 mimeType = message.mediaMimeType,
                 fileSize = message.mediaSize,
                 duration = message.mediaDuration
-            )
+            ),
+            replyToMessageId = message.replyToMessageId
         )
 
         val result = safeApiCall { messageApi.sendMessage(message.chatId, request) }
@@ -319,7 +320,7 @@ private fun MessageDto.toEntity(): MessageEntity = MessageEntity(
     mediaMimeType = payload.mimeType,
     mediaSize = payload.fileSize,
     mediaDuration = payload.duration,
-    replyToMessageId = null,
+    replyToMessageId = replyToMessageId,
     status = status,
     isDeleted = isDeleted,
     isStarred = isStarred,
