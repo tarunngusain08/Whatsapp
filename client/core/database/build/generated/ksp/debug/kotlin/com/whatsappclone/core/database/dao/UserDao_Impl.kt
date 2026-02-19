@@ -509,6 +509,79 @@ public class UserDao_Impl(
     })
   }
 
+  public override fun observeBlockedUsers(): Flow<List<UserEntity>> {
+    val _sql: String = "SELECT * FROM users WHERE isBlocked = 1 ORDER BY displayName ASC"
+    val _statement: RoomSQLiteQuery = acquire(_sql, 0)
+    return CoroutinesRoom.createFlow(__db, false, arrayOf("users"), object :
+        Callable<List<UserEntity>> {
+      public override fun call(): List<UserEntity> {
+        val _cursor: Cursor = query(__db, _statement, false, null)
+        try {
+          val _cursorIndexOfId: Int = getColumnIndexOrThrow(_cursor, "id")
+          val _cursorIndexOfPhone: Int = getColumnIndexOrThrow(_cursor, "phone")
+          val _cursorIndexOfDisplayName: Int = getColumnIndexOrThrow(_cursor, "displayName")
+          val _cursorIndexOfStatusText: Int = getColumnIndexOrThrow(_cursor, "statusText")
+          val _cursorIndexOfAvatarUrl: Int = getColumnIndexOrThrow(_cursor, "avatarUrl")
+          val _cursorIndexOfIsOnline: Int = getColumnIndexOrThrow(_cursor, "isOnline")
+          val _cursorIndexOfLastSeen: Int = getColumnIndexOrThrow(_cursor, "lastSeen")
+          val _cursorIndexOfIsBlocked: Int = getColumnIndexOrThrow(_cursor, "isBlocked")
+          val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
+          val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
+          val _result: MutableList<UserEntity> = ArrayList<UserEntity>(_cursor.getCount())
+          while (_cursor.moveToNext()) {
+            val _item: UserEntity
+            val _tmpId: String
+            _tmpId = _cursor.getString(_cursorIndexOfId)
+            val _tmpPhone: String
+            _tmpPhone = _cursor.getString(_cursorIndexOfPhone)
+            val _tmpDisplayName: String
+            _tmpDisplayName = _cursor.getString(_cursorIndexOfDisplayName)
+            val _tmpStatusText: String?
+            if (_cursor.isNull(_cursorIndexOfStatusText)) {
+              _tmpStatusText = null
+            } else {
+              _tmpStatusText = _cursor.getString(_cursorIndexOfStatusText)
+            }
+            val _tmpAvatarUrl: String?
+            if (_cursor.isNull(_cursorIndexOfAvatarUrl)) {
+              _tmpAvatarUrl = null
+            } else {
+              _tmpAvatarUrl = _cursor.getString(_cursorIndexOfAvatarUrl)
+            }
+            val _tmpIsOnline: Boolean
+            val _tmp: Int
+            _tmp = _cursor.getInt(_cursorIndexOfIsOnline)
+            _tmpIsOnline = _tmp != 0
+            val _tmpLastSeen: Long?
+            if (_cursor.isNull(_cursorIndexOfLastSeen)) {
+              _tmpLastSeen = null
+            } else {
+              _tmpLastSeen = _cursor.getLong(_cursorIndexOfLastSeen)
+            }
+            val _tmpIsBlocked: Boolean
+            val _tmp_1: Int
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsBlocked)
+            _tmpIsBlocked = _tmp_1 != 0
+            val _tmpCreatedAt: Long
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
+            val _tmpUpdatedAt: Long
+            _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
+            _item =
+                UserEntity(_tmpId,_tmpPhone,_tmpDisplayName,_tmpStatusText,_tmpAvatarUrl,_tmpIsOnline,_tmpLastSeen,_tmpIsBlocked,_tmpCreatedAt,_tmpUpdatedAt)
+            _result.add(_item)
+          }
+          return _result
+        } finally {
+          _cursor.close()
+        }
+      }
+
+      protected fun finalize() {
+        _statement.release()
+      }
+    })
+  }
+
   public companion object {
     @JvmStatic
     public fun getRequiredConverters(): List<Class<*>> = emptyList()
