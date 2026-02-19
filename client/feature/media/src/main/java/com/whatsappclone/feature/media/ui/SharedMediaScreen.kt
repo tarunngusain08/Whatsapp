@@ -60,11 +60,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -251,17 +255,29 @@ private fun MediaGridItem(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // Placeholder — in production this would use AsyncImage / Coil
-        Icon(
-            imageVector = if (item.messageType == "video") {
-                Icons.Filled.VideoLibrary
-            } else {
-                Icons.Filled.Image
-            },
-            contentDescription = null,
-            modifier = Modifier.size(32.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-        )
+        val imageUrl = item.thumbnailUrl ?: item.mediaUrl
+        if (imageUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = if (item.messageType == "video") "Video" else "Photo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(
+                imageVector = if (item.messageType == "video") {
+                    Icons.Filled.VideoLibrary
+                } else {
+                    Icons.Filled.Image
+                },
+                contentDescription = if (item.messageType == "video") "Video" else "Photo",
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
 
         // Video play overlay
         if (item.messageType == "video") {
@@ -336,7 +352,7 @@ private fun DocumentListItem(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
-                contentDescription = null,
+                contentDescription = "Document",
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -448,7 +464,7 @@ private fun LinkListItem(
         ) {
             Icon(
                 imageVector = Icons.Filled.Link,
-                contentDescription = null,
+                contentDescription = "Link",
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.tertiary
             )
@@ -535,7 +551,7 @@ private fun EmptyState(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = message,
                     modifier = Modifier.size(36.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
