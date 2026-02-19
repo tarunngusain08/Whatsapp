@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.contacts.ui;
 
 import androidx.lifecycle.SavedStateHandle;
+import com.whatsappclone.core.database.dao.ChatDao;
 import com.whatsappclone.feature.chat.data.UserRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -30,25 +31,28 @@ public final class ContactInfoViewModel_Factory implements Factory<ContactInfoVi
 
   private final Provider<UserRepository> userRepositoryProvider;
 
+  private final Provider<ChatDao> chatDaoProvider;
+
   public ContactInfoViewModel_Factory(Provider<SavedStateHandle> savedStateHandleProvider,
-      Provider<UserRepository> userRepositoryProvider) {
+      Provider<UserRepository> userRepositoryProvider, Provider<ChatDao> chatDaoProvider) {
     this.savedStateHandleProvider = savedStateHandleProvider;
     this.userRepositoryProvider = userRepositoryProvider;
+    this.chatDaoProvider = chatDaoProvider;
   }
 
   @Override
   public ContactInfoViewModel get() {
-    return newInstance(savedStateHandleProvider.get(), userRepositoryProvider.get());
+    return newInstance(savedStateHandleProvider.get(), userRepositoryProvider.get(), chatDaoProvider.get());
   }
 
   public static ContactInfoViewModel_Factory create(
       Provider<SavedStateHandle> savedStateHandleProvider,
-      Provider<UserRepository> userRepositoryProvider) {
-    return new ContactInfoViewModel_Factory(savedStateHandleProvider, userRepositoryProvider);
+      Provider<UserRepository> userRepositoryProvider, Provider<ChatDao> chatDaoProvider) {
+    return new ContactInfoViewModel_Factory(savedStateHandleProvider, userRepositoryProvider, chatDaoProvider);
   }
 
   public static ContactInfoViewModel newInstance(SavedStateHandle savedStateHandle,
-      UserRepository userRepository) {
-    return new ContactInfoViewModel(savedStateHandle, userRepository);
+      UserRepository userRepository, ChatDao chatDao) {
+    return new ContactInfoViewModel(savedStateHandle, userRepository, chatDao);
   }
 }
