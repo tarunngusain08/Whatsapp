@@ -193,7 +193,7 @@ func (s *messageServiceImpl) DeleteMessage(ctx context.Context, messageID, sende
 		return apperr.NewInternal("failed to delete message", err)
 	}
 
-	if pubErr := s.publisher.PublishMessageDeleted(ctx, messageID, msg.ChatID); pubErr != nil {
+	if pubErr := s.publisher.PublishMessageDeleted(ctx, messageID, msg.ChatID, senderID, true); pubErr != nil {
 		s.log.Error().Err(pubErr).Str("message_id", messageID).Msg("failed to publish msg.deleted event")
 	}
 
@@ -272,6 +272,17 @@ func (s *messageServiceImpl) ReactToMessage(ctx context.Context, messageID, user
 		}
 		return apperr.NewInternal("failed to add reaction", err)
 	}
+
+	msg, msgErr := s.messageRepo.GetByID(ctx, messageID)
+	chatID := ""
+	if msgErr == nil && msg != nil {
+		chatID = msg.ChatID
+	}
+
+	if pubErr := s.publisher.PublishReaction(ctx, messageID, chatID, userID, emoji, false); pubErr != nil {
+		s.log.Error().Err(pubErr).Str("message_id", messageID).Msg("failed to publish msg.reaction event")
+	}
+
 	return nil
 }
 
@@ -284,6 +295,17 @@ func (s *messageServiceImpl) RemoveReaction(ctx context.Context, messageID, user
 		}
 		return apperr.NewInternal("failed to remove reaction", err)
 	}
+
+	msg, msgErr := s.messageRepo.GetByID(ctx, messageID)
+	chatID := ""
+	if msgErr == nil && msg != nil {
+		chatID = msg.ChatID
+	}
+
+	if pubErr := s.publisher.PublishReaction(ctx, messageID, chatID, userID, "", true); pubErr != nil {
+		s.log.Error().Err(pubErr).Str("message_id", messageID).Msg("failed to publish msg.reaction removed event")
+	}
+
 	return nil
 }
 
