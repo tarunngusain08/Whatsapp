@@ -55,3 +55,12 @@ data class MarkReadRequest(
     @SerialName("up_to_message_id")
     val upToMessageId: String
 )
+
+@Serializable
+data class ReceiptDto(
+    @SerialName("user_id")
+    val userId: String,
+    val status: String,
+    @SerialName("updated_at")
+    val updatedAt: String
+)
