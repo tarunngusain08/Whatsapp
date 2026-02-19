@@ -238,7 +238,7 @@ fun GroupSetupScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Group,
-                        contentDescription = null,
+                        contentDescription = "Participants",
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
