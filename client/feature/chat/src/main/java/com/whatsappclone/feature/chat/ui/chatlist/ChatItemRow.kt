@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
@@ -41,11 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.whatsappclone.core.ui.components.UnreadBadge
 import com.whatsappclone.core.ui.components.UserAvatar
+import com.whatsappclone.core.ui.theme.WhatsAppColors
 import com.whatsappclone.feature.chat.model.ChatItemUi
-
-private val TypingGreen = Color(0xFF25D366)
-private val MutedIcon = Color(0xFFBDBDBD)
-private val PinnedBackground = Color(0xFFF0F4F0)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -69,7 +67,7 @@ fun ChatItemRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (chat.isPinned) Modifier.background(PinnedBackground.copy(alpha = 0.4f))
+                    if (chat.isPinned) Modifier.background(WhatsAppColors.PinnedBackground.copy(alpha = 0.4f))
                     else Modifier
                 )
                 .combinedClickable(
@@ -79,11 +77,29 @@ fun ChatItemRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UserAvatar(
-                url = chat.avatarUrl,
-                name = chat.name,
-                size = 52.dp
-            )
+            Box {
+                UserAvatar(
+                    url = chat.avatarUrl,
+                    name = chat.name,
+                    size = 52.dp
+                )
+                if (chat.isOnline && chat.chatType == "direct") {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .align(Alignment.BottomEnd)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            )
+                            .padding(2.dp)
+                            .background(
+                                color = WhatsAppColors.OnlineGreen,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.width(14.dp))
 
@@ -110,7 +126,7 @@ fun ChatItemRow(
                             imageVector = Icons.Filled.NotificationsOff,
                             contentDescription = "Muted",
                             modifier = Modifier.size(14.dp),
-                            tint = MutedIcon
+                            tint = WhatsAppColors.MutedIcon
                         )
                     }
                 }
@@ -183,7 +199,7 @@ fun ChatItemRow(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.PushPin,
-                            contentDescription = null,
+                            contentDescription = "Pin chat",
                             modifier = Modifier.size(20.dp).rotate(45f)
                         )
                     }
@@ -197,7 +213,7 @@ fun ChatItemRow(
                     leadingIcon = {
                         Icon(
                             imageVector = if (chat.isMuted) Icons.Filled.NotificationsOff else Icons.Filled.Notifications,
-                            contentDescription = null,
+                            contentDescription = "Mute notifications",
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -211,7 +227,7 @@ fun ChatItemRow(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Archive,
-                            contentDescription = null,
+                            contentDescription = "Archive chat",
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -230,7 +246,7 @@ fun ChatItemRow(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Delete,
-                            contentDescription = null,
+                            contentDescription = "Delete chat",
                             modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.error
                         )
@@ -265,7 +281,7 @@ private fun TypingText(
     Text(
         text = typingText,
         style = MaterialTheme.typography.bodyMedium,
-        color = TypingGreen,
+        color = WhatsAppColors.TypingGreen,
         fontStyle = FontStyle.Italic,
         fontSize = 14.sp,
         maxLines = 1,
