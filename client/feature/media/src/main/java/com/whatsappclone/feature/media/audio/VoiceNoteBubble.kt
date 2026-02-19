@@ -1,9 +1,5 @@
 package com.whatsappclone.feature.media.audio
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -166,10 +161,21 @@ fun VoiceNoteBubble(
 
                     // Waveform + duration
                     Column(modifier = Modifier.weight(1f)) {
-                        StaticWaveform(
+                        val waveformAmplitudes = remember(messageId) {
+                            List(40) { i ->
+                                ((i * 7 + messageId.hashCode()) % 100).let { v ->
+                                    (v.toFloat().mod(80f) + 20f) / 100f
+                                }
+                            }
+                        }
+                        val playedColor = if (isOwnMessage) WaveformPlayedOwn else WaveformPlayed
+                        val unplayedColor = if (isOwnMessage) WaveformUnplayedOwn else WaveformUnplayed
+
+                        WaveformView(
+                            amplitudes = waveformAmplitudes,
                             progress = progress,
-                            isOwnMessage = isOwnMessage,
-                            messageId = messageId,
+                            playedColor = playedColor,
+                            unplayedColor = unplayedColor,
                             onSeek = onSeek,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -242,50 +248,6 @@ fun VoiceNoteBubble(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun StaticWaveform(
-    progress: Float,
-    isOwnMessage: Boolean,
-    messageId: String,
-    onSeek: (Float) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val barCount = 40
-    val barHeights = remember(messageId) {
-        List(barCount) { ((it * 7 + messageId.hashCode()) % 100).let { v ->
-            (v.toFloat().mod(80f) + 20f) / 100f
-        }}
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "waveform_progress"
-    )
-
-    val playedColor = if (isOwnMessage) WaveformPlayedOwn else WaveformPlayed
-    val unplayedColor = if (isOwnMessage) WaveformUnplayedOwn else WaveformUnplayed
-
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(1.5.dp)
-    ) {
-        barHeights.forEachIndexed { index, heightFraction ->
-            val barProgress = index.toFloat() / barCount
-            val color = if (barProgress <= animatedProgress) playedColor else unplayedColor
-
-            Box(
-                modifier = Modifier
-                    .width(2.5.dp)
-                    .height(28.dp * heightFraction.coerceIn(0.12f, 1f))
-                    .clip(RoundedCornerShape(1.25.dp))
-                    .background(color)
-            )
         }
     }
 }
