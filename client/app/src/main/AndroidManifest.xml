@@ -81,6 +81,17 @@
             android:name="com.whatsappclone.app.notification.NotificationActionReceiver"
             android:exported="false" />
 
+        <!-- FileProvider for camera capture and file sharing -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Disable default WorkManager initializer (Hilt handles it) -->
         <provider
             android:name="androidx.startup.InitializationProvider"
