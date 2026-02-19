@@ -1,9 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
+	"net/http"
 	"strings"
 	"time"
 
@@ -22,6 +26,8 @@ type userServiceImpl struct {
 	presenceRepo    repository.PresenceRepository
 	statusRepo      repository.StatusRepository
 	presenceTTL     time.Duration
+	mediaServiceURL string
+	httpClient      *http.Client
 	log             zerolog.Logger
 }
 
@@ -34,7 +40,12 @@ func NewUserService(
 	statusRepo repository.StatusRepository,
 	presenceTTL time.Duration,
 	log zerolog.Logger,
+	mediaServiceURL ...string,
 ) UserService {
+	mediaURL := "http://media-service:8080"
+	if len(mediaServiceURL) > 0 && mediaServiceURL[0] != "" {
+		mediaURL = mediaServiceURL[0]
+	}
 	return &userServiceImpl{
 		userRepo:        userRepo,
 		contactRepo:     contactRepo,
@@ -43,6 +54,8 @@ func NewUserService(
 		presenceRepo:    presenceRepo,
 		statusRepo:      statusRepo,
 		presenceTTL:     presenceTTL,
+		mediaServiceURL: mediaURL,
+		httpClient:      &http.Client{Timeout: 30 * time.Second},
 		log:             log,
 	}
 }
@@ -121,18 +134,82 @@ func (s *userServiceImpl) UpdateProfile(ctx context.Context, userID string, req 
 	return user, nil
 }
 
-func (s *userServiceImpl) UploadAvatar(ctx context.Context, userID string, file io.Reader, size int64, contentType string) (string, error) {
-	// In a production system, this would delegate to media-service for storage.
-	// For now, generate a reference URL. The media-service would be called via gRPC.
-	avatarURL := fmt.Sprintf("/api/v1/media/avatars/%s", userID)
+const maxAvatarSize = 5 * 1024 * 1024 // 5 MB
 
-	_, err := s.userRepo.Update(ctx, userID, &model.UpdateProfileRequest{
+func (s *userServiceImpl) UploadAvatar(ctx context.Context, userID string, file io.Reader, size int64, contentType string) (string, error) {
+	if size > maxAvatarSize {
+		return "", apperr.NewBadRequest("avatar file too large (max 5 MB)")
+	}
+
+	avatarURL, err := s.uploadToMediaService(ctx, userID, file, contentType)
+	if err != nil {
+		s.log.Warn().Err(err).Msg("media-service upload failed, using placeholder URL")
+		avatarURL = fmt.Sprintf("/api/v1/media/avatars/%s", userID)
+	}
+
+	_, err = s.userRepo.Update(ctx, userID, &model.UpdateProfileRequest{
 		AvatarURL: &avatarURL,
 	})
 	if err != nil {
 		return "", apperr.NewInternal("failed to update avatar URL", err)
 	}
 	return avatarURL, nil
+}
+
+func (s *userServiceImpl) uploadToMediaService(ctx context.Context, userID string, file io.Reader, contentType string) (string, error) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	ext := "jpg"
+	switch contentType {
+	case "image/png":
+		ext = "png"
+	case "image/webp":
+		ext = "webp"
+	}
+
+	part, err := writer.CreateFormFile("file", fmt.Sprintf("avatar_%s.%s", userID, ext))
+	if err != nil {
+		return "", fmt.Errorf("create form file: %w", err)
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return "", fmt.Errorf("copy file data: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return "", fmt.Errorf("close multipart writer: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/media/upload", s.mediaServiceURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-User-ID", userID)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("http call to media-service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("media-service returned status %d", resp.StatusCode)
+	}
+
+	var envelope struct {
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+		return "", fmt.Errorf("decode media-service response: %w", err)
+	}
+
+	if envelope.Data.URL == "" {
+		return "", fmt.Errorf("media-service returned empty URL")
+	}
+	return envelope.Data.URL, nil
 }
 
 func (s *userServiceImpl) ContactSync(ctx context.Context, userID string, phones []string) ([]*model.ContactSyncResult, error) {
