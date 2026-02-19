@@ -12,6 +12,7 @@ import com.whatsappclone.app.notification.NotificationBuilder.Companion.EXTRA_CH
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.EXTRA_NOTIFICATION_ID
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.KEY_TEXT_REPLY
 import com.whatsappclone.core.database.dao.ChatDao
+import com.whatsappclone.feature.chat.domain.SendMessageUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -33,6 +34,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var chatDao: ChatDao
+
+    @Inject
+    lateinit var sendMessageUseCase: SendMessageUseCase
 
     override fun onReceive(context: Context, intent: Intent) {
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: return
@@ -75,16 +79,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
         appScope.launch {
             try {
-                // TODO: Delegate to MessageRepository.sendMessage(chatId, replyText)
-                //  when integrated. For now, just log the reply and clear unread.
-                Log.d(TAG, "Inline reply for chat $chatId: $replyText")
+                sendMessageUseCase(chatId, replyText)
                 chatDao.updateUnreadCount(
                     chatId = chatId,
                     count = 0,
                     updatedAt = System.currentTimeMillis()
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to process inline reply for chat $chatId", e)
+                Log.e(TAG, "Failed to send inline reply for chat $chatId", e)
             }
         }
     }
