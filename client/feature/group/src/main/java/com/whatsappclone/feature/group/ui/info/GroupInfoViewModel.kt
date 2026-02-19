@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.group.ui.info
 
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,6 +17,8 @@ import com.whatsappclone.core.network.model.dto.CreateChatRequest
 import com.whatsappclone.core.network.model.dto.UpdateRoleRequest
 import com.whatsappclone.core.network.model.safeApiCall
 import com.whatsappclone.core.network.model.safeApiCallUnit
+import com.whatsappclone.core.network.url.BaseUrlProvider
+import com.whatsappclone.feature.media.data.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,6 +83,8 @@ class GroupInfoViewModel @Inject constructor(
     private val userDao: UserDao,
     private val chatDao: ChatDao,
     private val chatApi: ChatApi,
+    private val mediaRepository: MediaRepository,
+    private val baseUrlProvider: BaseUrlProvider,
     @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) : ViewModel() {
 
@@ -139,6 +144,37 @@ class GroupInfoViewModel @Inject constructor(
     )
 
     // ── Actions ──────────────────────────────────────────────────────────
+
+    fun onAvatarSelected(uri: Uri) {
+        viewModelScope.launch {
+            _localState.update { it.copy(isLoading = true) }
+
+            when (val result = mediaRepository.uploadImage(uri, currentUserId)) {
+                is AppResult.Success -> {
+                    val mediaId = result.data.mediaId
+                    val base = baseUrlProvider.getBaseUrl().trimEnd('/')
+                    val newAvatarUrl = "$base/media/$mediaId/download"
+
+                    val group = groupDao.getByChatId(chatId)
+                    if (group != null) {
+                        groupDao.upsert(
+                            group.copy(
+                                avatarUrl = newAvatarUrl,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                    _localState.update { it.copy(isLoading = false) }
+                    _eventChannel.send(GroupInfoEvent.ShowSuccess("Group photo updated"))
+                }
+                is AppResult.Error -> {
+                    _localState.update { it.copy(isLoading = false, error = result.message) }
+                    _eventChannel.send(GroupInfoEvent.ShowError(result.message))
+                }
+                is AppResult.Loading -> Unit
+            }
+        }
+    }
 
     fun toggleAdminOnly() {
         val currentState = uiState.value
