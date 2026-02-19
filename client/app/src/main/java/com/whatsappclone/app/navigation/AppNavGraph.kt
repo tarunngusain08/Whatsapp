@@ -42,9 +42,11 @@ import com.whatsappclone.feature.auth.ui.profile.ProfileSetupScreen
 import com.whatsappclone.feature.auth.ui.splash.SplashScreen
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailScreen
 import com.whatsappclone.feature.chat.ui.chatlist.ChatListScreen
+import com.whatsappclone.feature.contacts.ui.ContactInfoScreen
 import com.whatsappclone.feature.contacts.ui.ContactPickerScreen
 import com.whatsappclone.feature.group.ui.info.AddParticipantsScreen
 import com.whatsappclone.feature.group.ui.info.GroupInfoScreen
+import com.whatsappclone.feature.media.ui.ImageViewerScreen
 import com.whatsappclone.feature.media.ui.MediaViewerScreen
 import com.whatsappclone.feature.profile.ui.ProfileEditScreen
 import com.whatsappclone.feature.settings.ServerUrlScreen
@@ -214,8 +216,8 @@ fun AppNavGraph(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onViewContact = {
-                    // Phase 2: navigate to contact/group info
+                onViewContact = { userId ->
+                    navController.navigate(AppRoute.ContactInfo.create(userId))
                 }
             )
         }
@@ -243,10 +245,13 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("userId") { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getString("userId") ?: ""
-            ComingSoonScreen(
-                title = "Contact Info",
+        ) {
+            ContactInfoScreen(
+                onNavigateToChat = { chatId ->
+                    navController.navigate(AppRoute.ChatDetail.create(chatId)) {
+                        popUpTo(AppRoute.ContactInfo.route) { inclusive = true }
+                    }
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -320,6 +325,33 @@ fun AppNavGraph(
             )
         }
 
+        // ── Image Viewer (URL-based) ─────────────────────────────────────────
+        composable(
+            route = AppRoute.ImageViewer.route,
+            arguments = listOf(
+                navArgument("url") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            ),
+            enterTransition = { fadeIn(tween(navDuration)) },
+            exitTransition = { fadeOut(tween(navDuration)) },
+            popEnterTransition = { fadeIn(tween(navDuration)) },
+            popExitTransition = { fadeOut(tween(navDuration)) }
+        ) { backStackEntry ->
+            val url = backStackEntry.arguments?.getString("url") ?: ""
+            val title = backStackEntry.arguments?.getString("title") ?: ""
+            ImageViewerScreen(
+                imageUrl = url,
+                title = title,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         // ── Settings ─────────────────────────────────────────────────────────
         composable(AppRoute.Settings.route) {
             SettingsScreen(
@@ -353,6 +385,9 @@ fun AppNavGraph(
             ProfileEditScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToImageViewer = { url, title ->
+                    navController.navigate(AppRoute.ImageViewer.create(url, title))
                 }
             )
         }
