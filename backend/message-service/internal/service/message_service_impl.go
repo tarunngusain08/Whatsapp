@@ -53,6 +53,10 @@ func (s *messageServiceImpl) SendMessage(ctx context.Context, senderID string, r
 		}
 	}
 
+	if err := validateMessagePayload(req.Type, req.Payload); err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 	msgID := uuid.New().String()
 
@@ -349,4 +353,25 @@ func (s *messageServiceImpl) GetUnreadCounts(ctx context.Context, userID string,
 		return nil, apperr.NewInternal("failed to get unread counts", err)
 	}
 	return counts, nil
+}
+
+// validateMessagePayload checks that the payload contains required fields for the given type.
+func validateMessagePayload(msgType model.MessageType, payload model.MessagePayload) error {
+	switch msgType {
+	case model.MessageTypeText:
+		if payload.Body == "" {
+			return apperr.NewBadRequest("text message requires a non-empty body")
+		}
+	case model.MessageTypeImage, model.MessageTypeVideo, model.MessageTypeAudio, model.MessageTypeDocument:
+		if payload.MediaID == "" {
+			return apperr.NewBadRequest(string(msgType) + " message requires media_id")
+		}
+	case model.MessageTypeLocation:
+		if payload.Body == "" {
+			return apperr.NewBadRequest("location message requires body with coordinates")
+		}
+	default:
+		return apperr.NewBadRequest("unsupported message type: " + string(msgType))
+	}
+	return nil
 }
