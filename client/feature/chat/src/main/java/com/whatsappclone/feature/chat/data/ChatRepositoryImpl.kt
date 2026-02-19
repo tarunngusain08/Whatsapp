@@ -5,6 +5,7 @@ import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.result.map
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ChatParticipantDao
+import com.whatsappclone.core.database.dao.MessageDao
 import com.whatsappclone.core.database.dao.UserDao
 import com.whatsappclone.core.database.entity.ChatEntity
 import com.whatsappclone.core.database.entity.ChatParticipantEntity
@@ -28,6 +29,7 @@ class ChatRepositoryImpl @Inject constructor(
     private val chatDao: ChatDao,
     private val chatParticipantDao: ChatParticipantDao,
     private val userDao: UserDao,
+    private val messageDao: MessageDao,
     @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) : ChatRepository {
 
@@ -203,6 +205,42 @@ class ChatRepositoryImpl @Inject constructor(
             chatDao.setMuted(chatId, !muted, updatedAt = System.currentTimeMillis())
         }
         return result
+    }
+
+    // ── Pin ──────────────────────────────────────────────────────────────
+
+    override suspend fun pinChat(chatId: String, pinned: Boolean) {
+        chatDao.setPinned(chatId, pinned, updatedAt = System.currentTimeMillis())
+    }
+
+    // ── Archive ──────────────────────────────────────────────────────────
+
+    override suspend fun archiveChat(chatId: String, archived: Boolean) {
+        chatDao.setArchived(chatId, archived, updatedAt = System.currentTimeMillis())
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────
+
+    override suspend fun deleteChat(chatId: String) {
+        messageDao.deleteAllForChat(chatId)
+        chatDao.deleteById(chatId)
+    }
+
+    override fun observeArchivedChats(currentUserId: String?): Flow<List<ChatWithLastMessage>> {
+        val userId = currentUserId ?: getCurrentUserId() ?: ""
+        return chatDao.observeArchivedChats(userId)
+    }
+
+    override fun observeArchivedCount(): Flow<Int> {
+        return chatDao.observeArchivedCount()
+    }
+
+    // ── Disappearing messages ──────────────────────────────────────────
+
+    override suspend fun setDisappearingTimer(chatId: String, timer: String): AppResult<Unit> {
+        return safeApiCallUnit {
+            chatApi.setDisappearingTimer(chatId, com.whatsappclone.core.network.model.dto.DisappearingTimerRequest(timer))
+        }
     }
 
     // ── Remote insert ────────────────────────────────────────────────────
