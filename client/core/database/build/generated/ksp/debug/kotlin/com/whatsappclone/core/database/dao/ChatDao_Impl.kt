@@ -722,11 +722,11 @@ public class ChatDao_Impl(
     val _sql: String = """
         |
         |        SELECT c.chatId FROM chats c
-        |        INNER JOIN chat_participants cp1 ON c.chatId = cp1.chatId
-        |        INNER JOIN chat_participants cp2 ON c.chatId = cp2.chatId
+        |        INNER JOIN chat_participants cp1 ON c.chatId = cp1.chatId AND cp1.userId = ?
+        |        INNER JOIN chat_participants cp2 ON c.chatId = cp2.chatId AND cp2.userId = ?
         |        WHERE c.chatType = 'direct'
-        |          AND cp1.userId = ?
-        |          AND cp2.userId = ?
+        |          AND cp1.userId != cp2.userId
+        |          AND (SELECT COUNT(*) FROM chat_participants WHERE chatId = c.chatId) = 2
         |        LIMIT 1
         |        
         """.trimMargin()
