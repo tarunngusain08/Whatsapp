@@ -23,6 +23,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.whatsappclone.app.lifecycle.WsLifecycleManager
@@ -42,10 +44,15 @@ import com.whatsappclone.feature.auth.ui.profile.ProfileSetupScreen
 import com.whatsappclone.feature.auth.ui.splash.SplashScreen
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailScreen
 import com.whatsappclone.feature.chat.ui.chatlist.ChatListScreen
+import com.whatsappclone.feature.chat.ui.forward.ForwardPickerScreen
 import com.whatsappclone.feature.contacts.ui.ContactInfoScreen
 import com.whatsappclone.feature.contacts.ui.ContactPickerScreen
 import com.whatsappclone.feature.group.ui.info.AddParticipantsScreen
 import com.whatsappclone.feature.group.ui.info.GroupInfoScreen
+import com.whatsappclone.feature.group.ui.newgroup.ContactSelectionScreen
+import com.whatsappclone.feature.group.ui.newgroup.GroupSetupScreen
+import com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.whatsappclone.feature.media.ui.ImageViewerScreen
 import com.whatsappclone.feature.media.ui.MediaViewerScreen
 import com.whatsappclone.feature.profile.ui.ProfileEditScreen
@@ -53,6 +60,7 @@ import com.whatsappclone.feature.settings.ServerUrlScreen
 import com.whatsappclone.feature.settings.ui.NotificationSettingsScreen
 import com.whatsappclone.feature.settings.ui.PrivacySettingsScreen
 import com.whatsappclone.feature.settings.ui.SettingsScreen
+import com.whatsappclone.feature.settings.ui.ThemeSettingsScreen
 
 @Composable
 fun AppNavGraph(
@@ -201,6 +209,15 @@ fun AppNavGraph(
                 },
                 onNavigateToServerUrl = {
                     navController.navigate(AppRoute.ServerUrlSettings.route)
+                },
+                onNavigateToStarredMessages = {
+                    navController.navigate(AppRoute.StarredMessages.route)
+                },
+                onNavigateToArchivedChats = {
+                    navController.navigate(AppRoute.ArchivedChats.route)
+                },
+                onNavigateToStatus = {
+                    navController.navigate(AppRoute.StatusList.route)
                 }
             )
         }
@@ -211,13 +228,50 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("chatId") { type = NavType.StringType }
             )
-        ) {
+        ) { backStackEntry ->
+            val chatDetailViewModel: com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel =
+                hiltViewModel()
+
+            val locationResult = backStackEntry.savedStateHandle
+                .getStateFlow<String?>("location_result", null)
+                .collectAsState()
+            LaunchedEffect(locationResult.value) {
+                locationResult.value?.let { value ->
+                    backStackEntry.savedStateHandle.remove<String>("location_result")
+                    val parts = value.split(",")
+                    val lat = parts.getOrNull(0)?.toDoubleOrNull()
+                    val lng = parts.getOrNull(1)?.toDoubleOrNull()
+                    if (lat != null && lng != null) {
+                        chatDetailViewModel.sendLocationMessage(lat, lng)
+                    }
+                }
+            }
+
             ChatDetailScreen(
+                viewModel = chatDetailViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
                 onViewContact = { userId ->
                     navController.navigate(AppRoute.ContactInfo.create(userId))
+                },
+                onNavigateToForward = { content, type ->
+                    navController.navigate(
+                        AppRoute.ForwardPicker.create(
+                            messageId = "",
+                            content = content ?: "",
+                            type = type
+                        )
+                    )
+                },
+                onNavigateToReceiptDetails = { messageId ->
+                    navController.navigate(AppRoute.ReceiptDetails.create(messageId))
+                },
+                onNavigateToWallpaper = { chatId ->
+                    navController.navigate(AppRoute.Wallpaper.create(chatId))
+                },
+                onNavigateToLocationPicker = { chatId ->
+                    navController.navigate(AppRoute.LocationPicker.create(chatId))
                 }
             )
         }
@@ -231,7 +285,7 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToNewGroup = {
-                    navController.navigate(AppRoute.NewGroup.route)
+                    navController.navigate("group_creation_flow")
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -252,24 +306,48 @@ fun AppNavGraph(
                         popUpTo(AppRoute.ContactInfo.route) { inclusive = true }
                     }
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSharedMedia = { userId ->
+                    navController.navigate(AppRoute.SharedMedia.create(userId))
+                },
+                onNavigateToCall = { name, avatarUrl, callType ->
+                    navController.navigate(
+                        AppRoute.CallScreen.create(name, avatarUrl ?: "", callType)
+                    )
+                }
             )
         }
 
-        // ── New Group ────────────────────────────────────────────────────────
-        composable(AppRoute.NewGroup.route) {
-            ComingSoonScreen(
-                title = "New Group",
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
+        // ── Group Creation Flow (shared ViewModel) ─────────────────────────
+        navigation(
+            startDestination = AppRoute.NewGroup.route,
+            route = "group_creation_flow"
+        ) {
+            composable(AppRoute.NewGroup.route) { backStackEntry ->
+                val parentEntry = navController.getBackStackEntry("group_creation_flow")
+                val sharedViewModel: NewGroupViewModel = hiltViewModel(parentEntry)
+                ContactSelectionScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToSetup = {
+                        navController.navigate(AppRoute.GroupSetup.route)
+                    },
+                    viewModel = sharedViewModel
+                )
+            }
 
-        // ── Group Setup ──────────────────────────────────────────────────────
-        composable(AppRoute.GroupSetup.route) {
-            ComingSoonScreen(
-                title = "Group Setup",
-                onNavigateBack = { navController.popBackStack() }
-            )
+            composable(AppRoute.GroupSetup.route) { backStackEntry ->
+                val parentEntry = navController.getBackStackEntry("group_creation_flow")
+                val sharedViewModel: NewGroupViewModel = hiltViewModel(parentEntry)
+                GroupSetupScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToChatDetail = { chatId ->
+                        navController.navigate(AppRoute.ChatDetail.create(chatId)) {
+                            popUpTo(AppRoute.Main.route)
+                        }
+                    },
+                    viewModel = sharedViewModel
+                )
+            }
         }
 
         // ── Group Info ───────────────────────────────────────────────────────
@@ -285,6 +363,9 @@ fun AppNavGraph(
                 },
                 onAddParticipants = { chatId ->
                     navController.navigate(AppRoute.AddParticipants.create(chatId))
+                },
+                onNavigateToSharedMedia = { chatId ->
+                    navController.navigate(AppRoute.SharedMedia.create(chatId))
                 }
             )
         }
@@ -367,6 +448,9 @@ fun AppNavGraph(
                 onNavigateToServerUrl = {
                     navController.navigate(AppRoute.ServerUrlSettings.route)
                 },
+                onNavigateToTheme = {
+                    navController.navigate(AppRoute.ThemeSettings.route)
+                },
                 onNavigateToLogin = {
                     wsLifecycleManager.stop()
                     navController.navigate(AppRoute.Login.route) {
@@ -377,6 +461,13 @@ fun AppNavGraph(
                     navController.popBackStack()
                 },
                 isDebug = isDebug
+            )
+        }
+
+        // ── Theme Settings ──────────────────────────────────────────────────
+        composable(AppRoute.ThemeSettings.route) {
+            ThemeSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -396,11 +487,54 @@ fun AppNavGraph(
         composable(AppRoute.PrivacySettings.route) {
             PrivacySettingsScreen(
                 onNavigateToBlockedContacts = {
-                    // Placeholder: blocked contacts screen
+                    navController.navigate(AppRoute.BlockedContacts.route)
                 },
                 onNavigateBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        // ── Wallpaper ─────────────────────────────────────────────────────────
+        composable(
+            route = AppRoute.Wallpaper.route,
+            arguments = listOf(
+                navArgument("chatId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+            com.whatsappclone.feature.chat.ui.wallpaper.WallpaperScreen(
+                chatId = chatId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Starred Messages ─────────────────────────────────────────────────
+        composable(AppRoute.StarredMessages.route) {
+            com.whatsappclone.feature.chat.ui.starred.StarredMessagesScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChat = { chatId ->
+                    navController.navigate(AppRoute.ChatDetail.create(chatId))
+                }
+            )
+        }
+
+        // ── Shared Media ─────────────────────────────────────────────────────
+        composable(
+            route = AppRoute.SharedMedia.route,
+            arguments = listOf(
+                navArgument("chatId") { type = NavType.StringType }
+            )
+        ) {
+            com.whatsappclone.feature.media.ui.SharedMediaScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Blocked Contacts ─────────────────────────────────────────────────
+        composable(AppRoute.BlockedContacts.route) {
+            com.whatsappclone.feature.contacts.ui.BlockedContactsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -421,17 +555,176 @@ fun AppNavGraph(
             )
         }
 
+        // ── Archived Chats ──────────────────────────────────────────────────
+        composable(AppRoute.ArchivedChats.route) {
+            com.whatsappclone.feature.chat.ui.archived.ArchivedChatsScreen(
+                onNavigateToChat = { chatId ->
+                    navController.navigate(AppRoute.ChatDetail.create(chatId))
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Location Picker ──────────────────────────────────────────────────
+        composable(
+            route = AppRoute.LocationPicker.route,
+            arguments = listOf(
+                navArgument("chatId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+            com.whatsappclone.feature.chat.ui.chatdetail.LocationPickerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSendLocation = { lat, lng ->
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("location_result", "$lat,$lng")
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // ── Status List ──────────────────────────────────────────────────────
+        composable(AppRoute.StatusList.route) {
+            com.whatsappclone.feature.chat.ui.status.StatusListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToViewer = { userId, startIndex ->
+                    navController.navigate(AppRoute.StatusViewer.create(userId, startIndex))
+                },
+                onNavigateToCreator = {
+                    navController.navigate(AppRoute.StatusCreator.route)
+                }
+            )
+        }
+
+        // ── Status Viewer ───────────────────────────────────────────────────
+        composable(
+            route = AppRoute.StatusViewer.route,
+            arguments = listOf(
+                navArgument("userId") { type = NavType.StringType },
+                navArgument("startIndex") {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
+            ),
+            enterTransition = { fadeIn(tween(navDuration)) },
+            exitTransition = { fadeOut(tween(navDuration)) },
+            popEnterTransition = { fadeIn(tween(navDuration)) },
+            popExitTransition = { fadeOut(tween(navDuration)) }
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            com.whatsappclone.feature.chat.ui.status.StatusViewerScreen(
+                userId = userId,
+                startIndex = backStackEntry.arguments?.getInt("startIndex") ?: 0,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Status Creator ──────────────────────────────────────────────────
+        composable(
+            AppRoute.StatusCreator.route,
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                    animationSpec = tween(navDuration)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                    animationSpec = tween(navDuration)
+                )
+            }
+        ) {
+            val statusViewModel: com.whatsappclone.feature.chat.ui.status.StatusViewModel =
+                hiltViewModel()
+            com.whatsappclone.feature.chat.ui.status.StatusCreatorScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onPost = { text, bgColor ->
+                    statusViewModel.createTextStatus(text, bgColor)
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // ── Receipt Details ──────────────────────────────────────────────────
+        composable(
+            route = AppRoute.ReceiptDetails.route,
+            arguments = listOf(
+                navArgument("messageId") { type = NavType.StringType }
+            )
+        ) {
+            com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Call Screen ──────────────────────────────────────────────────────
+        composable(
+            route = AppRoute.CallScreen.route,
+            arguments = listOf(
+                navArgument("calleeName") { type = NavType.StringType },
+                navArgument("avatarUrl") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("callType") {
+                    type = NavType.StringType
+                    defaultValue = "audio"
+                }
+            ),
+            enterTransition = { fadeIn(tween(navDuration)) },
+            exitTransition = { fadeOut(tween(navDuration)) },
+            popEnterTransition = { fadeIn(tween(navDuration)) },
+            popExitTransition = { fadeOut(tween(navDuration)) }
+        ) { backStackEntry ->
+            val calleeName = backStackEntry.arguments?.getString("calleeName") ?: ""
+            val avatarUrl = backStackEntry.arguments?.getString("avatarUrl")?.ifBlank { null }
+            val callType = backStackEntry.arguments?.getString("callType") ?: "audio"
+            com.whatsappclone.feature.chat.ui.call.CallScreen(
+                calleeName = calleeName,
+                calleeAvatarUrl = avatarUrl,
+                callType = callType,
+                onEndCall = { navController.popBackStack() }
+            )
+        }
+
+        // ── Camera Screen ───────────────────────────────────────────────────
+        composable(
+            route = AppRoute.Camera.route,
+            enterTransition = { fadeIn(tween(navDuration)) },
+            exitTransition = { fadeOut(tween(navDuration)) },
+            popEnterTransition = { fadeIn(tween(navDuration)) },
+            popExitTransition = { fadeOut(tween(navDuration)) }
+        ) {
+            com.whatsappclone.feature.media.ui.CameraScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onImageCaptured = { navController.popBackStack() }
+            )
+        }
+
         // ── Forward Picker ───────────────────────────────────────────────────
         composable(
             route = AppRoute.ForwardPicker.route,
             arguments = listOf(
-                navArgument("messageId") { type = NavType.StringType }
+                navArgument("messageId") { type = NavType.StringType },
+                navArgument("content") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("type") {
+                    type = NavType.StringType
+                    defaultValue = "text"
+                }
             )
         ) { backStackEntry ->
-            val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
-            ComingSoonScreen(
-                title = "Forward Message",
-                onNavigateBack = { navController.popBackStack() }
+            val content = backStackEntry.arguments?.getString("content") ?: ""
+            val type = backStackEntry.arguments?.getString("type") ?: "text"
+            ForwardPickerScreen(
+                messageContent = content,
+                messageType = type,
+                onNavigateBack = { navController.popBackStack() },
+                onForwardComplete = { navController.popBackStack() }
             )
         }
     }
