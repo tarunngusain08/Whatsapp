@@ -34,6 +34,13 @@ func (h *HTTPHandler) RegisterRoutes(r *gin.RouterGroup) {
 	r.POST("/devices", h.RegisterDevice)
 	r.DELETE("/devices/:token", h.RemoveDevice)
 	r.GET("/:id/presence", h.GetPresence)
+
+	statuses := r.Group("/statuses")
+	statuses.POST("", h.CreateStatus)
+	statuses.GET("", h.GetContactStatuses)
+	statuses.GET("/me", h.GetMyStatuses)
+	statuses.DELETE("/:id", h.DeleteStatus)
+	statuses.POST("/:id/view", h.ViewStatus)
 }
 
 // extractUserID reads the user ID set by the api-gateway via X-User-ID header.
@@ -236,4 +243,59 @@ func (h *HTTPHandler) GetPresence(c *gin.Context) {
 		resp["last_seen"] = lastSeen
 	}
 	response.OK(c, resp)
+}
+
+func (h *HTTPHandler) CreateStatus(c *gin.Context) {
+	userID := extractUserID(c)
+	var req model.CreateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperr.NewBadRequest("invalid request body"))
+		return
+	}
+	status, err := h.userSvc.CreateStatus(c.Request.Context(), userID, &req)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Created(c, status)
+}
+
+func (h *HTTPHandler) GetContactStatuses(c *gin.Context) {
+	userID := extractUserID(c)
+	statuses, err := h.userSvc.GetContactStatuses(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.OK(c, statuses)
+}
+
+func (h *HTTPHandler) GetMyStatuses(c *gin.Context) {
+	userID := extractUserID(c)
+	statuses, err := h.userSvc.GetMyStatuses(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.OK(c, statuses)
+}
+
+func (h *HTTPHandler) DeleteStatus(c *gin.Context) {
+	userID := extractUserID(c)
+	statusID := c.Param("id")
+	if err := h.userSvc.DeleteStatus(c.Request.Context(), statusID, userID); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
+func (h *HTTPHandler) ViewStatus(c *gin.Context) {
+	viewerID := extractUserID(c)
+	statusID := c.Param("id")
+	if err := h.userSvc.ViewStatus(c.Request.Context(), statusID, viewerID); err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.NoContent(c)
 }
