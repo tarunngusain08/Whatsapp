@@ -12,14 +12,31 @@ class SendMessageUseCase @Inject constructor(
         chatId: String,
         content: String,
         messageType: String = "text",
-        replyToMessageId: String? = null
+        replyToMessageId: String? = null,
+        mediaId: String? = null,
+        mediaUrl: String? = null,
+        mediaThumbnailUrl: String? = null,
+        mediaMimeType: String? = null,
+        mediaSize: Long? = null,
+        mediaDuration: Long? = null
     ): AppResult<Unit> {
-        if (content.isBlank()) {
+        if (content.isBlank() && mediaId == null) {
             return AppResult.Error(
                 ErrorCode.VALIDATION_ERROR,
                 "Message cannot be empty"
             )
         }
-        return messageRepository.saveAndSend(chatId, content, messageType, replyToMessageId)
+        return messageRepository.saveAndSend(
+            chatId = chatId,
+            content = content,
+            messageType = messageType,
+            replyToMessageId = replyToMessageId,
+            mediaId = mediaId,
+            mediaUrl = mediaUrl,
+            mediaThumbnailUrl = mediaThumbnailUrl,
+            mediaMimeType = mediaMimeType,
+            mediaSize = mediaSize,
+            mediaDuration = mediaDuration
+        )
     }
 }
