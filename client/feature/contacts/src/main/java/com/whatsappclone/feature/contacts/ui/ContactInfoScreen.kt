@@ -48,6 +48,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.TextButton
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +80,9 @@ fun ContactInfoScreen(
     viewModel: ContactInfoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showReportDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.event.collect { event ->
@@ -86,6 +98,7 @@ fun ContactInfoScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -230,7 +243,7 @@ fun ContactInfoScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Image,
-                                contentDescription = null,
+                                contentDescription = "Media, links, and docs",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -275,7 +288,7 @@ fun ContactInfoScreen(
                                 } else {
                                     Icons.Filled.Notifications
                                 },
-                                contentDescription = null,
+                                contentDescription = "Mute notifications",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -324,7 +337,7 @@ fun ContactInfoScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Block,
-                                    contentDescription = null,
+                                    contentDescription = "Block contact",
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -362,13 +375,13 @@ fun ContactInfoScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { /* Placeholder for report */ }
+                                    .clickable { showReportDialog = true }
                                     .padding(horizontal = 16.dp, vertical = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Flag,
-                                    contentDescription = null,
+                                    contentDescription = "Report contact",
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -398,6 +411,47 @@ fun ContactInfoScreen(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
+    }
+
+    if (showReportDialog) {
+        val displayName = (uiState as? ContactInfoUiState)?.user?.displayName ?: "this contact"
+        AlertDialog(
+            onDismissRequest = { showReportDialog = false },
+            title = {
+                Text(
+                    text = "Report $displayName?",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = "The last 5 messages from this contact will be forwarded to WhatsApp Clone. " +
+                        "This contact will not be notified.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showReportDialog = false
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Contact reported. Thank you for your feedback.")
+                    }
+                }) {
+                    Text(
+                        text = "Report",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReportDialog = false }) {
+                    Text(text = "Cancel", fontWeight = FontWeight.Medium)
+                }
+            }
+        )
     }
 }
 
