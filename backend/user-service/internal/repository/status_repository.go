@@ -11,5 +11,6 @@ type StatusRepository interface {
 	GetByUserID(ctx context.Context, userID string) ([]*model.Status, error)
 	GetByUserIDs(ctx context.Context, userIDs []string) ([]*model.Status, error)
 	Delete(ctx context.Context, id, userID string) error
+	DeleteExpired(ctx context.Context) (int64, error)
 	AddViewer(ctx context.Context, statusID, viewerID string) error
 }
