@@ -169,7 +169,7 @@ private fun ReceiptSectionHeader(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = title,
             tint = iconTint,
             modifier = Modifier.size(20.dp)
         )
