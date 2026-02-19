@@ -66,8 +66,38 @@ interface MessageDao {
     @Query("UPDATE messages SET isStarred = :isStarred WHERE messageId = :messageId")
     suspend fun setStarred(messageId: String, isStarred: Boolean)
 
+    @Query(
+        """
+        SELECT * FROM messages 
+        WHERE chatId = :chatId AND messageType IN ('image', 'video', 'document') 
+        ORDER BY timestamp DESC
+        """
+    )
+    fun observeMediaMessages(chatId: String): Flow<List<MessageEntity>>
+
+    @Query("SELECT * FROM messages WHERE isStarred = 1 ORDER BY timestamp DESC")
+    fun observeStarredMessages(): Flow<List<MessageEntity>>
+
     @Query("SELECT * FROM messages WHERE status = 'pending' ORDER BY timestamp ASC")
     suspend fun getAllPendingMessages(): List<MessageEntity>
+
+    @Query(
+        """
+        SELECT * FROM messages 
+        WHERE scheduledAt IS NOT NULL AND scheduledAt <= :now AND status = 'scheduled'
+        ORDER BY scheduledAt ASC
+        """
+    )
+    suspend fun getDueScheduledMessages(now: Long): List<MessageEntity>
+
+    @Query(
+        """
+        SELECT * FROM messages 
+        WHERE chatId = :chatId AND scheduledAt IS NOT NULL AND status = 'scheduled'
+        ORDER BY scheduledAt ASC
+        """
+    )
+    fun observeScheduledMessages(chatId: String): Flow<List<MessageEntity>>
 
     @Query(
         """
