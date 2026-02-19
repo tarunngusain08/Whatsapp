@@ -66,6 +66,8 @@ import com.whatsappclone.core.ui.components.UserAvatar
 fun ContactInfoScreen(
     onNavigateToChat: (String) -> Unit,
     onNavigateBack: () -> Unit,
+    onNavigateToSharedMedia: (String) -> Unit = {},
+    onNavigateToCall: (name: String, avatarUrl: String?, callType: String) -> Unit = { _, _, _ -> },
     viewModel: ContactInfoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -186,13 +188,25 @@ fun ContactInfoScreen(
                                 icon = Icons.Filled.Call,
                                 label = "Audio",
                                 color = MaterialTheme.colorScheme.primary,
-                                onClick = { /* Placeholder for audio call */ }
+                                onClick = {
+                                    onNavigateToCall(
+                                        user.displayName,
+                                        user.avatarUrl,
+                                        "audio"
+                                    )
+                                }
                             )
                             ActionButton(
                                 icon = Icons.Filled.Videocam,
                                 label = "Video",
                                 color = MaterialTheme.colorScheme.primary,
-                                onClick = { /* Placeholder for video call */ }
+                                onClick = {
+                                    onNavigateToCall(
+                                        user.displayName,
+                                        user.avatarUrl,
+                                        "video"
+                                    )
+                                }
                             )
                         }
                     }
@@ -210,7 +224,7 @@ fun ContactInfoScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { /* Placeholder */ }
+                                .clickable { uiState.chatId?.let { onNavigateToSharedMedia(it) } }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
