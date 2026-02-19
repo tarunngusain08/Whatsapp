@@ -60,6 +60,39 @@ sealed class ServerWsEvent {
         val removedBy: String
     ) : ServerWsEvent()
 
+    data class MessageReaction(
+        val messageId: String,
+        val chatId: String,
+        val userId: String,
+        val emoji: String,
+        val removed: Boolean
+    ) : ServerWsEvent()
+
+    data class CallOffer(
+        val callId: String,
+        val callerId: String,
+        val sdp: String,
+        val callType: String
+    ) : ServerWsEvent()
+
+    data class CallAnswer(
+        val callId: String,
+        val answererId: String,
+        val sdp: String
+    ) : ServerWsEvent()
+
+    data class CallIceCandidate(
+        val callId: String,
+        val senderId: String,
+        val candidate: String
+    ) : ServerWsEvent()
+
+    data class CallEnd(
+        val callId: String,
+        val senderId: String,
+        val reason: String
+    ) : ServerWsEvent()
+
     data class Error(
         val code: String,
         val message: String
