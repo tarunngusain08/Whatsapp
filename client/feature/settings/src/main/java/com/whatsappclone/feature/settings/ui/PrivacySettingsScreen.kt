@@ -188,7 +188,7 @@ fun PrivacySettingsScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Fingerprint,
-                        contentDescription = null,
+                        contentDescription = "App lock",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
@@ -239,7 +239,7 @@ fun PrivacySettingsScreen(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Block,
-                    contentDescription = null,
+                    contentDescription = "Blocked contacts",
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(24.dp)
                 )
@@ -262,7 +262,7 @@ fun PrivacySettingsScreen(
 
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
+                    contentDescription = "View blocked contacts",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
