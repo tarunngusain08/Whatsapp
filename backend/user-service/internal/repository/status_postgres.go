@@ -38,7 +38,7 @@ func (r *postgresStatusRepository) GetByUserID(ctx context.Context, userID strin
 		        COALESCE(array_agg(sv.viewer_id) FILTER (WHERE sv.viewer_id IS NOT NULL), '{}')
 		 FROM statuses s
 		 LEFT JOIN status_viewers sv ON sv.status_id = s.id
-		 WHERE s.user_id = $1
+		 WHERE s.user_id = $1 AND s.expires_at > NOW()
 		 GROUP BY s.id
 		 ORDER BY s.created_at DESC`, userID,
 	)
@@ -80,6 +80,16 @@ func (r *postgresStatusRepository) Delete(ctx context.Context, id, userID string
 		return fmt.Errorf("status not found")
 	}
 	return nil
+}
+
+func (r *postgresStatusRepository) DeleteExpired(ctx context.Context) (int64, error) {
+	tag, err := r.pool.Exec(ctx,
+		`DELETE FROM statuses WHERE expires_at < NOW()`,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("delete expired statuses: %w", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 func (r *postgresStatusRepository) AddViewer(ctx context.Context, statusID, viewerID string) error {
