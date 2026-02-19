@@ -1,12 +1,15 @@
 package com.whatsappclone.feature.group.ui.newgroup
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.util.Constants
 import com.whatsappclone.core.database.dao.UserDao
 import com.whatsappclone.core.database.entity.UserEntity
+import com.whatsappclone.core.network.url.BaseUrlProvider
 import com.whatsappclone.feature.group.domain.CreateGroupUseCase
+import com.whatsappclone.feature.media.data.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +36,8 @@ data class NewGroupUiState(
     val searchQuery: String = "",
     val groupName: String = "",
     val groupDescription: String = "",
+    val groupAvatarUrl: String? = null,
+    val isUploadingAvatar: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null
 ) {
@@ -55,7 +60,9 @@ sealed class NewGroupEvent {
 @HiltViewModel
 class NewGroupViewModel @Inject constructor(
     private val userDao: UserDao,
-    private val createGroupUseCase: CreateGroupUseCase
+    private val createGroupUseCase: CreateGroupUseCase,
+    private val mediaRepository: MediaRepository,
+    private val baseUrlProvider: BaseUrlProvider
 ) : ViewModel() {
 
     private val _internalState = MutableStateFlow(NewGroupUiState())
@@ -146,6 +153,29 @@ class NewGroupViewModel @Inject constructor(
     fun onGroupDescriptionChanged(description: String) {
         if (description.length <= Constants.MAX_GROUP_DESCRIPTION_LENGTH) {
             _internalState.update { it.copy(groupDescription = description) }
+        }
+    }
+
+    fun onGroupAvatarSelected(uri: Uri) {
+        viewModelScope.launch {
+            _internalState.update { it.copy(isUploadingAvatar = true) }
+
+            val uploaderId = "group-setup"
+            when (val result = mediaRepository.uploadImage(uri, uploaderId)) {
+                is AppResult.Success -> {
+                    val mediaId = result.data.mediaId
+                    val base = baseUrlProvider.getBaseUrl().trimEnd('/')
+                    val newAvatarUrl = "$base/media/$mediaId/download"
+                    _internalState.update {
+                        it.copy(groupAvatarUrl = newAvatarUrl, isUploadingAvatar = false)
+                    }
+                }
+                is AppResult.Error -> {
+                    _internalState.update { it.copy(isUploadingAvatar = false) }
+                    _eventChannel.send(NewGroupEvent.ShowError(result.message))
+                }
+                is AppResult.Loading -> Unit
+            }
         }
     }
 
