@@ -83,7 +83,7 @@ fun LocationPickerScreen(
         ) {
             Icon(
                 imageVector = Icons.Filled.LocationOn,
-                contentDescription = null,
+                contentDescription = "Share location",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .height(64.dp)
@@ -168,7 +168,7 @@ fun LocationPickerScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = null,
+                    contentDescription = "Send location",
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 Text(
