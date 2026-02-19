@@ -65,11 +65,29 @@ func (p *EventPublisher) PublishStatusUpdate(ctx context.Context, msgID, chatID,
 	return err
 }
 
-// PublishMessageDeleted publishes a msg.deleted event.
-func (p *EventPublisher) PublishMessageDeleted(ctx context.Context, msgID, chatID string) error {
-	data, err := json.Marshal(map[string]string{
-		"message_id": msgID,
+// PublishReaction publishes a msg.reaction event for real-time delivery.
+func (p *EventPublisher) PublishReaction(ctx context.Context, messageID, chatID, userID, emoji string, removed bool) error {
+	data, err := json.Marshal(map[string]interface{}{
+		"message_id": messageID,
 		"chat_id":    chatID,
+		"user_id":    userID,
+		"emoji":      emoji,
+		"removed":    removed,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = p.js.Publish("msg.reaction", data)
+	return err
+}
+
+// PublishMessageDeleted publishes a msg.deleted event.
+func (p *EventPublisher) PublishMessageDeleted(ctx context.Context, msgID, chatID, userID string, forEveryone bool) error {
+	data, err := json.Marshal(map[string]interface{}{
+		"message_id":   msgID,
+		"chat_id":      chatID,
+		"user_id":      userID,
+		"for_everyone": forEveryone,
 	})
 	if err != nil {
 		return err
