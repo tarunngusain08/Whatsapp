@@ -23,4 +23,9 @@ type UserService interface {
 	RemoveDeviceToken(ctx context.Context, token string) error
 	SetPresence(ctx context.Context, userID string, online bool) error
 	CheckPresence(ctx context.Context, userID string) (online bool, lastSeen *time.Time, err error)
+	CreateStatus(ctx context.Context, userID string, req *model.CreateStatusRequest) (*model.Status, error)
+	GetMyStatuses(ctx context.Context, userID string) ([]*model.Status, error)
+	GetContactStatuses(ctx context.Context, userID string) ([]*model.Status, error)
+	DeleteStatus(ctx context.Context, statusID, userID string) error
+	ViewStatus(ctx context.Context, statusID, viewerID string) error
 }
