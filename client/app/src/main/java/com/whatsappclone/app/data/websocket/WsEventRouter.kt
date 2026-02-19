@@ -74,12 +74,17 @@ class WsEventRouter @Inject constructor(
             is ServerWsEvent.MessageSent -> handleMessageSent(event)
             is ServerWsEvent.MessageStatus -> handleMessageStatus(event)
             is ServerWsEvent.MessageDeleted -> handleMessageDeleted(event)
+            is ServerWsEvent.MessageReaction -> handleMessageReaction(event)
             is ServerWsEvent.TypingEvent -> handleTyping(event)
             is ServerWsEvent.PresenceEvent -> handlePresence(event)
             is ServerWsEvent.ChatCreated -> handleChatCreated(event)
             is ServerWsEvent.ChatUpdated -> handleChatUpdated(event)
             is ServerWsEvent.GroupMemberAdded -> handleMemberAdded(event)
             is ServerWsEvent.GroupMemberRemoved -> handleMemberRemoved(event)
+            is ServerWsEvent.CallOffer -> handleCallOffer(event)
+            is ServerWsEvent.CallAnswer -> handleCallAnswer(event)
+            is ServerWsEvent.CallIceCandidate -> handleCallIceCandidate(event)
+            is ServerWsEvent.CallEnd -> handleCallEnd(event)
             is ServerWsEvent.Error -> handleError(event)
         }
     }
@@ -191,6 +196,62 @@ class WsEventRouter @Inject constructor(
         chatParticipantDao.delete(chatId = event.chatId, userId = event.userId)
     }
 
+    private suspend fun handleMessageReaction(event: ServerWsEvent.MessageReaction) {
+        val existingJson = messageDao.getReactionsJson(event.messageId)
+        val reactions = parseReactionsJson(existingJson)
+
+        val updated = if (event.removed) {
+            reactions.mapNotNull { (emoji, userIds) ->
+                val filtered = userIds - event.userId
+                if (filtered.isEmpty()) null else emoji to filtered
+            }.toMap()
+        } else {
+            val existing = reactions.toMutableMap()
+            val users = existing.getOrDefault(event.emoji, emptyList()).toMutableList()
+            if (event.userId !in users) users.add(event.userId)
+            existing[event.emoji] = users
+            existing
+        }
+
+        messageDao.updateReactions(event.messageId, serializeReactionsJson(updated))
+    }
+
+    private fun parseReactionsJson(jsonStr: String?): Map<String, List<String>> {
+        if (jsonStr.isNullOrBlank()) return emptyMap()
+        return try {
+            val obj = json.decodeFromString(JsonObject.serializer(), jsonStr)
+            obj.mapValues { (_, value) ->
+                json.decodeFromString<List<String>>(value.toString())
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun serializeReactionsJson(reactions: Map<String, List<String>>): String {
+        return buildJsonObject {
+            reactions.forEach { (emoji, userIds) ->
+                put(emoji, kotlinx.serialization.json.JsonArray(userIds.map { JsonPrimitive(it) }))
+            }
+        }.toString()
+    }
+
+    private fun handleCallOffer(event: ServerWsEvent.CallOffer) {
+        Log.i(TAG, "Incoming call offer: callId=${event.callId} from=${event.callerId} type=${event.callType}")
+    }
+
+    private fun handleCallAnswer(event: ServerWsEvent.CallAnswer) {
+        Log.i(TAG, "Call answered: callId=${event.callId} by=${event.answererId}")
+    }
+
+    private fun handleCallIceCandidate(event: ServerWsEvent.CallIceCandidate) {
+        Log.d(TAG, "ICE candidate: callId=${event.callId} from=${event.senderId}")
+    }
+
+    private fun handleCallEnd(event: ServerWsEvent.CallEnd) {
+        Log.i(TAG, "Call ended: callId=${event.callId} reason=${event.reason}")
+    }
+
     private fun handleError(event: ServerWsEvent.Error) {
         Log.e(TAG, "Server error: code=${event.code} message=${event.message}")
     }
@@ -201,7 +262,7 @@ class WsEventRouter @Inject constructor(
         content = payload.body, mediaId = payload.mediaId, mediaUrl = payload.mediaUrl,
         mediaThumbnailUrl = payload.thumbnailUrl, mediaMimeType = payload.mimeType,
         mediaSize = payload.fileSize, mediaDuration = payload.duration,
-        replyToMessageId = null, status = status, isDeleted = isDeleted,
+        replyToMessageId = replyToMessageId, status = status, isDeleted = isDeleted,
         deletedForEveryone = false, isStarred = isStarred,
         timestamp = parseTimestamp(createdAt), createdAt = parseTimestamp(createdAt)
     )
