@@ -452,7 +452,7 @@ class ChatDetailViewModel @Inject constructor(
                         mediaUrl = media.storageUrl,
                         mediaMimeType = "audio/mp4",
                         mediaSize = media.sizeBytes,
-                        mediaDuration = durationMs
+                        mediaDuration = durationMs.toInt()
                     )
                     if (result is AppResult.Error) {
                         _uiState.update { it.copy(error = result.message) }
