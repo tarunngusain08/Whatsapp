@@ -117,9 +117,9 @@ class WebSocketManager @Inject constructor(
     fun sendTyping(chatId: String, isTyping: Boolean) {
         val data = kotlinx.serialization.json.buildJsonObject {
             put("chat_id", kotlinx.serialization.json.JsonPrimitive(chatId))
-            put("is_typing", kotlinx.serialization.json.JsonPrimitive(isTyping))
         }
-        send(WsFrame(event = "typing", data = data))
+        val eventName = if (isTyping) "typing.start" else "typing.stop"
+        send(WsFrame(event = eventName, data = data))
     }
 
     fun destroy() {
@@ -326,7 +326,9 @@ class WebSocketManager @Inject constructor(
             "typing" -> ServerWsEvent.TypingEvent(
                 chatId = data.string("chat_id"),
                 userId = data.string("user_id"),
-                isTyping = data["is_typing"]?.jsonPrimitive?.boolean ?: true
+                isTyping = data["typing"]?.jsonPrimitive?.boolean
+                    ?: data["is_typing"]?.jsonPrimitive?.boolean
+                    ?: true
             )
 
             "presence" -> ServerWsEvent.PresenceEvent(
