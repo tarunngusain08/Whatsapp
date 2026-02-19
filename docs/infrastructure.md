@@ -326,7 +326,7 @@ readinessProbe:
 
 ### PostgreSQL
 
-**Image**: `postgres:16-alpine`
+**Image**: `postgres:16`
 **Used by**: auth-service, user-service, chat-service, notification-service (read-only)
 
 PostgreSQL handles all relational data where ACID guarantees matter:
@@ -348,7 +348,7 @@ MongoDB handles document-oriented, high-volume data:
 
 ### Redis
 
-**Image**: `redis:7-alpine`
+**Image**: `redis:7`
 **Used by**: api-gateway, auth-service, user-service, websocket-service, notification-service
 
 Redis serves multiple purposes across the system:
@@ -365,7 +365,7 @@ Redis serves multiple purposes across the system:
 
 ### NATS JetStream
 
-**Image**: `nats:2-alpine`
+**Image**: `nats:latest`
 **Used by**: chat-service (publish), message-service (publish), websocket-service (consume), notification-service (consume)
 
 NATS JetStream provides durable, at-least-once event delivery:
@@ -413,7 +413,7 @@ cd backend
 docker-compose up --build
 ```
 
-This starts all 8 services, all 5 infrastructure components, and configures the network (`whatsapp-net`) so services can communicate by name.
+This starts all 8 services, all 5 infrastructure components, and 3 observability tools (Prometheus, Grafana, Jaeger), and configures the network (`whatsapp-net`) so services can communicate by name.
 
 The API Gateway is available at `http://localhost:8080`.
 
