@@ -48,6 +48,14 @@ type PresenceSubscribePayload struct {
 
 // --- Server -> Client event payloads ---
 
+type MessageReactionPayload struct {
+	MessageID string `json:"message_id"`
+	ChatID    string `json:"chat_id"`
+	UserID    string `json:"user_id"`
+	Emoji     string `json:"emoji"`
+	Removed   bool   `json:"removed"`
+}
+
 type MessageNewPayload struct {
 	MessageID string         `json:"message_id"`
 	ChatID    string         `json:"chat_id"`
@@ -66,4 +74,31 @@ type MessageSentAckPayload struct {
 type PresenceEventPayload struct {
 	UserID string `json:"user_id"`
 	Online bool   `json:"online"`
+}
+
+// --- Call signaling payloads ---
+
+type CallOfferPayload struct {
+	CallID       string `json:"call_id"`
+	TargetUserID string `json:"target_user_id"`
+	SDP          string `json:"sdp"`
+	CallType     string `json:"call_type"` // "audio" or "video"
+}
+
+type CallAnswerPayload struct {
+	CallID       string `json:"call_id"`
+	TargetUserID string `json:"target_user_id"`
+	SDP          string `json:"sdp"`
+}
+
+type CallIceCandidatePayload struct {
+	CallID       string `json:"call_id"`
+	TargetUserID string `json:"target_user_id"`
+	Candidate    string `json:"candidate"`
+}
+
+type CallEndPayload struct {
+	CallID       string `json:"call_id"`
+	TargetUserID string `json:"target_user_id"`
+	Reason       string `json:"reason,omitempty"` // "hangup", "declined", "timeout"
 }
