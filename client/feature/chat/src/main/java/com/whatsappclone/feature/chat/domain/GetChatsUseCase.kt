@@ -43,6 +43,7 @@ class GetChatsUseCase @Inject constructor(
             isPinned = chat.isPinned,
             chatType = chat.chatType,
             isArchived = chat.isArchived,
+            isOnline = otherUserIsOnline == true,
             formattedTime = formatTimestamp(chat.lastMessageTimestamp)
         )
     }
