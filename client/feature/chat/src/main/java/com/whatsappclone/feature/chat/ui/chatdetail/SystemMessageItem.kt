@@ -11,15 +11,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val SystemBubbleColor = Color(0xFFE2F0FD)
-private val SystemTextColor = Color(0xFF54656F)
+import com.whatsappclone.core.ui.theme.WhatsAppColors
 
 /**
  * Renders a system / event message as a centered chip.
@@ -43,7 +40,7 @@ fun SystemMessageItem(
     ) {
         Surface(
             shape = RoundedCornerShape(8.dp),
-            color = SystemBubbleColor,
+            color = WhatsAppColors.SystemBubble,
             shadowElevation = 0.5.dp,
             tonalElevation = 0.dp,
             modifier = Modifier.widthIn(max = 340.dp)
@@ -54,7 +51,7 @@ fun SystemMessageItem(
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Normal,
                 fontStyle = FontStyle.Italic,
-                color = SystemTextColor,
+                color = WhatsAppColors.SystemText,
                 fontSize = 12.5.sp,
                 lineHeight = 16.sp,
                 textAlign = TextAlign.Center
