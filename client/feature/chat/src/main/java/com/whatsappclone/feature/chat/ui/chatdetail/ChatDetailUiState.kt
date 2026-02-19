@@ -5,6 +5,7 @@ data class ChatDetailUiState(
     val chatName: String = "",
     val chatAvatarUrl: String? = null,
     val chatType: String = "direct",
+    val otherUserId: String? = null,
     val isOnline: Boolean = false,
     val lastSeen: String? = null,
     val typingUsers: Set<String> = emptySet(),
