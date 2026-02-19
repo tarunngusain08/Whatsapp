@@ -70,3 +70,8 @@ data class AddParticipantsRequest(
 data class UpdateRoleRequest(
     val role: String
 )
+
+@Serializable
+data class DisappearingTimerRequest(
+    val timer: String
+)
