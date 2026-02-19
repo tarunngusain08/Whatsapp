@@ -74,6 +74,9 @@ dependencies {
     // DataStore
     implementation(libs.datastore.preferences)
 
+    // Biometric
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
     // Kotlinx
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
