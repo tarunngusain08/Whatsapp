@@ -25,6 +25,9 @@ sealed class ChatListNavigationEvent {
     data object NavigateToContactPicker : ChatListNavigationEvent()
     data object NavigateToSettings : ChatListNavigationEvent()
     data object NavigateToServerUrl : ChatListNavigationEvent()
+    data object NavigateToStarredMessages : ChatListNavigationEvent()
+    data object NavigateToArchivedChats : ChatListNavigationEvent()
+    data object NavigateToStatus : ChatListNavigationEvent()
 }
 
 @HiltViewModel
@@ -44,8 +47,9 @@ class ChatListViewModel @Inject constructor(
         getChatsUseCase(),
         typingStateHolder.typingUsers,
         _searchQuery,
-        _loadingState
-    ) { chats, typingMap, query, loading ->
+        _loadingState,
+        chatRepository.observeArchivedCount()
+    ) { chats, typingMap, query, loading, archivedCount ->
         val enrichedChats = chats.map { chat ->
             val typingInChat = typingMap[chat.chatId] ?: emptySet()
             if (typingInChat.isNotEmpty()) {
@@ -65,7 +69,8 @@ class ChatListViewModel @Inject constructor(
             searchQuery = query,
             isLoading = loading.isLoading,
             isRefreshing = loading.isRefreshing,
-            error = loading.error
+            error = loading.error,
+            archivedCount = archivedCount
         )
     }.catch { throwable ->
         emit(
@@ -113,6 +118,50 @@ class ChatListViewModel @Inject constructor(
     fun onServerUrlClicked() {
         viewModelScope.launch {
             _navigationEvent.emit(ChatListNavigationEvent.NavigateToServerUrl)
+        }
+    }
+
+    fun onStarredMessagesClicked() {
+        viewModelScope.launch {
+            _navigationEvent.emit(ChatListNavigationEvent.NavigateToStarredMessages)
+        }
+    }
+
+    fun onStatusClicked() {
+        viewModelScope.launch {
+            _navigationEvent.emit(ChatListNavigationEvent.NavigateToStatus)
+        }
+    }
+
+    fun pinChat(chatId: String) {
+        viewModelScope.launch {
+            val chat = uiState.value.chats.find { it.chatId == chatId } ?: return@launch
+            chatRepository.pinChat(chatId, !chat.isPinned)
+        }
+    }
+
+    fun muteChat(chatId: String) {
+        viewModelScope.launch {
+            val chat = uiState.value.chats.find { it.chatId == chatId } ?: return@launch
+            chatRepository.muteChat(chatId, !chat.isMuted)
+        }
+    }
+
+    fun archiveChat(chatId: String) {
+        viewModelScope.launch {
+            chatRepository.archiveChat(chatId, true)
+        }
+    }
+
+    fun onArchivedChatsClicked() {
+        viewModelScope.launch {
+            _navigationEvent.emit(ChatListNavigationEvent.NavigateToArchivedChats)
+        }
+    }
+
+    fun deleteChat(chatId: String) {
+        viewModelScope.launch {
+            chatRepository.deleteChat(chatId)
         }
     }
 
