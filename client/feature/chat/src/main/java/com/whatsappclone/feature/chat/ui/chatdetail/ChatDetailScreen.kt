@@ -205,7 +205,12 @@ private fun ChatDetailContent(
     onExitSelectionMode: () -> Unit = {},
     onDeleteSelectedMessages: () -> Unit = {},
     onStarSelectedMessages: () -> Unit = {},
-    onCopySelectedMessages: () -> Unit = {}
+    onCopySelectedMessages: () -> Unit = {},
+    onImageClick: (MessageUi) -> Unit = {},
+    onVideoClick: (MessageUi) -> Unit = {},
+    onDocumentClick: (MessageUi) -> Unit = {},
+    onDownloadClick: (MessageUi) -> Unit = {},
+    onReactionToggled: (String, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -386,7 +391,12 @@ private fun ChatDetailContent(
                                 highlightedMessageId = null
                             }
                         }
-                    }
+                    },
+                    onImageClick = onImageClick,
+                    onVideoClick = onVideoClick,
+                    onDocumentClick = onDocumentClick,
+                    onDownloadClick = onDownloadClick,
+                    onReactionToggled = onReactionToggled
                 )
             }
 
@@ -893,7 +903,12 @@ private fun MessageList(
     selectedMessageIds: Set<String> = emptySet(),
     onMessageLongPress: (MessageUi) -> Unit,
     onMessageTap: (MessageUi) -> Unit = {},
-    onQuotedReplyClick: (String) -> Unit
+    onQuotedReplyClick: (String) -> Unit,
+    onImageClick: (MessageUi) -> Unit = {},
+    onVideoClick: (MessageUi) -> Unit = {},
+    onDocumentClick: (MessageUi) -> Unit = {},
+    onDownloadClick: (MessageUi) -> Unit = {},
+    onReactionToggled: (String, String) -> Unit = { _, _ -> }
 ) {
     val scope = rememberCoroutineScope()
 
@@ -910,6 +925,9 @@ private fun MessageList(
             listState.animateScrollToItem(0)
         }
     }
+
+    val highlightColor = WhatsAppColors.MessageHighlight
+    val selectionColor = WhatsAppColors.SelectionHighlight
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -948,14 +966,14 @@ private fun MessageList(
                                 if (isHighlighted) {
                                     Modifier.drawBehind {
                                         drawRect(
-                                            color = Color(0x3300A884),
+                                            color = highlightColor,
                                             size = size
                                         )
                                     }
                                 } else if (isSelected) {
                                     Modifier.drawBehind {
                                         drawRect(
-                                            color = Color(0x2200A884),
+                                            color = selectionColor,
                                             size = size
                                         )
                                     }
@@ -987,16 +1005,54 @@ private fun MessageList(
                                 )
                             }
 
-                            MessageBubble(
-                                message = message,
-                                isGroupChat = isGroupChat,
-                                onLongPress = onMessageLongPress,
-                                onQuotedReplyClick = onQuotedReplyClick,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 4.dp)
-                            )
+                            when (message.messageType) {
+                                "system" -> {
+                                    SystemMessageItem(
+                                        text = message.content ?: "",
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 4.dp)
+                                    )
+                                }
+                                "image", "video", "audio", "document" -> {
+                                    MediaMessageBubble(
+                                        message = message,
+                                        uploadProgress = null,
+                                        isDownloaded = false,
+                                        onImageClick = onImageClick,
+                                        onVideoClick = onVideoClick,
+                                        onDocumentClick = onDocumentClick,
+                                        onDownloadClick = onDownloadClick,
+                                        onLongPress = onMessageLongPress,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 4.dp)
+                                    )
+                                }
+                                else -> {
+                                    MessageBubble(
+                                        message = message,
+                                        isGroupChat = isGroupChat,
+                                        onLongPress = onMessageLongPress,
+                                        onQuotedReplyClick = onQuotedReplyClick,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 4.dp)
+                                    )
+                                }
+                            }
                         }
+                    }
+
+                    if (message.reactions.isNotEmpty()) {
+                        ReactionChips(
+                            reactions = message.reactions,
+                            isOwnMessage = message.isOwnMessage,
+                            onReactionToggled = { emoji ->
+                                onReactionToggled(message.messageId, emoji)
+                            },
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
                     }
 
                     if (message.showDateSeparator && message.dateSeparatorText != null) {
