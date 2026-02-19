@@ -6,9 +6,14 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
+import com.whatsappclone.feature.chat.worker.ScheduledMessageWorker
 import dagger.hilt.android.HiltAndroidApp
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -30,6 +35,19 @@ class WhatsAppApplication : Application(), Configuration.Provider, SingletonImag
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        enqueueScheduledMessageWorker()
+    }
+
+    private fun enqueueScheduledMessageWorker() {
+        val request = PeriodicWorkRequestBuilder<ScheduledMessageWorker>(
+            15, TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            ScheduledMessageWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
     }
 
     private fun createNotificationChannels() {
