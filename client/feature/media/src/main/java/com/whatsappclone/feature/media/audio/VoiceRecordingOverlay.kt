@@ -359,7 +359,7 @@ private fun LiveWaveform(
     val bars = remember { mutableStateListOf<Int>() }
     val maxBars = 48
 
-    LaunchedEffect(amplitudes) {
+    LaunchedEffect(Unit) {
         amplitudes.collect { amp ->
             bars.add(amp)
             if (bars.size > maxBars) {
@@ -368,35 +368,15 @@ private fun LiveWaveform(
         }
     }
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        val displayBars = if (bars.isEmpty()) {
-            List(maxBars) { 5 }
-        } else {
-            val padCount = (maxBars - bars.size).coerceAtLeast(0)
-            List(padCount) { 5 } + bars.toList()
-        }
-
-        displayBars.takeLast(maxBars).forEach { amplitude ->
-            val heightFraction = (amplitude.toFloat() / 100f).coerceIn(0.08f, 1f)
-            val animatedHeight by animateFloatAsState(
-                targetValue = heightFraction,
-                animationSpec = spring(stiffness = Spring.StiffnessHigh),
-                label = "bar_height"
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(32.dp * animatedHeight)
-                    .clip(RoundedCornerShape(1.5.dp))
-                    .background(RecordingRed.copy(alpha = 0.7f))
-            )
-        }
+    val floatBars = remember(bars.size) {
+        bars.map { (it.toFloat() / 100f).coerceIn(0.08f, 1f) }
     }
+
+    LiveWaveformView(
+        amplitudes = floatBars,
+        barColor = RecordingRed.copy(alpha = 0.7f),
+        modifier = modifier
+    )
 }
 
 @Composable
