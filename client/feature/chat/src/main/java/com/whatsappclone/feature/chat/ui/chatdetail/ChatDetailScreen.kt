@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -77,7 +78,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatDetailScreen(
     onNavigateBack: () -> Unit,
-    onViewContact: () -> Unit = {},
+    onViewContact: (userId: String) -> Unit = {},
     onNavigateToForward: (messageContent: String?, messageType: String) -> Unit = { _, _ -> },
     viewModel: ChatDetailViewModel = hiltViewModel()
 ) {
@@ -94,7 +95,7 @@ fun ChatDetailScreen(
         messages = messages,
         replyToMessage = replyToMessage,
         onNavigateBack = onNavigateBack,
-        onViewContact = onViewContact,
+        onViewContact = { uiState.otherUserId?.let { onViewContact(it) } },
         onComposerTextChanged = viewModel::onComposerTextChanged,
         onSendClick = viewModel::onSendMessage,
         onAttachmentClick = { /* TODO: attachment bottom sheet */ },
@@ -289,7 +290,8 @@ private fun ChatDetailTopBar(
     TopAppBar(
         title = {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onViewContact() }
             ) {
                 UserAvatar(
                     url = avatarUrl,
