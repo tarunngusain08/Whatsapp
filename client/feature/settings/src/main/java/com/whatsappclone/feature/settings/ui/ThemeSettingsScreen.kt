@@ -382,7 +382,7 @@ private fun ThemeOptionItem(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 modifier = Modifier.size(22.dp),
                 tint = if (isSelected) {
                     MaterialTheme.colorScheme.primary
