@@ -11,12 +11,18 @@ import com.whatsappclone.feature.auth.ui.login.LoginViewModel_HiltModules;
 import com.whatsappclone.feature.auth.ui.otp.OtpViewModel_HiltModules;
 import com.whatsappclone.feature.auth.ui.profile.ProfileSetupViewModel_HiltModules;
 import com.whatsappclone.feature.chat.di.ChatModule;
+import com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.status.StatusViewModel_HiltModules;
 import com.whatsappclone.feature.chat.worker.PendingMessageWorker_HiltModule;
+import com.whatsappclone.feature.chat.worker.ScheduledMessageWorker_HiltModule;
 import com.whatsappclone.feature.contacts.di.ContactsModule;
+import com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel_HiltModules;
 import com.whatsappclone.feature.contacts.ui.ContactInfoViewModel_HiltModules;
 import com.whatsappclone.feature.contacts.ui.ContactPickerViewModel_HiltModules;
 import com.whatsappclone.feature.contacts.worker.ContactSyncWorker_HiltModule;
@@ -32,6 +38,7 @@ import com.whatsappclone.feature.profile.ui.ProfileEditViewModel_HiltModules;
 import com.whatsappclone.feature.settings.ui.NotificationSettingsViewModel_HiltModules;
 import com.whatsappclone.feature.settings.ui.PrivacySettingsViewModel_HiltModules;
 import com.whatsappclone.feature.settings.ui.SettingsViewModel_HiltModules;
+import com.whatsappclone.feature.settings.ui.StorageUsageViewModel_HiltModules;
 import com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel_HiltModules;
 import dagger.Binds;
 import dagger.Component;
@@ -172,6 +179,7 @@ public final class WhatsAppApplication_HiltComponents {
           NetworkModule.class,
           PendingMessageWorker_HiltModule.class,
           ProfileModule.class,
+          ScheduledMessageWorker_HiltModule.class,
           ActivityRetainedCBuilderModule.class,
           ServiceCBuilderModule.class
       }
@@ -198,6 +206,8 @@ public final class WhatsAppApplication_HiltComponents {
 
   @Subcomponent(
       modules = {
+          ArchivedChatsViewModel_HiltModules.KeyModule.class,
+          BlockedContactsViewModel_HiltModules.KeyModule.class,
           ChatDetailViewModel_HiltModules.KeyModule.class,
           ChatListViewModel_HiltModules.KeyModule.class,
           ContactInfoViewModel_HiltModules.KeyModule.class,
@@ -215,8 +225,12 @@ public final class WhatsAppApplication_HiltComponents {
           PrivacySettingsViewModel_HiltModules.KeyModule.class,
           ProfileEditViewModel_HiltModules.KeyModule.class,
           ProfileSetupViewModel_HiltModules.KeyModule.class,
+          ReceiptDetailsViewModel_HiltModules.KeyModule.class,
           SettingsViewModel_HiltModules.KeyModule.class,
           SharedMediaViewModel_HiltModules.KeyModule.class,
+          StarredMessagesViewModel_HiltModules.KeyModule.class,
+          StatusViewModel_HiltModules.KeyModule.class,
+          StorageUsageViewModel_HiltModules.KeyModule.class,
           ThemeSettingsViewModel_HiltModules.KeyModule.class,
           ActivityCBuilderModule.class,
           ViewModelCBuilderModule.class
@@ -255,6 +269,8 @@ public final class WhatsAppApplication_HiltComponents {
 
   @Subcomponent(
       modules = {
+          ArchivedChatsViewModel_HiltModules.BindsModule.class,
+          BlockedContactsViewModel_HiltModules.BindsModule.class,
           ChatDetailViewModel_HiltModules.BindsModule.class,
           ChatListViewModel_HiltModules.BindsModule.class,
           ContactInfoViewModel_HiltModules.BindsModule.class,
@@ -271,8 +287,12 @@ public final class WhatsAppApplication_HiltComponents {
           PrivacySettingsViewModel_HiltModules.BindsModule.class,
           ProfileEditViewModel_HiltModules.BindsModule.class,
           ProfileSetupViewModel_HiltModules.BindsModule.class,
+          ReceiptDetailsViewModel_HiltModules.BindsModule.class,
           SettingsViewModel_HiltModules.BindsModule.class,
           SharedMediaViewModel_HiltModules.BindsModule.class,
+          StarredMessagesViewModel_HiltModules.BindsModule.class,
+          StatusViewModel_HiltModules.BindsModule.class,
+          StorageUsageViewModel_HiltModules.BindsModule.class,
           ThemeSettingsViewModel_HiltModules.BindsModule.class
       }
   )
