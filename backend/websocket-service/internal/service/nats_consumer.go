@@ -51,6 +51,9 @@ func (s *wsServiceImpl) StartNATSConsumers(ctx context.Context) error {
 	if err := s.subscribeDeletedMessages(ctx); err != nil {
 		return err
 	}
+	if err := s.subscribeReactions(ctx); err != nil {
+		return err
+	}
 	if err := s.subscribeChatAndGroupEvents(ctx); err != nil {
 		return err
 	}
@@ -186,6 +189,47 @@ func (s *wsServiceImpl) subscribeDeletedMessages(ctx context.Context) error {
 		return err
 	}
 	s.log.Info().Msg("subscribed to msg.deleted")
+	return nil
+}
+
+// subscribeReactions handles msg.reaction — routes reaction events to chat participants.
+func (s *wsServiceImpl) subscribeReactions(ctx context.Context) error {
+	_, err := s.js.Subscribe("msg.reaction", func(m *nats.Msg) {
+		var event struct {
+			MessageID string `json:"message_id"`
+			ChatID    string `json:"chat_id"`
+			UserID    string `json:"user_id"`
+			Emoji     string `json:"emoji"`
+			Removed   bool   `json:"removed"`
+		}
+		if err := json.Unmarshal(m.Data, &event); err != nil {
+			s.log.Error().Err(err).Msg("failed to unmarshal msg.reaction")
+			_ = m.Nak()
+			return
+		}
+
+		wsEvent := model.WSEvent{Type: "message.reaction"}
+		wsEvent.Payload, _ = json.Marshal(model.MessageReactionPayload{
+			MessageID: event.MessageID,
+			ChatID:    event.ChatID,
+			UserID:    event.UserID,
+			Emoji:     event.Emoji,
+			Removed:   event.Removed,
+		})
+		data, _ := json.Marshal(wsEvent)
+
+		participantIDs := s.getChatParticipants(ctx, event.ChatID)
+		for _, uid := range participantIDs {
+			s.rdb.Publish(context.Background(), "user:channel:"+uid, data)
+		}
+
+		_ = m.Ack()
+	}, nats.Durable("ws-reaction-consumer"), nats.ManualAck())
+
+	if err != nil {
+		return err
+	}
+	s.log.Info().Msg("subscribed to msg.reaction")
 	return nil
 }
 
