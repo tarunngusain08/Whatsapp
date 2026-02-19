@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:database"))
     implementation(project(":feature:chat"))
+    implementation(project(":feature:media"))
 
     // Compose
     implementation(platform(libs.compose.bom))
