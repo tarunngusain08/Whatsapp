@@ -28,6 +28,7 @@ import com.whatsappclone.feature.chat.data.UserRepository
 import com.whatsappclone.feature.chat.domain.MarkMessagesReadUseCase
 import com.whatsappclone.feature.chat.domain.SendMessageUseCase
 import com.whatsappclone.feature.chat.model.MessageUi
+import com.whatsappclone.feature.chat.model.Reaction
 import com.whatsappclone.feature.media.audio.RecordingState
 import com.whatsappclone.feature.media.audio.VoiceRecorder
 import com.whatsappclone.feature.media.data.MediaRepository
@@ -236,6 +237,7 @@ class ChatDetailViewModel @Inject constructor(
             replyToSenderName = replySenderName,
             replyToType = replyType,
             replyToMediaThumbnailUrl = replyMediaThumb,
+            reactions = parseReactions(reactionsJson),
             isScheduled = scheduledAt != null,
             scheduledAt = scheduledAt
         )
@@ -734,6 +736,25 @@ class ChatDetailViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    private fun parseReactions(jsonStr: String?): List<Reaction> {
+        if (jsonStr.isNullOrBlank()) return emptyList()
+        return try {
+            val obj = kotlinx.serialization.json.Json.decodeFromString(
+                kotlinx.serialization.json.JsonObject.serializer(), jsonStr
+            )
+            obj.map { (emoji, value) ->
+                val userIds = kotlinx.serialization.json.Json.decodeFromString<List<String>>(value.toString())
+                Reaction(
+                    emoji = emoji,
+                    userIds = userIds,
+                    isFromMe = currentUserId in userIds
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     companion object {
