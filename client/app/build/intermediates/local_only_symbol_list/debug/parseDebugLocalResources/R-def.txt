@@ -74,4 +74,5 @@ string tab_calls
 string tab_chats
 string tab_status
 style Theme.WhatsAppClone
+xml file_paths
 xml network_security_config
