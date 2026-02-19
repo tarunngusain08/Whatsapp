@@ -22,12 +22,12 @@ client/
 │
 └── feature/
     ├── auth/                   # Login, OTP verification, profile setup
-    ├── chat/                   # Chat list, chat detail, message composer
-    ├── contacts/               # Contact picker, contact info
+    ├── chat/                   # Chat list, chat detail, archived chats, scheduled/pending message workers
+    ├── contacts/               # Contact picker, contact info, contact sync worker
     ├── group/                  # Group creation, group info, participant management
-    ├── media/                  # Media viewer (images, videos)
+    ├── media/                  # Camera capture, voice recorder, audio player, media viewer, cleanup worker
     ├── profile/                # Profile editing
-    └── settings/               # App settings, privacy, notifications, server URL
+    └── settings/               # App settings, privacy, notifications, biometric lock, server URL
 ```
 
 ---
@@ -135,7 +135,7 @@ Navigation events control the WebSocket connection:
         MediaEntity::class,
         MessageFts::class
     ],
-    version = 2
+    version = 5
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -500,7 +500,7 @@ The main screen showing all conversations:
 └────────────────────────────────────────┘
 ```
 
-**Features**: pinned chats at top, unread badges, last message preview, delivery status ticks, search, pull-to-refresh, FAB to start new chat.
+**Features**: pinned chats at top, archived chats section, unread badges, last message preview, delivery status ticks, search, pull-to-refresh, FAB to start new chat.
 
 ### ChatDetailScreen
 
@@ -525,7 +525,7 @@ The message view with composer:
 └────────────────────────────────────────┘
 ```
 
-**Features**: paged message loading (Paging 3), typing indicators, reply preview, message long-press actions (reply, forward, delete, star, react), scroll-to-bottom FAB, read receipt ticks.
+**Features**: paged message loading (Paging 3), typing indicators, reply preview, message long-press actions (reply, forward, delete, star, react), scroll-to-bottom FAB, read receipt ticks, scheduled messages, voice note recording, location sharing.
 
 ---
 
@@ -606,6 +606,44 @@ data class ChatListUiState(
 ```
 
 Network errors, timeouts, and server errors are caught in the repository layer and surfaced as `AppResult.Error`, preventing crashes and allowing graceful UI degradation.
+
+---
+
+## Background Workers (WorkManager)
+
+The app uses WorkManager for reliable background processing that survives app restarts:
+
+| Worker | Module | Purpose | Schedule |
+|--------|--------|---------|----------|
+| `PendingMessageWorker` | `feature/chat` | Retries unsent messages that failed due to network issues | On connectivity change |
+| `ScheduledMessageWorker` | `feature/chat` | Sends messages at a user-specified future time | One-shot, exact timing |
+| `ContactSyncWorker` | `feature/contacts` | Syncs the device address book against registered users | Periodic (configurable) |
+| `MediaCleanupWorker` | `feature/media` | Removes cached media files that are no longer referenced | Periodic |
+
+Workers are initialized in `WhatsAppApplication` during app startup.
+
+---
+
+## Media Capture & Playback
+
+The `feature/media` module provides in-app media handling beyond simple viewing:
+
+- **CameraScreen**: in-app camera for capturing photos and videos, launched from the chat composer
+- **VoiceRecorder**: records voice notes with real-time waveform visualization; output is compressed and uploaded via the media service
+- **AudioPlayer**: plays back voice notes and audio files with seek, pause, and duration display
+- **MediaViewerScreen / ImageViewerScreen**: full-screen viewers with zoom and pan
+- **SharedMediaScreen**: gallery view of all media shared in a chat
+
+---
+
+## Biometric App Lock
+
+The `feature/settings` module includes biometric authentication for app lock:
+
+- Configured via `PrivacySettingsScreen` → `BiometricLockScreen`
+- Uses Android's `BiometricPrompt` API (fingerprint, face)
+- When enabled, `MainActivity` checks biometric status on each resume from background
+- Lock preference persisted via DataStore (`PrivacyPreferences`)
 
 ---
 
