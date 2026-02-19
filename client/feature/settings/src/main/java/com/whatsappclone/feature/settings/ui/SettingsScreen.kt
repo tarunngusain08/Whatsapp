@@ -70,6 +70,8 @@ fun SettingsScreen(
     onNavigateToPrivacy: () -> Unit,
     onNavigateToServerUrl: () -> Unit,
     onNavigateToTheme: () -> Unit = {},
+    onNavigateToStorageUsage: () -> Unit = {},
+    onNavigateToGlobalWallpaper: () -> Unit = {},
     onNavigateToLogin: () -> Unit,
     onNavigateBack: () -> Unit,
     isDebug: Boolean = false,
@@ -204,8 +206,8 @@ fun SettingsScreen(
                     icon = Icons.AutoMirrored.Filled.Chat,
                     iconTint = Color(0xFF25D366),
                     title = "Wallpaper",
-                    subtitle = "Change chat wallpaper",
-                    onClick = showComingSoon
+                    subtitle = "Change default chat wallpaper",
+                    onClick = onNavigateToGlobalWallpaper
                 )
 
                 SettingsItem(
@@ -239,7 +241,7 @@ fun SettingsScreen(
                     iconTint = Color(0xFF7C4DFF),
                     title = "Storage usage",
                     subtitle = "Manage your storage",
-                    onClick = showComingSoon
+                    onClick = onNavigateToStorageUsage
                 )
 
                 SettingsItem(
@@ -405,7 +407,7 @@ private fun SettingsItem(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 tint = iconTint,
                 modifier = Modifier.size(24.dp)
             )
@@ -465,7 +467,7 @@ private fun LogoutButton(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Logout,
-                contentDescription = null,
+                contentDescription = "Log out",
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(24.dp)
             )
