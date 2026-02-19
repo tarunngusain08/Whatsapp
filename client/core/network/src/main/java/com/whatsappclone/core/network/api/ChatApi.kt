@@ -5,6 +5,7 @@ import com.whatsappclone.core.network.model.PaginatedData
 import com.whatsappclone.core.network.model.dto.AddParticipantsRequest
 import com.whatsappclone.core.network.model.dto.ChatDto
 import com.whatsappclone.core.network.model.dto.CreateChatRequest
+import com.whatsappclone.core.network.model.dto.DisappearingTimerRequest
 import com.whatsappclone.core.network.model.dto.MuteChatRequest
 import com.whatsappclone.core.network.model.dto.UpdateRoleRequest
 import retrofit2.Response
@@ -64,5 +65,11 @@ interface ChatApi {
         @Path("chatId") chatId: String,
         @Path("userId") userId: String,
         @Body request: UpdateRoleRequest
+    ): Response<ApiResponse<Unit>>
+
+    @PUT("chats/{chatId}/disappearing")
+    suspend fun setDisappearingTimer(
+        @Path("chatId") chatId: String,
+        @Body request: DisappearingTimerRequest
     ): Response<ApiResponse<Unit>>
 }
