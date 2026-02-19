@@ -20,6 +20,7 @@ type userServiceImpl struct {
 	privacyRepo     repository.PrivacyRepository
 	deviceTokenRepo repository.DeviceTokenRepository
 	presenceRepo    repository.PresenceRepository
+	statusRepo      repository.StatusRepository
 	presenceTTL     time.Duration
 	log             zerolog.Logger
 }
@@ -30,6 +31,7 @@ func NewUserService(
 	privacyRepo repository.PrivacyRepository,
 	deviceTokenRepo repository.DeviceTokenRepository,
 	presenceRepo repository.PresenceRepository,
+	statusRepo repository.StatusRepository,
 	presenceTTL time.Duration,
 	log zerolog.Logger,
 ) UserService {
@@ -39,6 +41,7 @@ func NewUserService(
 		privacyRepo:     privacyRepo,
 		deviceTokenRepo: deviceTokenRepo,
 		presenceRepo:    presenceRepo,
+		statusRepo:      statusRepo,
 		presenceTTL:     presenceTTL,
 		log:             log,
 	}
@@ -263,6 +266,79 @@ func (s *userServiceImpl) CheckPresence(ctx context.Context, userID string) (boo
 		return false, nil, nil
 	}
 	return false, &lastSeen, nil
+}
+
+func (s *userServiceImpl) CreateStatus(ctx context.Context, userID string, req *model.CreateStatusRequest) (*model.Status, error) {
+	if req.Type != "text" && req.Type != "image" {
+		return nil, apperr.NewBadRequest("type must be 'text' or 'image'")
+	}
+
+	status := &model.Status{
+		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		UserID:    userID,
+		Type:      req.Type,
+		Content:   req.Content,
+		Caption:   req.Caption,
+		BgColor:   req.BgColor,
+		Viewers:   []string{},
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+
+	if err := s.statusRepo.Create(ctx, status); err != nil {
+		return nil, apperr.NewInternal("failed to create status", err)
+	}
+	return status, nil
+}
+
+func (s *userServiceImpl) GetMyStatuses(ctx context.Context, userID string) ([]*model.Status, error) {
+	statuses, err := s.statusRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, apperr.NewInternal("failed to get statuses", err)
+	}
+	return statuses, nil
+}
+
+func (s *userServiceImpl) GetContactStatuses(ctx context.Context, userID string) ([]*model.Status, error) {
+	contacts, err := s.contactRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, apperr.NewInternal("failed to get contacts", err)
+	}
+
+	if len(contacts) == 0 {
+		return nil, nil
+	}
+
+	contactIDs := make([]string, 0, len(contacts))
+	for _, c := range contacts {
+		if !c.IsBlocked {
+			contactIDs = append(contactIDs, c.ContactID)
+		}
+	}
+
+	if len(contactIDs) == 0 {
+		return nil, nil
+	}
+
+	statuses, err := s.statusRepo.GetByUserIDs(ctx, contactIDs)
+	if err != nil {
+		return nil, apperr.NewInternal("failed to get contact statuses", err)
+	}
+	return statuses, nil
+}
+
+func (s *userServiceImpl) DeleteStatus(ctx context.Context, statusID, userID string) error {
+	if err := s.statusRepo.Delete(ctx, statusID, userID); err != nil {
+		return apperr.NewNotFound("status not found")
+	}
+	return nil
+}
+
+func (s *userServiceImpl) ViewStatus(ctx context.Context, statusID, viewerID string) error {
+	if err := s.statusRepo.AddViewer(ctx, statusID, viewerID); err != nil {
+		return apperr.NewInternal("failed to mark status as viewed", err)
+	}
+	return nil
 }
 
 // canSee determines if a field is visible based on privacy setting and relationship.
