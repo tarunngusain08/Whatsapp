@@ -716,7 +716,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           return (T) new ForwardPickerViewModel(singletonCImpl.chatRepositoryImplProvider.get(), singletonCImpl.messageRepositoryImplProvider.get());
 
           case 5: // com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel 
-          return (T) new GlobalSearchViewModel(singletonCImpl.provideContactDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get());
+          return (T) new GlobalSearchViewModel(singletonCImpl.provideContactDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
           case 6: // com.whatsappclone.feature.group.ui.info.GroupInfoViewModel 
           return (T) new GroupInfoViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideGroupDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
