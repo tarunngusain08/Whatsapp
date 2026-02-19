@@ -160,14 +160,16 @@ func (s *messageServiceImpl) UpdateStatus(ctx context.Context, messageID, userID
 		}
 	}
 
-	// Fetch the message to get sender_id for routing the status update
+	// Fetch the message to get sender_id and chat_id for routing the status update
 	msg, msgErr := s.messageRepo.GetByID(ctx, messageID)
 	senderID := ""
+	chatID := ""
 	if msgErr == nil && msg != nil {
 		senderID = msg.SenderID
+		chatID = msg.ChatID
 	}
 
-	if pubErr := s.publisher.PublishStatusUpdate(ctx, messageID, userID, status, senderID); pubErr != nil {
+	if pubErr := s.publisher.PublishStatusUpdate(ctx, messageID, chatID, userID, status, senderID); pubErr != nil {
 		s.log.Error().Err(pubErr).Str("message_id", messageID).Msg("failed to publish msg.status.updated event")
 	}
 
