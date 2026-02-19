@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -90,6 +91,10 @@ func main() {
 		cfg.PresenceTTL,
 		log,
 	)
+
+	// Start periodic status cleanup job
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	go startStatusCleanupJob(cleanupCtx, statusRepo, log)
 
 	// --- HTTP Server ---
 	gin.SetMode(gin.ReleaseMode)
@@ -173,6 +178,7 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
+	cleanupCancel()
 	grpcServer.GracefulStop()
 	log.Info().Msg("gRPC server stopped")
 
@@ -200,4 +206,33 @@ func errString(err error) string {
 		return err.Error()
 	}
 	return "ok"
+}
+
+// startStatusCleanupJob runs immediately on startup, then every hour,
+// and deletes expired statuses. It exits when ctx is cancelled.
+func startStatusCleanupJob(ctx context.Context, statusRepo repository.StatusRepository, log zerolog.Logger) {
+	runCleanup := func() {
+		opCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		count, err := statusRepo.DeleteExpired(opCtx)
+		cancel()
+		if err != nil {
+			log.Error().Err(err).Msg("status cleanup: failed to delete expired statuses")
+		} else if count > 0 {
+			log.Info().Int64("deleted", count).Msg("status cleanup: removed expired statuses")
+		}
+	}
+
+	runCleanup()
+
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			runCleanup()
+		}
+	}
 }
