@@ -32,7 +32,7 @@ class ScheduledMessageWorker @AssistedInject constructor(
                     mediaUrl = message.mediaUrl,
                     mediaMimeType = message.mediaMimeType,
                     mediaSize = message.mediaSize,
-                    mediaDuration = message.mediaDuration?.toLong()
+                    mediaDuration = message.mediaDuration
                 )
                 messageDao.softDelete(message.messageId, forEveryone = false)
             } catch (_: Exception) {
