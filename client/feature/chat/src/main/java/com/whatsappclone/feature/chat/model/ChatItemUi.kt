@@ -11,6 +11,7 @@ data class ChatItemUi(
     val isMuted: Boolean,
     val isPinned: Boolean,
     val chatType: String,
+    val isArchived: Boolean = false,
     val typingUsers: Set<String> = emptySet(),
     val formattedTime: String = ""
 )
