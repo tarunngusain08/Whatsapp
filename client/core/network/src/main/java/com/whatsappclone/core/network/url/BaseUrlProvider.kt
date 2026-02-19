@@ -36,7 +36,7 @@ class BaseUrlProvider @Inject constructor(
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://dismally-cosmographic-krystal.ngrok-free.dev/api/v1/"
+        const val DEFAULT_BASE_URL = "https://ae13-2401-4900-1c43-1191-653b-6fd0-c8c2-1fda.ngrok-free.app/api/v1/"
 
         private val KEY_BASE_URL = stringPreferencesKey("base_url")
     }
