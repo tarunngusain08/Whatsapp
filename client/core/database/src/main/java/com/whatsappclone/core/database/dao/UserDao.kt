@@ -32,4 +32,7 @@ interface UserDao {
 
     @Query("UPDATE users SET isBlocked = :isBlocked, updatedAt = :updatedAt WHERE id = :userId")
     suspend fun setBlocked(userId: String, isBlocked: Boolean, updatedAt: Long)
+
+    @Query("SELECT * FROM users WHERE isBlocked = 1 ORDER BY displayName ASC")
+    fun observeBlockedUsers(): Flow<List<UserEntity>>
 }
