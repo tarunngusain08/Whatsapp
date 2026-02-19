@@ -72,6 +72,10 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
+    // Coil
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network)
+
     // Paging
     implementation(libs.paging.runtime)
     implementation(libs.paging.compose)
