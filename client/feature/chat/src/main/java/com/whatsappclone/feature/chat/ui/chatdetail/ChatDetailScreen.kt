@@ -1,5 +1,8 @@
 package com.whatsappclone.feature.chat.ui.chatdetail
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -55,11 +58,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
@@ -69,9 +75,22 @@ import com.whatsappclone.core.ui.components.DateSeparator
 import com.whatsappclone.core.ui.components.TypingIndicator
 import com.whatsappclone.core.ui.components.UserAvatar
 import com.whatsappclone.core.ui.theme.WhatsAppColors
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Forward
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import com.whatsappclone.feature.chat.model.MessageUi
+import com.whatsappclone.feature.media.audio.RecordingState
+import com.whatsappclone.feature.media.audio.VoiceRecordingOverlay
+import com.whatsappclone.feature.media.ui.AttachmentBottomSheet
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 // ── Public entry point ──────────────────────────────────────────────────────
 
@@ -80,11 +99,15 @@ fun ChatDetailScreen(
     onNavigateBack: () -> Unit,
     onViewContact: (userId: String) -> Unit = {},
     onNavigateToForward: (messageContent: String?, messageType: String) -> Unit = { _, _ -> },
+    onNavigateToReceiptDetails: (messageId: String) -> Unit = {},
+    onNavigateToWallpaper: (chatId: String) -> Unit = {},
+    onNavigateToLocationPicker: (chatId: String) -> Unit = {},
     viewModel: ChatDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val messages = viewModel.messages.collectAsLazyPagingItems()
     val replyToMessage by viewModel.replyToMessage.collectAsStateWithLifecycle()
+    val recordingState by viewModel.recordingState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.markAsRead()
@@ -94,11 +117,19 @@ fun ChatDetailScreen(
         uiState = uiState,
         messages = messages,
         replyToMessage = replyToMessage,
+        recordingState = recordingState,
+        recordingAmplitudes = viewModel.recordingAmplitudes,
         onNavigateBack = onNavigateBack,
         onViewContact = { uiState.otherUserId?.let { onViewContact(it) } },
         onComposerTextChanged = viewModel::onComposerTextChanged,
         onSendClick = viewModel::onSendMessage,
-        onAttachmentClick = { /* TODO: attachment bottom sheet */ },
+        onAttachmentClick = {},
+        onSendMediaMessage = viewModel::sendMediaMessage,
+        onStartRecording = viewModel::startRecording,
+        onStopRecording = viewModel::stopRecording,
+        onCancelRecording = viewModel::cancelRecording,
+        onLockRecording = viewModel::lockRecording,
+        onSendRecording = viewModel::sendRecording,
         onSetReply = viewModel::setReplyTo,
         onCancelReply = viewModel::clearReply,
         onToggleStar = viewModel::toggleStar,
@@ -106,7 +137,25 @@ fun ChatDetailScreen(
         onDeleteForEveryone = viewModel::deleteForEveryone,
         onCopyMessage = viewModel::copyToClipboard,
         onForwardMessage = onNavigateToForward,
-        onErrorDismissed = viewModel::clearError
+        onErrorDismissed = viewModel::clearError,
+        onToggleMute = viewModel::toggleMute,
+        onOpenSearch = viewModel::openSearch,
+        onCloseSearch = viewModel::closeSearch,
+        onSearchQueryChanged = viewModel::onSearchQueryChanged,
+        onNextMatch = viewModel::navigateToNextMatch,
+        onPrevMatch = viewModel::navigateToPreviousMatch,
+        onSetDisappearingTimer = viewModel::setDisappearingMessages,
+        onMessageInfo = onNavigateToReceiptDetails,
+        onWallpaperClick = { onNavigateToWallpaper(uiState.chatId) },
+        onLocationClick = { onNavigateToLocationPicker(uiState.chatId) },
+        onExportChat = viewModel::exportChat,
+        onScheduleMessage = viewModel::scheduleMessage,
+        onEnterSelectionMode = viewModel::enterSelectionMode,
+        onToggleMessageSelection = viewModel::toggleMessageSelection,
+        onExitSelectionMode = viewModel::exitSelectionMode,
+        onDeleteSelectedMessages = viewModel::deleteSelectedMessages,
+        onStarSelectedMessages = viewModel::starSelectedMessages,
+        onCopySelectedMessages = viewModel::copySelectedMessages
     )
 }
 
@@ -118,11 +167,19 @@ private fun ChatDetailContent(
     uiState: ChatDetailUiState,
     messages: LazyPagingItems<MessageUi>,
     replyToMessage: MessageUi?,
+    recordingState: RecordingState,
+    recordingAmplitudes: SharedFlow<Int>,
     onNavigateBack: () -> Unit,
     onViewContact: () -> Unit,
     onComposerTextChanged: (String) -> Unit,
     onSendClick: () -> Unit,
     onAttachmentClick: () -> Unit,
+    onSendMediaMessage: (Uri, String, String?) -> Unit,
+    onStartRecording: () -> Unit,
+    onStopRecording: () -> Unit,
+    onCancelRecording: () -> Unit,
+    onLockRecording: () -> Unit,
+    onSendRecording: () -> Unit,
     onSetReply: (MessageUi?) -> Unit,
     onCancelReply: () -> Unit,
     onToggleStar: (String, Boolean) -> Unit,
@@ -130,8 +187,27 @@ private fun ChatDetailContent(
     onDeleteForEveryone: (String) -> Unit,
     onCopyMessage: (String) -> Unit,
     onForwardMessage: (String?, String) -> Unit,
-    onErrorDismissed: () -> Unit
+    onErrorDismissed: () -> Unit,
+    onToggleMute: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onCloseSearch: () -> Unit = {},
+    onSearchQueryChanged: (String) -> Unit = {},
+    onNextMatch: () -> Unit = {},
+    onPrevMatch: () -> Unit = {},
+    onSetDisappearingTimer: (String) -> Unit = {},
+    onMessageInfo: (String) -> Unit = {},
+    onWallpaperClick: () -> Unit = {},
+    onLocationClick: () -> Unit = {},
+    onExportChat: () -> Unit = {},
+    onScheduleMessage: ((Long) -> Unit)? = null,
+    onEnterSelectionMode: (String) -> Unit = {},
+    onToggleMessageSelection: (String) -> Unit = {},
+    onExitSelectionMode: () -> Unit = {},
+    onDeleteSelectedMessages: () -> Unit = {},
+    onStarSelectedMessages: () -> Unit = {},
+    onCopySelectedMessages: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -141,8 +217,60 @@ private fun ChatDetailContent(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var messageToDelete by remember { mutableStateOf<MessageUi?>(null) }
 
+    // Attachment bottom sheet state
+    var showAttachmentSheet by remember { mutableStateOf(false) }
+
+    // Camera capture URI
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Activity result launchers
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            val mimeType = context.contentResolver.getType(selectedUri)
+            val messageType = when {
+                mimeType?.startsWith("video/") == true -> "video"
+                else -> "image"
+            }
+            onSendMediaMessage(selectedUri, messageType, mimeType)
+        }
+    }
+
+    val documentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            val mimeType = context.contentResolver.getType(selectedUri)
+            onSendMediaMessage(selectedUri, "document", mimeType)
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            cameraImageUri?.let { uri ->
+                onSendMediaMessage(uri, "image", "image/jpeg")
+            }
+        }
+    }
+
     // Highlighted message for "scroll to reply" animation
     var highlightedMessageId by remember { mutableStateOf<String?>(null) }
+
+    // Auto-scroll to search match
+    LaunchedEffect(uiState.currentMatchMessageId) {
+        uiState.currentMatchMessageId?.let { matchId ->
+            val index = findMessageIndex(messages, matchId)
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+                highlightedMessageId = matchId
+                delay(1500)
+                highlightedMessageId = null
+            }
+        }
+    }
 
     // Show errors via Snackbar
     LaunchedEffect(uiState.error) {
@@ -154,14 +282,54 @@ private fun ChatDetailContent(
 
     Scaffold(
         topBar = {
-            ChatDetailTopBar(
-                chatName = uiState.chatName,
-                avatarUrl = uiState.chatAvatarUrl,
-                subtitleText = uiState.subtitleText,
-                isSubtitleHighlighted = uiState.isSubtitleHighlighted,
-                onNavigateBack = onNavigateBack,
-                onViewContact = onViewContact
-            )
+            when {
+                uiState.isSelectionMode -> {
+                    SelectionTopBar(
+                        selectedCount = uiState.selectedCount,
+                        onClose = onExitSelectionMode,
+                        onDelete = onDeleteSelectedMessages,
+                        onStar = onStarSelectedMessages,
+                        onCopy = onCopySelectedMessages,
+                        onForward = {
+                            val firstSelectedMsg = (0 until messages.itemCount)
+                                .mapNotNull { messages[it] }
+                                .firstOrNull { it.messageId in uiState.selectedMessageIds }
+                            onExitSelectionMode()
+                            if (firstSelectedMsg != null) {
+                                onForwardMessage(firstSelectedMsg.content, firstSelectedMsg.messageType)
+                            }
+                        }
+                    )
+                }
+                uiState.isSearchActive -> {
+                    SearchTopBar(
+                        query = uiState.searchQuery,
+                        onQueryChanged = onSearchQueryChanged,
+                        matchCount = uiState.totalSearchMatches,
+                        currentMatch = if (uiState.totalSearchMatches > 0) uiState.currentMatchIndex + 1 else 0,
+                        onNextMatch = onNextMatch,
+                        onPrevMatch = onPrevMatch,
+                        onClose = onCloseSearch
+                    )
+                }
+                else -> {
+                    ChatDetailTopBar(
+                        chatName = uiState.chatName,
+                        avatarUrl = uiState.chatAvatarUrl,
+                        subtitleText = uiState.subtitleText,
+                        isSubtitleHighlighted = uiState.isSubtitleHighlighted,
+                        isMuted = uiState.isMuted,
+                        disappearingTimer = uiState.disappearingTimer,
+                        onNavigateBack = onNavigateBack,
+                        onViewContact = onViewContact,
+                        onToggleMute = onToggleMute,
+                        onOpenSearch = onOpenSearch,
+                        onSetDisappearingTimer = onSetDisappearingTimer,
+                        onWallpaperClick = onWallpaperClick,
+                        onExportChat = onExportChat
+                    )
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets.ime
@@ -172,11 +340,19 @@ private fun ChatDetailContent(
                 .padding(innerPadding)
         ) {
             // Message list
+            val wallpaperColorLong = remember(uiState.chatId) {
+                com.whatsappclone.feature.chat.ui.wallpaper.getWallpaperColor(
+                    context, uiState.chatId
+                )
+            }
+            val chatBgColor = wallpaperColorLong?.let { Color(it) }
+                ?: WhatsAppColors.ChatBackground
+
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .background(WhatsAppColors.ChatBackground)
+                    .background(chatBgColor)
             ) {
                 MessageList(
                     messages = messages,
@@ -184,13 +360,23 @@ private fun ChatDetailContent(
                     isGroupChat = uiState.chatType == "group",
                     typingUsers = uiState.typingUsers,
                     highlightedMessageId = highlightedMessageId,
+                    isSelectionMode = uiState.isSelectionMode,
+                    selectedMessageIds = uiState.selectedMessageIds,
                     onMessageLongPress = { message ->
                         if (!message.isDeleted) {
-                            selectedMessage = message
+                            if (uiState.isSelectionMode) {
+                                onToggleMessageSelection(message.messageId)
+                            } else {
+                                selectedMessage = message
+                            }
+                        }
+                    },
+                    onMessageTap = { message ->
+                        if (uiState.isSelectionMode) {
+                            onToggleMessageSelection(message.messageId)
                         }
                     },
                     onQuotedReplyClick = { replyId ->
-                        // Find the index of the original message and scroll to it
                         scope.launch {
                             val index = findMessageIndex(messages, replyId)
                             if (index >= 0) {
@@ -204,15 +390,29 @@ private fun ChatDetailContent(
                 )
             }
 
-            // Compose bar (with reply preview integrated)
-            ComposeBar(
-                text = uiState.composerText,
-                onTextChanged = onComposerTextChanged,
-                onSendClick = onSendClick,
-                onAttachmentClick = onAttachmentClick,
-                replyToMessage = replyToMessage,
-                onCancelReply = onCancelReply
-            )
+            // Voice recording overlay replaces compose bar while recording
+            if (recordingState.isRecording) {
+                VoiceRecordingOverlay(
+                    isVisible = true,
+                    recordingState = recordingState,
+                    amplitudes = recordingAmplitudes,
+                    onCancel = onCancelRecording,
+                    onStop = onStopRecording,
+                    onLock = onLockRecording,
+                    onSend = onSendRecording
+                )
+            } else {
+                ComposeBar(
+                    text = uiState.composerText,
+                    onTextChanged = onComposerTextChanged,
+                    onSendClick = onSendClick,
+                    onAttachmentClick = { showAttachmentSheet = true },
+                    onMicPressed = onStartRecording,
+                    onScheduleMessage = onScheduleMessage,
+                    replyToMessage = replyToMessage,
+                    onCancelReply = onCancelReply
+                )
+            }
         }
     }
 
@@ -239,9 +439,15 @@ private fun ChatDetailContent(
                     MessageAction.STAR -> {
                         onToggleStar(msg.messageId, msg.isStarred)
                     }
+                    MessageAction.INFO -> {
+                        onMessageInfo(msg.messageId)
+                    }
                     MessageAction.DELETE -> {
                         messageToDelete = msg
                         showDeleteDialog = true
+                    }
+                    MessageAction.SELECT -> {
+                        onEnterSelectionMode(msg.messageId)
                     }
                 }
                 selectedMessage = null
@@ -271,6 +477,40 @@ private fun ChatDetailContent(
             }
         )
     }
+
+    // ── Attachment bottom sheet ──────────────────────────────────────
+
+    if (showAttachmentSheet) {
+        AttachmentBottomSheet(
+            onDismiss = { showAttachmentSheet = false },
+            onCameraClick = {
+                val photoFile = File(
+                    context.cacheDir,
+                    "camera_${System.currentTimeMillis()}.jpg"
+                )
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    photoFile
+                )
+                cameraImageUri = uri
+                cameraLauncher.launch(uri)
+            },
+            onGalleryClick = {
+                galleryLauncher.launch(
+                    androidx.activity.result.PickVisualMediaRequest(
+                        ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                    )
+                )
+            },
+            onDocumentClick = {
+                documentLauncher.launch(arrayOf("*/*"))
+            },
+            onLocationClick = {
+                onLocationClick()
+            }
+        )
+    }
 }
 
 // ── Top App Bar ─────────────────────────────────────────────────────────────
@@ -282,10 +522,18 @@ private fun ChatDetailTopBar(
     avatarUrl: String?,
     subtitleText: String,
     isSubtitleHighlighted: Boolean,
+    isMuted: Boolean = false,
+    disappearingTimer: String = "off",
     onNavigateBack: () -> Unit,
-    onViewContact: () -> Unit
+    onViewContact: () -> Unit,
+    onToggleMute: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onSetDisappearingTimer: (String) -> Unit = {},
+    onWallpaperClick: () -> Unit = {},
+    onExportChat: () -> Unit = {}
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    var showDisappearingSheet by remember { mutableStateOf(false) }
 
     TopAppBar(
         title = {
@@ -359,16 +607,267 @@ private fun ChatDetailTopBar(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Mute notifications") },
-                    onClick = { menuExpanded = false }
+                    text = { Text(if (isMuted) "Unmute notifications" else "Mute notifications") },
+                    onClick = {
+                        menuExpanded = false
+                        onToggleMute()
+                    }
                 )
                 DropdownMenuItem(
                     text = { Text("Search") },
-                    onClick = { menuExpanded = false }
+                    onClick = {
+                        menuExpanded = false
+                        onOpenSearch()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Disappearing messages") },
+                    onClick = {
+                        menuExpanded = false
+                        showDisappearingSheet = true
+                    }
                 )
                 DropdownMenuItem(
                     text = { Text("Wallpaper") },
-                    onClick = { menuExpanded = false }
+                    onClick = {
+                        menuExpanded = false
+                        onWallpaperClick()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Export chat") },
+                    onClick = {
+                        menuExpanded = false
+                        onExportChat()
+                    }
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            navigationIconContentColor = Color.White,
+            titleContentColor = Color.White,
+            actionIconContentColor = Color.White
+        )
+    )
+
+    if (showDisappearingSheet) {
+        DisappearingMessagesSheet(
+            currentTimer = disappearingTimer,
+            onTimerSelected = { timer ->
+                onSetDisappearingTimer(timer)
+                showDisappearingSheet = false
+            },
+            onDismiss = { showDisappearingSheet = false }
+        )
+    }
+}
+
+// ── Disappearing Messages Bottom Sheet ──────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DisappearingMessagesSheet(
+    currentTimer: String,
+    onTimerSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        "off" to "Off",
+        "24h" to "24 hours",
+        "7d" to "7 days",
+        "90d" to "90 days"
+    )
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            Text(
+                text = "Disappearing messages",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            )
+
+            Text(
+                text = "New messages will disappear from this chat after the selected duration.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.size(8.dp))
+
+            options.forEach { (value, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onTimerSelected(value) }
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.RadioButton(
+                        selected = currentTimer == value,
+                        onClick = { onTimerSelected(value) }
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Search Top Bar ──────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchTopBar(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    matchCount: Int,
+    currentMatch: Int,
+    onNextMatch: () -> Unit,
+    onPrevMatch: () -> Unit,
+    onClose: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            androidx.compose.material3.TextField(
+                value = query,
+                onValueChange = onQueryChanged,
+                placeholder = {
+                    Text(
+                        "Search messages...",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 16.sp
+                    )
+                },
+                singleLine = true,
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    cursorColor = Color.White,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Close search",
+                    tint = Color.White
+                )
+            }
+        },
+        actions = {
+            if (matchCount > 0) {
+                Text(
+                    text = "$currentMatch/$matchCount",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+            IconButton(onClick = onPrevMatch, enabled = matchCount > 0) {
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Previous match",
+                    tint = if (matchCount > 0) Color.White else Color.White.copy(alpha = 0.3f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            IconButton(onClick = onNextMatch, enabled = matchCount > 0) {
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Next match",
+                    tint = if (matchCount > 0) Color.White else Color.White.copy(alpha = 0.3f),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer { rotationZ = 180f }
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary
+        )
+    )
+}
+
+// ── Selection Top Bar ────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectionTopBar(
+    selectedCount: Int,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+    onStar: () -> Unit,
+    onCopy: () -> Unit,
+    onForward: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = "$selectedCount",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                fontSize = 20.sp
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Exit selection",
+                    tint = Color.White
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onStar) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Star selected",
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete selected",
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = onCopy) {
+                Icon(
+                    imageVector = Icons.Filled.ContentCopy,
+                    contentDescription = "Copy selected",
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = onForward) {
+                Icon(
+                    imageVector = Icons.Filled.Forward,
+                    contentDescription = "Forward selected",
+                    tint = Color.White
                 )
             }
         },
@@ -390,7 +889,10 @@ private fun MessageList(
     isGroupChat: Boolean,
     typingUsers: Set<String>,
     highlightedMessageId: String?,
+    isSelectionMode: Boolean = false,
+    selectedMessageIds: Set<String> = emptySet(),
     onMessageLongPress: (MessageUi) -> Unit,
+    onMessageTap: (MessageUi) -> Unit = {},
     onQuotedReplyClick: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -436,34 +938,67 @@ private fun MessageList(
             ) { index ->
                 val message = messages[index] ?: return@items
                 val isHighlighted = message.messageId == highlightedMessageId
+                val isSelected = message.messageId in selectedMessageIds
 
                 Column {
-                    // Message bubble with optional highlight
                     Box(
-                        modifier = if (isHighlighted) {
-                            Modifier
-                                .fillMaxWidth()
-                                .drawBehind {
-                                    drawRect(
-                                        color = Color(0x3300A884),
-                                        size = size
-                                    )
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (isHighlighted) {
+                                    Modifier.drawBehind {
+                                        drawRect(
+                                            color = Color(0x3300A884),
+                                            size = size
+                                        )
+                                    }
+                                } else if (isSelected) {
+                                    Modifier.drawBehind {
+                                        drawRect(
+                                            color = Color(0x2200A884),
+                                            size = size
+                                        )
+                                    }
+                                } else {
+                                    Modifier
                                 }
-                        } else {
-                            Modifier.fillMaxWidth()
-                        }
+                            )
+                            .then(
+                                if (isSelectionMode) {
+                                    Modifier.clickable { onMessageTap(message) }
+                                } else {
+                                    Modifier
+                                }
+                            )
                     ) {
-                        MessageBubble(
-                            message = message,
-                            isGroupChat = isGroupChat,
-                            onLongPress = onMessageLongPress,
-                            onQuotedReplyClick = onQuotedReplyClick,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isSelectionMode) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { onMessageTap(message) },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
+
+                            MessageBubble(
+                                message = message,
+                                isGroupChat = isGroupChat,
+                                onLongPress = onMessageLongPress,
+                                onQuotedReplyClick = onQuotedReplyClick,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 4.dp)
+                            )
+                        }
                     }
 
-                    // Date separator — shown after the message in reversed layout
-                    // (appears above the message visually)
                     if (message.showDateSeparator && message.dateSeparatorText != null) {
                         DateSeparator(text = message.dateSeparatorText)
                     }
