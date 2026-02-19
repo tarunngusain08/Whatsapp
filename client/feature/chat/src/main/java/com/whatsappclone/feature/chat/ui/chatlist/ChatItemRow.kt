@@ -1,7 +1,8 @@
 package com.whatsappclone.feature.chat.ui.chatlist
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +14,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -37,17 +47,24 @@ private val TypingGreen = Color(0xFF25D366)
 private val MutedIcon = Color(0xFFBDBDBD)
 private val PinnedBackground = Color(0xFFF0F4F0)
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatItemRow(
     chat: ChatItemUi,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showDivider: Boolean = true
+    showDivider: Boolean = true,
+    onPinChat: () -> Unit = {},
+    onMuteChat: () -> Unit = {},
+    onDeleteChat: () -> Unit = {},
+    onArchiveChat: () -> Unit = {}
 ) {
     val isTyping = chat.typingUsers.isNotEmpty()
     val hasUnread = chat.unreadCount > 0
+    var showContextMenu by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        Box {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -55,7 +72,10 @@ fun ChatItemRow(
                     if (chat.isPinned) Modifier.background(PinnedBackground.copy(alpha = 0.4f))
                     else Modifier
                 )
-                .clickable(onClick = onClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { showContextMenu = true }
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -87,7 +107,7 @@ fun ChatItemRow(
                     if (chat.isMuted) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
-                            imageVector = Icons.Filled.Notifications,
+                            imageVector = Icons.Filled.NotificationsOff,
                             contentDescription = "Muted",
                             modifier = Modifier.size(14.dp),
                             tint = MutedIcon
@@ -147,6 +167,75 @@ fun ChatItemRow(
 
                     UnreadBadge(count = chat.unreadCount)
                 }
+            }
+        }
+
+            DropdownMenu(
+                expanded = showContextMenu,
+                onDismissRequest = { showContextMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(if (chat.isPinned) "Unpin" else "Pin") },
+                    onClick = {
+                        showContextMenu = false
+                        onPinChat()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.PushPin,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp).rotate(45f)
+                        )
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(if (chat.isMuted) "Unmute" else "Mute") },
+                    onClick = {
+                        showContextMenu = false
+                        onMuteChat()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (chat.isMuted) Icons.Filled.NotificationsOff else Icons.Filled.Notifications,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Archive") },
+                    onClick = {
+                        showContextMenu = false
+                        onArchiveChat()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Archive,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "Delete",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    onClick = {
+                        showContextMenu = false
+                        onDeleteChat()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                )
             }
         }
 
