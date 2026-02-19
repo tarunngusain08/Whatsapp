@@ -56,6 +56,7 @@ import com.whatsappclone.core.network.api.ChatApi;
 import com.whatsappclone.core.network.api.MediaApi;
 import com.whatsappclone.core.network.api.MessageApi;
 import com.whatsappclone.core.network.api.NotificationApi;
+import com.whatsappclone.core.network.api.StatusApi;
 import com.whatsappclone.core.network.api.UserApi;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideAuthApiFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideAuthInterceptorFactory;
@@ -70,6 +71,7 @@ import com.whatsappclone.core.network.di.NetworkModule_ProvideNetworkDataStoreFa
 import com.whatsappclone.core.network.di.NetworkModule_ProvideNotificationApiFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideOkHttpClientFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideRetrofitFactory;
+import com.whatsappclone.core.network.di.NetworkModule_ProvideStatusApiFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideTokenManagerFactory;
 import com.whatsappclone.core.network.di.NetworkModule_ProvideUserApiFactory;
 import com.whatsappclone.core.network.interceptor.AuthInterceptor;
@@ -100,6 +102,10 @@ import com.whatsappclone.feature.chat.data.UserRepositoryImpl;
 import com.whatsappclone.feature.chat.domain.GetChatsUseCase;
 import com.whatsappclone.feature.chat.domain.MarkMessagesReadUseCase;
 import com.whatsappclone.feature.chat.domain.SendMessageUseCase;
+import com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel;
+import com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel;
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
@@ -112,14 +118,32 @@ import com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel;
 import com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
 import com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel;
+import com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 import com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel;
 import com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
 import com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel;
+import com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.status.StatusViewModel;
+import com.whatsappclone.feature.chat.ui.status.StatusViewModel_HiltModules;
+import com.whatsappclone.feature.chat.ui.status.StatusViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.whatsappclone.feature.chat.ui.status.StatusViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 import com.whatsappclone.feature.chat.worker.PendingMessageWorker;
 import com.whatsappclone.feature.chat.worker.PendingMessageWorker_AssistedFactory;
+import com.whatsappclone.feature.chat.worker.ScheduledMessageWorker;
+import com.whatsappclone.feature.chat.worker.ScheduledMessageWorker_AssistedFactory;
 import com.whatsappclone.feature.contacts.data.ContactRepositoryImpl;
 import com.whatsappclone.feature.contacts.di.ContactsModule_Companion_ProvideContentResolverFactory;
+import com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel;
+import com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel_HiltModules;
+import com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 import com.whatsappclone.feature.contacts.ui.ContactInfoViewModel;
 import com.whatsappclone.feature.contacts.ui.ContactInfoViewModel_HiltModules;
 import com.whatsappclone.feature.contacts.ui.ContactInfoViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
@@ -140,6 +164,7 @@ import com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel;
 import com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel_HiltModules;
 import com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
 import com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.whatsappclone.feature.media.audio.VoiceRecorder;
 import com.whatsappclone.feature.media.data.MediaRepositoryImpl;
 import com.whatsappclone.feature.media.ui.MediaViewerViewModel;
 import com.whatsappclone.feature.media.ui.MediaViewerViewModel_HiltModules;
@@ -173,6 +198,10 @@ import com.whatsappclone.feature.settings.ui.SettingsViewModel;
 import com.whatsappclone.feature.settings.ui.SettingsViewModel_HiltModules;
 import com.whatsappclone.feature.settings.ui.SettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
 import com.whatsappclone.feature.settings.ui.SettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
+import com.whatsappclone.feature.settings.ui.StorageUsageViewModel;
+import com.whatsappclone.feature.settings.ui.StorageUsageViewModel_HiltModules;
+import com.whatsappclone.feature.settings.ui.StorageUsageViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
+import com.whatsappclone.feature.settings.ui.StorageUsageViewModel_HiltModules_KeyModule_Provide_LazyMapKey;
 import com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel;
 import com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel_HiltModules;
 import com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey;
@@ -543,7 +572,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     @Override
     public Map<Class<?>, Boolean> getViewModelKeys() {
-      return LazyClassKeyMap.<Boolean>of(ImmutableMap.<String, Boolean>builderWithExpectedSize(18).put(ChatDetailViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ChatDetailViewModel_HiltModules.KeyModule.provide()).put(ChatListViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ChatListViewModel_HiltModules.KeyModule.provide()).put(ContactInfoViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ContactInfoViewModel_HiltModules.KeyModule.provide()).put(ContactPickerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ContactPickerViewModel_HiltModules.KeyModule.provide()).put(ForwardPickerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ForwardPickerViewModel_HiltModules.KeyModule.provide()).put(GlobalSearchViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, GlobalSearchViewModel_HiltModules.KeyModule.provide()).put(GroupInfoViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, GroupInfoViewModel_HiltModules.KeyModule.provide()).put(LoginViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, LoginViewModel_HiltModules.KeyModule.provide()).put(MediaViewerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, MediaViewerViewModel_HiltModules.KeyModule.provide()).put(NewGroupViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, NewGroupViewModel_HiltModules.KeyModule.provide()).put(NotificationSettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, NotificationSettingsViewModel_HiltModules.KeyModule.provide()).put(OtpViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, OtpViewModel_HiltModules.KeyModule.provide()).put(PrivacySettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, PrivacySettingsViewModel_HiltModules.KeyModule.provide()).put(ProfileEditViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ProfileEditViewModel_HiltModules.KeyModule.provide()).put(ProfileSetupViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ProfileSetupViewModel_HiltModules.KeyModule.provide()).put(SettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SettingsViewModel_HiltModules.KeyModule.provide()).put(SharedMediaViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SharedMediaViewModel_HiltModules.KeyModule.provide()).put(ThemeSettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ThemeSettingsViewModel_HiltModules.KeyModule.provide()).build());
+      return LazyClassKeyMap.<Boolean>of(ImmutableMap.<String, Boolean>builderWithExpectedSize(24).put(ArchivedChatsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ArchivedChatsViewModel_HiltModules.KeyModule.provide()).put(BlockedContactsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, BlockedContactsViewModel_HiltModules.KeyModule.provide()).put(ChatDetailViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ChatDetailViewModel_HiltModules.KeyModule.provide()).put(ChatListViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ChatListViewModel_HiltModules.KeyModule.provide()).put(ContactInfoViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ContactInfoViewModel_HiltModules.KeyModule.provide()).put(ContactPickerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ContactPickerViewModel_HiltModules.KeyModule.provide()).put(ForwardPickerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ForwardPickerViewModel_HiltModules.KeyModule.provide()).put(GlobalSearchViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, GlobalSearchViewModel_HiltModules.KeyModule.provide()).put(GroupInfoViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, GroupInfoViewModel_HiltModules.KeyModule.provide()).put(LoginViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, LoginViewModel_HiltModules.KeyModule.provide()).put(MediaViewerViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, MediaViewerViewModel_HiltModules.KeyModule.provide()).put(NewGroupViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, NewGroupViewModel_HiltModules.KeyModule.provide()).put(NotificationSettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, NotificationSettingsViewModel_HiltModules.KeyModule.provide()).put(OtpViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, OtpViewModel_HiltModules.KeyModule.provide()).put(PrivacySettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, PrivacySettingsViewModel_HiltModules.KeyModule.provide()).put(ProfileEditViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ProfileEditViewModel_HiltModules.KeyModule.provide()).put(ProfileSetupViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ProfileSetupViewModel_HiltModules.KeyModule.provide()).put(ReceiptDetailsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ReceiptDetailsViewModel_HiltModules.KeyModule.provide()).put(SettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SettingsViewModel_HiltModules.KeyModule.provide()).put(SharedMediaViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, SharedMediaViewModel_HiltModules.KeyModule.provide()).put(StarredMessagesViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, StarredMessagesViewModel_HiltModules.KeyModule.provide()).put(StatusViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, StatusViewModel_HiltModules.KeyModule.provide()).put(StorageUsageViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, StorageUsageViewModel_HiltModules.KeyModule.provide()).put(ThemeSettingsViewModel_HiltModules_KeyModule_Provide_LazyMapKey.lazyClassKeyName, ThemeSettingsViewModel_HiltModules.KeyModule.provide()).build());
     }
 
     @Override
@@ -567,6 +596,8 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
       MainActivity_MembersInjector.injectAuthRepository(instance, singletonCImpl.bindAuthRepositoryProvider.get());
       MainActivity_MembersInjector.injectBaseUrlProvider(instance, singletonCImpl.provideBaseUrlProvider.get());
       MainActivity_MembersInjector.injectWsLifecycleManager(instance, singletonCImpl.wsLifecycleManagerProvider.get());
+      MainActivity_MembersInjector.injectThemePreferencesStore(instance, singletonCImpl.themePreferencesStoreProvider.get());
+      MainActivity_MembersInjector.injectPrivacyPreferencesStore(instance, singletonCImpl.privacyPreferencesStoreProvider.get());
       return instance;
     }
   }
@@ -579,6 +610,10 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     private final ActivityRetainedCImpl activityRetainedCImpl;
 
     private final ViewModelCImpl viewModelCImpl = this;
+
+    private Provider<ArchivedChatsViewModel> archivedChatsViewModelProvider;
+
+    private Provider<BlockedContactsViewModel> blockedContactsViewModelProvider;
 
     private Provider<ChatDetailViewModel> chatDetailViewModelProvider;
 
@@ -610,9 +645,17 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     private Provider<ProfileSetupViewModel> profileSetupViewModelProvider;
 
+    private Provider<ReceiptDetailsViewModel> receiptDetailsViewModelProvider;
+
     private Provider<SettingsViewModel> settingsViewModelProvider;
 
     private Provider<SharedMediaViewModel> sharedMediaViewModelProvider;
+
+    private Provider<StarredMessagesViewModel> starredMessagesViewModelProvider;
+
+    private Provider<StatusViewModel> statusViewModelProvider;
+
+    private Provider<StorageUsageViewModel> storageUsageViewModelProvider;
 
     private Provider<ThemeSettingsViewModel> themeSettingsViewModelProvider;
 
@@ -624,10 +667,6 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
       this.savedStateHandle = savedStateHandleParam;
       initialize(savedStateHandleParam, viewModelLifecycleParam);
 
-    }
-
-    private SendMessageUseCase sendMessageUseCase() {
-      return new SendMessageUseCase(singletonCImpl.messageRepositoryImplProvider.get());
     }
 
     private MarkMessagesReadUseCase markMessagesReadUseCase() {
@@ -649,29 +688,35 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     @SuppressWarnings("unchecked")
     private void initialize(final SavedStateHandle savedStateHandleParam,
         final ViewModelLifecycle viewModelLifecycleParam) {
-      this.chatDetailViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 0);
-      this.chatListViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
-      this.contactInfoViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 2);
-      this.contactPickerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 3);
-      this.forwardPickerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 4);
-      this.globalSearchViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 5);
-      this.groupInfoViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 6);
-      this.loginViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 7);
-      this.mediaViewerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 8);
-      this.newGroupViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 9);
-      this.notificationSettingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 10);
-      this.otpViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 11);
-      this.privacySettingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 12);
-      this.profileEditViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 13);
-      this.profileSetupViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 14);
-      this.settingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 15);
-      this.sharedMediaViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 16);
-      this.themeSettingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 17);
+      this.archivedChatsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 0);
+      this.blockedContactsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
+      this.chatDetailViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 2);
+      this.chatListViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 3);
+      this.contactInfoViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 4);
+      this.contactPickerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 5);
+      this.forwardPickerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 6);
+      this.globalSearchViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 7);
+      this.groupInfoViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 8);
+      this.loginViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 9);
+      this.mediaViewerViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 10);
+      this.newGroupViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 11);
+      this.notificationSettingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 12);
+      this.otpViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 13);
+      this.privacySettingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 14);
+      this.profileEditViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 15);
+      this.profileSetupViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 16);
+      this.receiptDetailsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 17);
+      this.settingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 18);
+      this.sharedMediaViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 19);
+      this.starredMessagesViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 20);
+      this.statusViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 21);
+      this.storageUsageViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 22);
+      this.themeSettingsViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 23);
     }
 
     @Override
     public Map<Class<?>, javax.inject.Provider<ViewModel>> getHiltViewModelMap() {
-      return LazyClassKeyMap.<javax.inject.Provider<ViewModel>>of(ImmutableMap.<String, javax.inject.Provider<ViewModel>>builderWithExpectedSize(18).put(ChatDetailViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) chatDetailViewModelProvider)).put(ChatListViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) chatListViewModelProvider)).put(ContactInfoViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) contactInfoViewModelProvider)).put(ContactPickerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) contactPickerViewModelProvider)).put(ForwardPickerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) forwardPickerViewModelProvider)).put(GlobalSearchViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) globalSearchViewModelProvider)).put(GroupInfoViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) groupInfoViewModelProvider)).put(LoginViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) loginViewModelProvider)).put(MediaViewerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) mediaViewerViewModelProvider)).put(NewGroupViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) newGroupViewModelProvider)).put(NotificationSettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) notificationSettingsViewModelProvider)).put(OtpViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) otpViewModelProvider)).put(PrivacySettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) privacySettingsViewModelProvider)).put(ProfileEditViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) profileEditViewModelProvider)).put(ProfileSetupViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) profileSetupViewModelProvider)).put(SettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) settingsViewModelProvider)).put(SharedMediaViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) sharedMediaViewModelProvider)).put(ThemeSettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) themeSettingsViewModelProvider)).build());
+      return LazyClassKeyMap.<javax.inject.Provider<ViewModel>>of(ImmutableMap.<String, javax.inject.Provider<ViewModel>>builderWithExpectedSize(24).put(ArchivedChatsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) archivedChatsViewModelProvider)).put(BlockedContactsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) blockedContactsViewModelProvider)).put(ChatDetailViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) chatDetailViewModelProvider)).put(ChatListViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) chatListViewModelProvider)).put(ContactInfoViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) contactInfoViewModelProvider)).put(ContactPickerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) contactPickerViewModelProvider)).put(ForwardPickerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) forwardPickerViewModelProvider)).put(GlobalSearchViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) globalSearchViewModelProvider)).put(GroupInfoViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) groupInfoViewModelProvider)).put(LoginViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) loginViewModelProvider)).put(MediaViewerViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) mediaViewerViewModelProvider)).put(NewGroupViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) newGroupViewModelProvider)).put(NotificationSettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) notificationSettingsViewModelProvider)).put(OtpViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) otpViewModelProvider)).put(PrivacySettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) privacySettingsViewModelProvider)).put(ProfileEditViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) profileEditViewModelProvider)).put(ProfileSetupViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) profileSetupViewModelProvider)).put(ReceiptDetailsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) receiptDetailsViewModelProvider)).put(SettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) settingsViewModelProvider)).put(SharedMediaViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) sharedMediaViewModelProvider)).put(StarredMessagesViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) starredMessagesViewModelProvider)).put(StatusViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) statusViewModelProvider)).put(StorageUsageViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) storageUsageViewModelProvider)).put(ThemeSettingsViewModel_HiltModules_BindsModule_Binds_LazyMapKey.lazyClassKeyName, ((Provider) themeSettingsViewModelProvider)).build());
     }
 
     @Override
@@ -700,58 +745,76 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
       @Override
       public T get() {
         switch (id) {
-          case 0: // com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel 
-          return (T) new ChatDetailViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.messageRepositoryImplProvider.get(), singletonCImpl.chatRepositoryImplProvider.get(), singletonCImpl.userRepositoryImplProvider.get(), viewModelCImpl.sendMessageUseCase(), viewModelCImpl.markMessagesReadUseCase(), singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+          case 0: // com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel 
+          return (T) new ArchivedChatsViewModel(singletonCImpl.chatRepositoryImplProvider.get());
 
-          case 1: // com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel 
+          case 1: // com.whatsappclone.feature.contacts.ui.BlockedContactsViewModel 
+          return (T) new BlockedContactsViewModel(singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.userRepositoryImplProvider.get());
+
+          case 2: // com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel 
+          return (T) new ChatDetailViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.messageRepositoryImplProvider.get(), singletonCImpl.chatRepositoryImplProvider.get(), singletonCImpl.userRepositoryImplProvider.get(), singletonCImpl.sendMessageUseCase(), viewModelCImpl.markMessagesReadUseCase(), singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.mediaRepositoryImplProvider.get(), singletonCImpl.voiceRecorderProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 3: // com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel 
           return (T) new ChatListViewModel(viewModelCImpl.getChatsUseCase(), singletonCImpl.chatRepositoryImplProvider.get(), singletonCImpl.typingStateHolderProvider.get());
 
-          case 2: // com.whatsappclone.feature.contacts.ui.ContactInfoViewModel 
-          return (T) new ContactInfoViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.userRepositoryImplProvider.get());
+          case 4: // com.whatsappclone.feature.contacts.ui.ContactInfoViewModel 
+          return (T) new ContactInfoViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.userRepositoryImplProvider.get(), singletonCImpl.provideChatDaoProvider.get());
 
-          case 3: // com.whatsappclone.feature.contacts.ui.ContactPickerViewModel 
+          case 5: // com.whatsappclone.feature.contacts.ui.ContactPickerViewModel 
           return (T) new ContactPickerViewModel(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.contactRepositoryImplProvider.get(), singletonCImpl.chatRepositoryImplProvider.get());
 
-          case 4: // com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel 
+          case 6: // com.whatsappclone.feature.chat.ui.forward.ForwardPickerViewModel 
           return (T) new ForwardPickerViewModel(singletonCImpl.chatRepositoryImplProvider.get(), singletonCImpl.messageRepositoryImplProvider.get());
 
-          case 5: // com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel 
+          case 7: // com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel 
           return (T) new GlobalSearchViewModel(singletonCImpl.provideContactDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
-          case 6: // com.whatsappclone.feature.group.ui.info.GroupInfoViewModel 
-          return (T) new GroupInfoViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideGroupDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+          case 8: // com.whatsappclone.feature.group.ui.info.GroupInfoViewModel 
+          return (T) new GroupInfoViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideGroupDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.mediaRepositoryImplProvider.get(), singletonCImpl.provideBaseUrlProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
-          case 7: // com.whatsappclone.feature.auth.ui.login.LoginViewModel 
+          case 9: // com.whatsappclone.feature.auth.ui.login.LoginViewModel 
           return (T) new LoginViewModel(viewModelCImpl.sendOtpUseCase());
 
-          case 8: // com.whatsappclone.feature.media.ui.MediaViewerViewModel 
+          case 10: // com.whatsappclone.feature.media.ui.MediaViewerViewModel 
           return (T) new MediaViewerViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.mediaRepositoryImplProvider.get(), singletonCImpl.mediaDownloadManagerProvider.get());
 
-          case 9: // com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel 
-          return (T) new NewGroupViewModel(singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.createGroupUseCase());
+          case 11: // com.whatsappclone.feature.group.ui.newgroup.NewGroupViewModel 
+          return (T) new NewGroupViewModel(singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.createGroupUseCase(), singletonCImpl.mediaRepositoryImplProvider.get(), singletonCImpl.provideBaseUrlProvider.get());
 
-          case 10: // com.whatsappclone.feature.settings.ui.NotificationSettingsViewModel 
+          case 12: // com.whatsappclone.feature.settings.ui.NotificationSettingsViewModel 
           return (T) new NotificationSettingsViewModel(singletonCImpl.notificationPreferencesStoreProvider.get());
 
-          case 11: // com.whatsappclone.feature.auth.ui.otp.OtpViewModel 
+          case 13: // com.whatsappclone.feature.auth.ui.otp.OtpViewModel 
           return (T) new OtpViewModel(viewModelCImpl.savedStateHandle, viewModelCImpl.verifyOtpUseCase(), viewModelCImpl.sendOtpUseCase());
 
-          case 12: // com.whatsappclone.feature.settings.ui.PrivacySettingsViewModel 
+          case 14: // com.whatsappclone.feature.settings.ui.PrivacySettingsViewModel 
           return (T) new PrivacySettingsViewModel(singletonCImpl.privacyPreferencesStoreProvider.get());
 
-          case 13: // com.whatsappclone.feature.profile.ui.ProfileEditViewModel 
+          case 15: // com.whatsappclone.feature.profile.ui.ProfileEditViewModel 
           return (T) new ProfileEditViewModel(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.mediaRepositoryImplProvider.get(), singletonCImpl.provideBaseUrlProvider.get());
 
-          case 14: // com.whatsappclone.feature.auth.ui.profile.ProfileSetupViewModel 
-          return (T) new ProfileSetupViewModel(singletonCImpl.provideUserApiProvider.get());
+          case 16: // com.whatsappclone.feature.auth.ui.profile.ProfileSetupViewModel 
+          return (T) new ProfileSetupViewModel(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.mediaRepositoryImplProvider.get(), singletonCImpl.provideBaseUrlProvider.get());
 
-          case 15: // com.whatsappclone.feature.settings.ui.SettingsViewModel 
+          case 17: // com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel 
+          return (T) new ReceiptDetailsViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideUserDaoProvider.get());
+
+          case 18: // com.whatsappclone.feature.settings.ui.SettingsViewModel 
           return (T) new SettingsViewModel(singletonCImpl.bindAuthRepositoryProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
-          case 16: // com.whatsappclone.feature.media.ui.SharedMediaViewModel 
+          case 19: // com.whatsappclone.feature.media.ui.SharedMediaViewModel 
           return (T) new SharedMediaViewModel(viewModelCImpl.savedStateHandle, singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideMediaDaoProvider.get());
 
-          case 17: // com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel 
+          case 20: // com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel 
+          return (T) new StarredMessagesViewModel(singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get());
+
+          case 21: // com.whatsappclone.feature.chat.ui.status.StatusViewModel 
+          return (T) new StatusViewModel(singletonCImpl.provideStatusApiProvider.get());
+
+          case 22: // com.whatsappclone.feature.settings.ui.StorageUsageViewModel 
+          return (T) new StorageUsageViewModel(singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get());
+
+          case 23: // com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel 
           return (T) new ThemeSettingsViewModel(singletonCImpl.themePreferencesStoreProvider.get());
 
           default: throw new AssertionError(id);
@@ -901,6 +964,8 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     private Provider<PendingMessageWorker_AssistedFactory> pendingMessageWorker_AssistedFactoryProvider;
 
+    private Provider<ScheduledMessageWorker_AssistedFactory> scheduledMessageWorker_AssistedFactoryProvider;
+
     private Provider<ImageLoader> provideImageLoaderProvider;
 
     private Provider<CoroutineScope> provideAppCoroutineScopeProvider;
@@ -929,11 +994,13 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     private Provider<WsLifecycleManager> wsLifecycleManagerProvider;
 
+    private Provider<ThemePreferencesStore> themePreferencesStoreProvider;
+
+    private Provider<PrivacyPreferencesStore> privacyPreferencesStoreProvider;
+
     private Provider<ChatRepositoryImpl> chatRepositoryImplProvider;
 
     private Provider<UserRepositoryImpl> userRepositoryImplProvider;
-
-    private Provider<GroupDao> provideGroupDaoProvider;
 
     private Provider<MediaApi> provideMediaApiProvider;
 
@@ -943,13 +1010,15 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     private Provider<MediaRepositoryImpl> mediaRepositoryImplProvider;
 
+    private Provider<VoiceRecorder> voiceRecorderProvider;
+
+    private Provider<GroupDao> provideGroupDaoProvider;
+
     private Provider<MediaDownloadManager> mediaDownloadManagerProvider;
 
     private Provider<NotificationPreferencesStore> notificationPreferencesStoreProvider;
 
-    private Provider<PrivacyPreferencesStore> privacyPreferencesStoreProvider;
-
-    private Provider<ThemePreferencesStore> themePreferencesStoreProvider;
+    private Provider<StatusApi> provideStatusApiProvider;
 
     private Provider<NotificationBuilder> notificationBuilderProvider;
 
@@ -967,11 +1036,15 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
 
     private Map<String, javax.inject.Provider<WorkerAssistedFactory<? extends ListenableWorker>>> mapOfStringAndProviderOfWorkerAssistedFactoryOf(
         ) {
-      return ImmutableMap.<String, javax.inject.Provider<WorkerAssistedFactory<? extends ListenableWorker>>>of("com.whatsappclone.feature.contacts.worker.ContactSyncWorker", ((Provider) contactSyncWorker_AssistedFactoryProvider), "com.whatsappclone.feature.media.worker.MediaCleanupWorker", ((Provider) mediaCleanupWorker_AssistedFactoryProvider), "com.whatsappclone.feature.chat.worker.PendingMessageWorker", ((Provider) pendingMessageWorker_AssistedFactoryProvider));
+      return ImmutableMap.<String, javax.inject.Provider<WorkerAssistedFactory<? extends ListenableWorker>>>of("com.whatsappclone.feature.contacts.worker.ContactSyncWorker", ((Provider) contactSyncWorker_AssistedFactoryProvider), "com.whatsappclone.feature.media.worker.MediaCleanupWorker", ((Provider) mediaCleanupWorker_AssistedFactoryProvider), "com.whatsappclone.feature.chat.worker.PendingMessageWorker", ((Provider) pendingMessageWorker_AssistedFactoryProvider), "com.whatsappclone.feature.chat.worker.ScheduledMessageWorker", ((Provider) scheduledMessageWorker_AssistedFactoryProvider));
     }
 
     private HiltWorkerFactory hiltWorkerFactory() {
       return WorkerFactoryModule_ProvideFactoryFactory.provideFactory(mapOfStringAndProviderOfWorkerAssistedFactoryOf());
+    }
+
+    private SendMessageUseCase sendMessageUseCase() {
+      return new SendMessageUseCase(messageRepositoryImplProvider.get());
     }
 
     private CreateGroupUseCase createGroupUseCase() {
@@ -1010,38 +1083,41 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     @SuppressWarnings("unchecked")
     private void initialize2(final ApplicationContextModule applicationContextModuleParam) {
       this.pendingMessageWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<PendingMessageWorker_AssistedFactory>(singletonCImpl, 19));
-      this.provideImageLoaderProvider = DoubleCheck.provider(new SwitchingProvider<ImageLoader>(singletonCImpl, 25));
-      this.provideAppCoroutineScopeProvider = DoubleCheck.provider(new SwitchingProvider<CoroutineScope>(singletonCImpl, 26));
-      this.globalErrorHandlerProvider = DoubleCheck.provider(new SwitchingProvider<GlobalErrorHandler>(singletonCImpl, 27));
-      this.provideNotificationApiProvider = DoubleCheck.provider(new SwitchingProvider<NotificationApi>(singletonCImpl, 31));
-      this.fCMTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<FCMTokenManager>(singletonCImpl, 30));
-      this.provideDeviceTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<DeviceTokenManager>(singletonCImpl, 29));
-      this.authRepositoryImplProvider = new SwitchingProvider<>(singletonCImpl, 28);
+      this.scheduledMessageWorker_AssistedFactoryProvider = SingleCheck.provider(new SwitchingProvider<ScheduledMessageWorker_AssistedFactory>(singletonCImpl, 25));
+      this.provideImageLoaderProvider = DoubleCheck.provider(new SwitchingProvider<ImageLoader>(singletonCImpl, 26));
+      this.provideAppCoroutineScopeProvider = DoubleCheck.provider(new SwitchingProvider<CoroutineScope>(singletonCImpl, 27));
+      this.globalErrorHandlerProvider = DoubleCheck.provider(new SwitchingProvider<GlobalErrorHandler>(singletonCImpl, 28));
+      this.provideNotificationApiProvider = DoubleCheck.provider(new SwitchingProvider<NotificationApi>(singletonCImpl, 32));
+      this.fCMTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<FCMTokenManager>(singletonCImpl, 31));
+      this.provideDeviceTokenManagerProvider = DoubleCheck.provider(new SwitchingProvider<DeviceTokenManager>(singletonCImpl, 30));
+      this.authRepositoryImplProvider = new SwitchingProvider<>(singletonCImpl, 29);
       this.bindAuthRepositoryProvider = DoubleCheck.provider((Provider) authRepositoryImplProvider);
-      this.provideChatParticipantDaoProvider = DoubleCheck.provider(new SwitchingProvider<ChatParticipantDao>(singletonCImpl, 34));
-      this.typingStateHolderProvider = DoubleCheck.provider(new SwitchingProvider<TypingStateHolder>(singletonCImpl, 35));
-      this.wsEventRouterProvider = DoubleCheck.provider(new SwitchingProvider<WsEventRouter>(singletonCImpl, 33));
-      this.provideChatApiProvider = DoubleCheck.provider(new SwitchingProvider<ChatApi>(singletonCImpl, 37));
-      this.syncOnReconnectManagerProvider = DoubleCheck.provider(new SwitchingProvider<SyncOnReconnectManager>(singletonCImpl, 36));
-      this.wsLifecycleManagerProvider = DoubleCheck.provider(new SwitchingProvider<WsLifecycleManager>(singletonCImpl, 32));
-      this.chatRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<ChatRepositoryImpl>(singletonCImpl, 38));
-      this.userRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<UserRepositoryImpl>(singletonCImpl, 39));
-      this.provideGroupDaoProvider = DoubleCheck.provider(new SwitchingProvider<GroupDao>(singletonCImpl, 40));
-      this.provideMediaApiProvider = DoubleCheck.provider(new SwitchingProvider<MediaApi>(singletonCImpl, 42));
-      this.imageCompressorProvider = DoubleCheck.provider(new SwitchingProvider<ImageCompressor>(singletonCImpl, 43));
-      this.videoCompressorProvider = DoubleCheck.provider(new SwitchingProvider<VideoCompressor>(singletonCImpl, 44));
-      this.mediaRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<MediaRepositoryImpl>(singletonCImpl, 41));
-      this.mediaDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<MediaDownloadManager>(singletonCImpl, 45));
-      this.notificationPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<NotificationPreferencesStore>(singletonCImpl, 46));
-      this.privacyPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<PrivacyPreferencesStore>(singletonCImpl, 47));
+      this.provideChatParticipantDaoProvider = DoubleCheck.provider(new SwitchingProvider<ChatParticipantDao>(singletonCImpl, 35));
+      this.typingStateHolderProvider = DoubleCheck.provider(new SwitchingProvider<TypingStateHolder>(singletonCImpl, 36));
+      this.wsEventRouterProvider = DoubleCheck.provider(new SwitchingProvider<WsEventRouter>(singletonCImpl, 34));
+      this.provideChatApiProvider = DoubleCheck.provider(new SwitchingProvider<ChatApi>(singletonCImpl, 38));
+      this.syncOnReconnectManagerProvider = DoubleCheck.provider(new SwitchingProvider<SyncOnReconnectManager>(singletonCImpl, 37));
+      this.wsLifecycleManagerProvider = DoubleCheck.provider(new SwitchingProvider<WsLifecycleManager>(singletonCImpl, 33));
+      this.themePreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<ThemePreferencesStore>(singletonCImpl, 39));
+      this.privacyPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<PrivacyPreferencesStore>(singletonCImpl, 40));
+      this.chatRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<ChatRepositoryImpl>(singletonCImpl, 41));
+      this.userRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<UserRepositoryImpl>(singletonCImpl, 42));
+      this.provideMediaApiProvider = DoubleCheck.provider(new SwitchingProvider<MediaApi>(singletonCImpl, 44));
+      this.imageCompressorProvider = DoubleCheck.provider(new SwitchingProvider<ImageCompressor>(singletonCImpl, 45));
+      this.videoCompressorProvider = DoubleCheck.provider(new SwitchingProvider<VideoCompressor>(singletonCImpl, 46));
+      this.mediaRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<MediaRepositoryImpl>(singletonCImpl, 43));
+      this.voiceRecorderProvider = DoubleCheck.provider(new SwitchingProvider<VoiceRecorder>(singletonCImpl, 47));
     }
 
     @SuppressWarnings("unchecked")
     private void initialize3(final ApplicationContextModule applicationContextModuleParam) {
-      this.themePreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<ThemePreferencesStore>(singletonCImpl, 48));
-      this.notificationBuilderProvider = DoubleCheck.provider(new SwitchingProvider<NotificationBuilder>(singletonCImpl, 49));
-      this.activeChatTrackerProvider = DoubleCheck.provider(new SwitchingProvider<ActiveChatTracker>(singletonCImpl, 50));
-      this.inAppNotificationManagerProvider = DoubleCheck.provider(new SwitchingProvider<InAppNotificationManager>(singletonCImpl, 51));
+      this.provideGroupDaoProvider = DoubleCheck.provider(new SwitchingProvider<GroupDao>(singletonCImpl, 48));
+      this.mediaDownloadManagerProvider = DoubleCheck.provider(new SwitchingProvider<MediaDownloadManager>(singletonCImpl, 49));
+      this.notificationPreferencesStoreProvider = DoubleCheck.provider(new SwitchingProvider<NotificationPreferencesStore>(singletonCImpl, 50));
+      this.provideStatusApiProvider = DoubleCheck.provider(new SwitchingProvider<StatusApi>(singletonCImpl, 51));
+      this.notificationBuilderProvider = DoubleCheck.provider(new SwitchingProvider<NotificationBuilder>(singletonCImpl, 52));
+      this.activeChatTrackerProvider = DoubleCheck.provider(new SwitchingProvider<ActiveChatTracker>(singletonCImpl, 53));
+      this.inAppNotificationManagerProvider = DoubleCheck.provider(new SwitchingProvider<InAppNotificationManager>(singletonCImpl, 54));
     }
 
     @Override
@@ -1081,6 +1157,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
         NotificationActionReceiver instance2) {
       NotificationActionReceiver_MembersInjector.injectAppScope(instance2, provideAppCoroutineScopeProvider.get());
       NotificationActionReceiver_MembersInjector.injectChatDao(instance2, provideChatDaoProvider.get());
+      NotificationActionReceiver_MembersInjector.injectSendMessageUseCase(instance2, sendMessageUseCase());
       return instance2;
     }
 
@@ -1188,85 +1265,99 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           case 24: // com.whatsappclone.core.network.websocket.WebSocketManager 
           return (T) new WebSocketManager(singletonCImpl.provideOkHttpClientProvider.get(), singletonCImpl.provideTokenManagerProvider.get(), singletonCImpl.provideBaseUrlProvider.get(), singletonCImpl.provideJsonProvider.get());
 
-          case 25: // coil3.ImageLoader 
+          case 25: // com.whatsappclone.feature.chat.worker.ScheduledMessageWorker_AssistedFactory 
+          return (T) new ScheduledMessageWorker_AssistedFactory() {
+            @Override
+            public ScheduledMessageWorker create(Context appContext2, WorkerParameters params) {
+              return new ScheduledMessageWorker(appContext2, params, singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.messageRepositoryImplProvider.get());
+            }
+          };
+
+          case 26: // coil3.ImageLoader 
           return (T) AppModule_ProvideImageLoaderFactory.provideImageLoader(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideOkHttpClientProvider.get());
 
-          case 26: // @javax.inject.Named("appScope") kotlinx.coroutines.CoroutineScope 
+          case 27: // @javax.inject.Named("appScope") kotlinx.coroutines.CoroutineScope 
           return (T) AppModule_ProvideAppCoroutineScopeFactory.provideAppCoroutineScope();
 
-          case 27: // com.whatsappclone.app.error.GlobalErrorHandler 
+          case 28: // com.whatsappclone.app.error.GlobalErrorHandler 
           return (T) new GlobalErrorHandler(singletonCImpl.provideTokenManagerProvider.get());
 
-          case 28: // com.whatsappclone.feature.auth.data.AuthRepositoryImpl 
+          case 29: // com.whatsappclone.feature.auth.data.AuthRepositoryImpl 
           return (T) new AuthRepositoryImpl(singletonCImpl.provideAuthApiProvider.get(), singletonCImpl.provideTokenManagerProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideDeviceTokenManagerProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
-          case 29: // com.whatsappclone.core.network.token.DeviceTokenManager 
+          case 30: // com.whatsappclone.core.network.token.DeviceTokenManager 
           return (T) AppModule_ProvideDeviceTokenManagerFactory.provideDeviceTokenManager(singletonCImpl.fCMTokenManagerProvider.get());
 
-          case 30: // com.whatsappclone.app.notification.FCMTokenManager 
+          case 31: // com.whatsappclone.app.notification.FCMTokenManager 
           return (T) new FCMTokenManager(singletonCImpl.provideNotificationApiProvider.get(), singletonCImpl.provideTokenManagerProvider.get(), singletonCImpl.provideAppCoroutineScopeProvider.get());
 
-          case 31: // com.whatsappclone.core.network.api.NotificationApi 
+          case 32: // com.whatsappclone.core.network.api.NotificationApi 
           return (T) NetworkModule_ProvideNotificationApiFactory.provideNotificationApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 32: // com.whatsappclone.app.lifecycle.WsLifecycleManager 
+          case 33: // com.whatsappclone.app.lifecycle.WsLifecycleManager 
           return (T) new WsLifecycleManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.wsEventRouterProvider.get(), singletonCImpl.syncOnReconnectManagerProvider.get(), singletonCImpl.provideTokenManagerProvider.get());
 
-          case 33: // com.whatsappclone.app.data.websocket.WsEventRouter 
+          case 34: // com.whatsappclone.app.data.websocket.WsEventRouter 
           return (T) new WsEventRouter(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.provideJsonProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
-          case 34: // com.whatsappclone.core.database.dao.ChatParticipantDao 
+          case 35: // com.whatsappclone.core.database.dao.ChatParticipantDao 
           return (T) DatabaseModule_ProvideChatParticipantDaoFactory.provideChatParticipantDao(singletonCImpl.provideAppDatabaseProvider.get());
 
-          case 35: // com.whatsappclone.core.network.websocket.TypingStateHolder 
+          case 36: // com.whatsappclone.core.network.websocket.TypingStateHolder 
           return (T) new TypingStateHolder();
 
-          case 36: // com.whatsappclone.app.data.websocket.SyncOnReconnectManager 
+          case 37: // com.whatsappclone.app.data.websocket.SyncOnReconnectManager 
           return (T) new SyncOnReconnectManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideNetworkDataStoreProvider.get());
 
-          case 37: // com.whatsappclone.core.network.api.ChatApi 
+          case 38: // com.whatsappclone.core.network.api.ChatApi 
           return (T) NetworkModule_ProvideChatApiFactory.provideChatApi(singletonCImpl.provideRetrofitProvider.get());
 
-          case 38: // com.whatsappclone.feature.chat.data.ChatRepositoryImpl 
-          return (T) new ChatRepositoryImpl(singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
-
-          case 39: // com.whatsappclone.feature.chat.data.UserRepositoryImpl 
-          return (T) new UserRepositoryImpl(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
-
-          case 40: // com.whatsappclone.core.database.dao.GroupDao 
-          return (T) DatabaseModule_ProvideGroupDaoFactory.provideGroupDao(singletonCImpl.provideAppDatabaseProvider.get());
-
-          case 41: // com.whatsappclone.feature.media.data.MediaRepositoryImpl 
-          return (T) new MediaRepositoryImpl(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaApiProvider.get(), singletonCImpl.provideMediaDaoProvider.get(), singletonCImpl.imageCompressorProvider.get(), singletonCImpl.videoCompressorProvider.get());
-
-          case 42: // com.whatsappclone.core.network.api.MediaApi 
-          return (T) NetworkModule_ProvideMediaApiFactory.provideMediaApi(singletonCImpl.provideRetrofitProvider.get());
-
-          case 43: // com.whatsappclone.feature.media.util.ImageCompressor 
-          return (T) new ImageCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 44: // com.whatsappclone.feature.media.util.VideoCompressor 
-          return (T) new VideoCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 45: // com.whatsappclone.feature.media.util.MediaDownloadManager 
-          return (T) new MediaDownloadManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaDaoProvider.get());
-
-          case 46: // com.whatsappclone.feature.settings.data.NotificationPreferencesStore 
-          return (T) new NotificationPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 47: // com.whatsappclone.feature.settings.data.PrivacyPreferencesStore 
-          return (T) new PrivacyPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
-
-          case 48: // com.whatsappclone.feature.settings.data.ThemePreferencesStore 
+          case 39: // com.whatsappclone.feature.settings.data.ThemePreferencesStore 
           return (T) new ThemePreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 49: // com.whatsappclone.app.notification.NotificationBuilder 
+          case 40: // com.whatsappclone.feature.settings.data.PrivacyPreferencesStore 
+          return (T) new PrivacyPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 41: // com.whatsappclone.feature.chat.data.ChatRepositoryImpl 
+          return (T) new ChatRepositoryImpl(singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+
+          case 42: // com.whatsappclone.feature.chat.data.UserRepositoryImpl 
+          return (T) new UserRepositoryImpl(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+
+          case 43: // com.whatsappclone.feature.media.data.MediaRepositoryImpl 
+          return (T) new MediaRepositoryImpl(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaApiProvider.get(), singletonCImpl.provideMediaDaoProvider.get(), singletonCImpl.imageCompressorProvider.get(), singletonCImpl.videoCompressorProvider.get());
+
+          case 44: // com.whatsappclone.core.network.api.MediaApi 
+          return (T) NetworkModule_ProvideMediaApiFactory.provideMediaApi(singletonCImpl.provideRetrofitProvider.get());
+
+          case 45: // com.whatsappclone.feature.media.util.ImageCompressor 
+          return (T) new ImageCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 46: // com.whatsappclone.feature.media.util.VideoCompressor 
+          return (T) new VideoCompressor(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 47: // com.whatsappclone.feature.media.audio.VoiceRecorder 
+          return (T) new VoiceRecorder(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 48: // com.whatsappclone.core.database.dao.GroupDao 
+          return (T) DatabaseModule_ProvideGroupDaoFactory.provideGroupDao(singletonCImpl.provideAppDatabaseProvider.get());
+
+          case 49: // com.whatsappclone.feature.media.util.MediaDownloadManager 
+          return (T) new MediaDownloadManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideMediaDaoProvider.get());
+
+          case 50: // com.whatsappclone.feature.settings.data.NotificationPreferencesStore 
+          return (T) new NotificationPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
+
+          case 51: // com.whatsappclone.core.network.api.StatusApi 
+          return (T) NetworkModule_ProvideStatusApiFactory.provideStatusApi(singletonCImpl.provideRetrofitProvider.get());
+
+          case 52: // com.whatsappclone.app.notification.NotificationBuilder 
           return (T) new NotificationBuilder(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideImageLoaderProvider.get());
 
-          case 50: // com.whatsappclone.app.notification.ActiveChatTracker 
+          case 53: // com.whatsappclone.app.notification.ActiveChatTracker 
           return (T) new ActiveChatTracker();
 
-          case 51: // com.whatsappclone.app.notification.InAppNotificationManager 
+          case 54: // com.whatsappclone.app.notification.InAppNotificationManager 
           return (T) new InAppNotificationManager();
 
           default: throw new AssertionError(id);
