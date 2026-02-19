@@ -18,7 +18,13 @@ interface MessageRepository {
         chatId: String,
         content: String,
         messageType: String = "text",
-        replyToMessageId: String? = null
+        replyToMessageId: String? = null,
+        mediaId: String? = null,
+        mediaUrl: String? = null,
+        mediaThumbnailUrl: String? = null,
+        mediaMimeType: String? = null,
+        mediaSize: Long? = null,
+        mediaDuration: Long? = null
     ): AppResult<Unit>
 
     /**
