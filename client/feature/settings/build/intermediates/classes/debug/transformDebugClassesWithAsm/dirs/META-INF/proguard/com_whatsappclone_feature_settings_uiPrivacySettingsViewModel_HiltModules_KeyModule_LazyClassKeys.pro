@@ -4,5 +4,7 @@
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.NotificationSettingsViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.ThemeSettingsViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.StorageUsageViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.StorageUsageViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.PrivacySettingsViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.settings.ui.PrivacySettingsViewModel
