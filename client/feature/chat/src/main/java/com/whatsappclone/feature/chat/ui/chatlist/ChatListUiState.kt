@@ -7,7 +7,8 @@ data class ChatListUiState(
     val searchQuery: String = "",
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val archivedCount: Int = 0
 ) {
     val filteredChats: List<ChatItemUi>
         get() =
