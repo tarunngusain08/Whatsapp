@@ -37,6 +37,10 @@ object TimeUtils {
         }
     }
 
+    fun formatExportTimestamp(epochMillis: Long): String {
+        return formatTime(epochMillis, "yyyy-MM-dd HH:mm:ss")
+    }
+
     fun formatDateSeparator(epochMillis: Long): String {
         val now = Calendar.getInstance()
         val target = Calendar.getInstance().apply { timeInMillis = epochMillis }
