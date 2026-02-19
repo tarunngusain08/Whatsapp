@@ -58,6 +58,7 @@ import coil3.compose.AsyncImage
 @Composable
 fun ProfileEditScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToImageViewer: (url: String, title: String) -> Unit = { _, _ -> },
     viewModel: ProfileEditViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -159,7 +160,13 @@ fun ProfileEditScreen(
                     avatarUrl = uiState.avatarUrl,
                     displayName = uiState.displayName,
                     isUploading = uiState.isUploadingAvatar,
-                    onAvatarClick = {
+                    onAvatarViewClick = {
+                        val url = uiState.avatarUrl
+                        if (!url.isNullOrBlank()) {
+                            onNavigateToImageViewer(url, uiState.displayName)
+                        }
+                    },
+                    onCameraClick = {
                         photoPickerLauncher.launch(
                             PickVisualMediaRequest(
                                 ActivityResultContracts.PickVisualMedia.ImageOnly
@@ -251,20 +258,21 @@ private fun AvatarSection(
     avatarUrl: String?,
     displayName: String,
     isUploading: Boolean,
-    onAvatarClick: () -> Unit
+    onAvatarViewClick: () -> Unit,
+    onCameraClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .size(148.dp)
-            .clickable(enabled = !isUploading, onClick = onAvatarClick),
+        modifier = Modifier.size(148.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Avatar content - clipped to circle independently
         Box(
             modifier = Modifier
                 .size(140.dp)
                 .align(Alignment.Center)
-                .clip(CircleShape),
+                .clip(CircleShape)
+                .clickable(enabled = !isUploading && !avatarUrl.isNullOrBlank()) {
+                    onAvatarViewClick()
+                },
             contentAlignment = Alignment.Center
         ) {
             if (!avatarUrl.isNullOrBlank()) {
@@ -292,13 +300,13 @@ private fun AvatarSection(
             }
         }
 
-        // Camera icon overlay - NOT clipped by the parent
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+                .background(MaterialTheme.colorScheme.primary)
+                .clickable(enabled = !isUploading, onClick = onCameraClick),
             contentAlignment = Alignment.Center
         ) {
             if (isUploading) {
