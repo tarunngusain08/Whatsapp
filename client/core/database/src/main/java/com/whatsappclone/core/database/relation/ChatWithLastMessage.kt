@@ -11,5 +11,6 @@ data class ChatWithLastMessage(
     val lastMessageSenderId: String?,
     val lastMessageSenderName: String?,
     val directChatOtherUserName: String? = null,
-    val directChatOtherUserAvatarUrl: String? = null
+    val directChatOtherUserAvatarUrl: String? = null,
+    val otherUserIsOnline: Boolean? = null
 )
