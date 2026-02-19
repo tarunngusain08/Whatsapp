@@ -1,5 +1,7 @@
 package com.whatsappclone.feature.chat.ui.chatdetail
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,8 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.whatsappclone.core.ui.components.MessageStatusIcon
@@ -171,10 +180,10 @@ fun MessageBubble(
                 }
 
                 if (message.isDeleted) {
-                    // Deleted message styling
                     DeletedMessageContent(isOwnMessage = message.isOwnMessage)
+                } else if (message.messageType == "location" && message.content != null) {
+                    LocationContent(message = message)
                 } else {
-                    // Message content with inline timestamp
                     MessageContent(message = message)
                 }
             }
@@ -187,16 +196,57 @@ private fun MessageContent(
     message: MessageUi,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val contentText = message.content ?: ""
+    val firstUrl = remember(contentText) { extractFirstUrl(contentText) }
+    val linkColor = MaterialTheme.colorScheme.primary
+
+    val annotatedText = remember(contentText, linkColor) {
+        buildAnnotatedString {
+            append(contentText)
+            val urlPattern = Regex("""(https?://[^\s<>\"\)\]]+)""", RegexOption.IGNORE_CASE)
+            for (match in urlPattern.findAll(contentText)) {
+                addStyle(
+                    style = SpanStyle(
+                        color = linkColor,
+                        textDecoration = TextDecoration.Underline
+                    ),
+                    start = match.range.first,
+                    end = match.range.last + 1
+                )
+                addStringAnnotation(
+                    tag = "URL",
+                    annotation = match.value,
+                    start = match.range.first,
+                    end = match.range.last + 1
+                )
+            }
+        }
+    }
 
     Column(modifier = modifier) {
-        Text(
-            text = contentText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 15.5.sp,
-            lineHeight = 20.sp
+        ClickableText(
+            text = annotatedText,
+            style = TextStyle(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.5.sp,
+                lineHeight = 20.sp
+            ),
+            onClick = { offset ->
+                annotatedText.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                    .firstOrNull()?.let { annotation ->
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(annotation.item))
+                        context.startActivity(intent)
+                    }
+            }
         )
+
+        if (firstUrl != null) {
+            LinkPreviewCard(
+                url = firstUrl,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
 
         Row(
             modifier = Modifier
@@ -205,6 +255,16 @@ private fun MessageContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
+            if (message.isScheduled) {
+                Icon(
+                    imageVector = Icons.Filled.Schedule,
+                    contentDescription = "Scheduled",
+                    tint = MetaTextColor,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+            }
+
             if (message.isStarred) {
                 Icon(
                     imageVector = Icons.Filled.Star,
@@ -215,6 +275,58 @@ private fun MessageContent(
                 Spacer(modifier = Modifier.width(2.dp))
             }
 
+            Text(
+                text = message.formattedTime,
+                style = MaterialTheme.typography.labelSmall,
+                color = MetaTextColor,
+                fontSize = 11.sp,
+                lineHeight = 11.sp
+            )
+
+            if (message.isOwnMessage) {
+                Spacer(modifier = Modifier.width(3.dp))
+                MessageStatusIcon(
+                    status = message.status,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationContent(
+    message: MessageUi,
+    modifier: Modifier = Modifier
+) {
+    val parts = message.content?.split(",")?.map { it.trim() }
+    val lat = parts?.getOrNull(0)?.toDoubleOrNull()
+    val lng = parts?.getOrNull(1)?.toDoubleOrNull()
+
+    Column(modifier = modifier) {
+        if (lat != null && lng != null) {
+            LocationMessageBubble(
+                latitude = lat,
+                longitude = lng,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+        } else {
+            Text(
+                text = message.content ?: "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.5.sp,
+                lineHeight = 20.sp
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
             Text(
                 text = message.formattedTime,
                 style = MaterialTheme.typography.labelSmall,
