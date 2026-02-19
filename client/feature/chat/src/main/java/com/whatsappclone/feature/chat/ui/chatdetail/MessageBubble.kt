@@ -26,11 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.whatsappclone.core.ui.components.MessageStatusIcon
@@ -192,37 +189,22 @@ private fun MessageContent(
 ) {
     val contentText = message.content ?: ""
 
-    // Build annotated string with message text + invisible trailing space for timestamp
-    val annotatedText = buildAnnotatedString {
-        append(contentText)
-        // Trailing padding so text doesn't overlap the timestamp
-        append("  ")
-        withStyle(SpanStyle(fontSize = 1.sp, color = Color.Transparent)) {
-            // Invisible spacer to reserve room for the footer overlay
-            // Add extra space if starred (for star icon)
-            val extra = if (message.isStarred) "   " else ""
-            append(if (message.isOwnMessage) "        .${extra}" else "      .${extra}")
-        }
-    }
-
-    Box(modifier = modifier) {
+    Column(modifier = modifier) {
         Text(
-            text = annotatedText,
+            text = contentText,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 15.5.sp,
             lineHeight = 20.sp
         )
 
-        // Footer: star icon + timestamp + status icon, anchored to bottom-end
         Row(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.End)
                 .padding(top = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            // Star icon
             if (message.isStarred) {
                 Icon(
                     imageVector = Icons.Filled.Star,
