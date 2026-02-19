@@ -33,6 +33,8 @@ interface ChatRepository {
 
     suspend fun muteChat(chatId: String, muted: Boolean): AppResult<Unit>
 
+    suspend fun pinChat(chatId: String, pinned: Boolean)
+
     /**
      * Creates a group chat with the given [name] and [participantIds].
      * Returns the chatId of the newly created group.
@@ -43,4 +45,14 @@ interface ChatRepository {
      * Inserts or updates a chat received from a remote source (WebSocket / push).
      */
     suspend fun insertFromRemote(chatDto: ChatDto)
+
+    suspend fun setDisappearingTimer(chatId: String, timer: String): AppResult<Unit>
+
+    suspend fun archiveChat(chatId: String, archived: Boolean)
+
+    suspend fun deleteChat(chatId: String)
+
+    fun observeArchivedChats(currentUserId: String? = null): Flow<List<ChatWithLastMessage>>
+
+    fun observeArchivedCount(): Flow<Int>
 }
