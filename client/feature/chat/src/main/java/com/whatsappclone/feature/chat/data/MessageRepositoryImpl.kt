@@ -78,7 +78,7 @@ class MessageRepositoryImpl @Inject constructor(
         mediaThumbnailUrl: String?,
         mediaMimeType: String?,
         mediaSize: Long?,
-        mediaDuration: Long?
+        mediaDuration: Int?
     ): AppResult<Unit> {
         val currentUserId = getCurrentUserId() ?: return AppResult.Error(
             code = ErrorCode.UNAUTHORIZED,
