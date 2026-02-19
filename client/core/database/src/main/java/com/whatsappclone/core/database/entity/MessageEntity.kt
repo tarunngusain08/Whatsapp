@@ -33,6 +33,7 @@ data class MessageEntity(
     val isStarred: Boolean = false,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val reactionsJson: String? = null,
     val timestamp: Long,
     val createdAt: Long,
     val scheduledAt: Long? = null
