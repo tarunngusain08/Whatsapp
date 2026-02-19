@@ -24,7 +24,7 @@ interface MessageRepository {
         mediaThumbnailUrl: String? = null,
         mediaMimeType: String? = null,
         mediaSize: Long? = null,
-        mediaDuration: Long? = null
+        mediaDuration: Int? = null
     ): AppResult<Unit>
 
     /**
