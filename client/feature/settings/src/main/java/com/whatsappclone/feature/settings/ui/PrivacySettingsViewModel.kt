@@ -65,6 +65,12 @@ class PrivacySettingsViewModel @Inject constructor(
         }
     }
 
+    fun onAppLockToggled(enabled: Boolean) {
+        viewModelScope.launch {
+            privacyPreferencesStore.updateAppLock(enabled)
+        }
+    }
+
     fun onBlockedContactsClicked() {
         viewModelScope.launch {
             _event.emit(PrivacySettingsEvent.NavigateToBlockedContacts)
