@@ -86,17 +86,27 @@ class ChatDetailViewModel @Inject constructor(
                     val chat = result.data
                     var chatName = chat.name ?: "Chat"
                     var chatAvatar = chat.avatarUrl
+                    var resolvedOtherUserId: String? = null
 
                     if (chat.chatType == "direct" && currentUserId.isNotBlank()) {
                         try {
                             val participants = chatParticipantDao.getParticipants(chatId)
-                            val otherUserId = participants
+                            resolvedOtherUserId = participants
                                 .firstOrNull { it.userId != currentUserId }?.userId
-                            if (otherUserId != null) {
-                                val otherUser = userDao.getById(otherUserId)
-                                if (otherUser != null) {
+                            if (resolvedOtherUserId != null) {
+                                val otherUser = userDao.getById(resolvedOtherUserId)
+                                if (otherUser != null &&
+                                    otherUser.displayName != "Unknown" &&
+                                    otherUser.displayName.isNotBlank()
+                                ) {
                                     chatName = otherUser.displayName
                                     chatAvatar = otherUser.avatarUrl ?: chatAvatar
+                                } else {
+                                    val fetched = userRepository.getUser(resolvedOtherUserId)
+                                    if (fetched is AppResult.Success) {
+                                        chatName = fetched.data.displayName
+                                        chatAvatar = fetched.data.avatarUrl ?: chatAvatar
+                                    }
                                 }
                             }
                         } catch (_: Exception) { }
@@ -107,6 +117,7 @@ class ChatDetailViewModel @Inject constructor(
                             chatName = chatName,
                             chatAvatarUrl = chatAvatar,
                             chatType = chat.chatType,
+                            otherUserId = resolvedOtherUserId,
                             isLoading = false
                         )
                     }
@@ -125,18 +136,29 @@ class ChatDetailViewModel @Inject constructor(
     }
 
     private fun observeOtherUserPresence() {
+        val otherUserId = _uiState.value.otherUserId ?: return
         viewModelScope.launch {
-            // For a direct chat the "other user" id is typically embedded in
-            // participants. Simplified approach: observe via chatId.
-        }
-    }
+            if (webSocketManager.connectionState.value == WsConnectionState.CONNECTED) {
+                val data = buildJsonObject {
+                    put("user_ids", kotlinx.serialization.json.buildJsonArray {
+                        add(JsonPrimitive(otherUserId))
+                    })
+                }
+                webSocketManager.send(WsFrame(event = "presence.subscribe", data = data))
+            }
 
-    fun updateOtherUserPresence(isOnline: Boolean, lastSeenMillis: Long?) {
-        _uiState.update {
-            it.copy(
-                isOnline = isOnline,
-                lastSeen = lastSeenMillis?.let { ms -> TimeUtils.formatLastSeen(ms) }
-            )
+            userDao.observeUser(otherUserId)
+                .distinctUntilChanged()
+                .collect { user ->
+                    _uiState.update {
+                        it.copy(
+                            isOnline = user?.isOnline ?: false,
+                            lastSeen = user?.lastSeen?.let { ms ->
+                                TimeUtils.formatLastSeen(ms)
+                            }
+                        )
+                    }
+                }
         }
     }
 
