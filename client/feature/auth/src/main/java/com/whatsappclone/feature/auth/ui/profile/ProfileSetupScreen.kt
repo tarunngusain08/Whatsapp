@@ -1,5 +1,9 @@
 package com.whatsappclone.feature.auth.ui.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +28,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -51,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
 import com.whatsappclone.core.ui.components.ErrorBanner
 import com.whatsappclone.core.ui.components.LoadingOverlay
 
@@ -63,6 +70,12 @@ fun ProfileSetupScreen(
     val uiState by viewModel.uiState.collectAsState()
     val nameFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.onAvatarSelected(it) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
@@ -112,7 +125,6 @@ fun ProfileSetupScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Avatar placeholder
                 Box(
                     modifier = Modifier.size(128.dp),
                     contentAlignment = Alignment.Center
@@ -122,18 +134,32 @@ fun ProfileSetupScreen(
                             .size(128.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { /* TODO: Image picker */ },
+                            .clickable(enabled = !uiState.isUploadingAvatar) {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = "Profile Photo",
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (!uiState.avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = uiState.avatarUrl,
+                                contentDescription = "Profile Photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Person,
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
-                    // Camera badge
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -143,12 +169,20 @@ fun ProfileSetupScreen(
                             .background(MaterialTheme.colorScheme.secondary),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.CameraAlt,
-                            contentDescription = "Add Photo",
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.White
-                        )
+                        if (uiState.isUploadingAvatar) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.CameraAlt,
+                                contentDescription = "Add Photo",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
 
