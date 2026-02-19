@@ -401,7 +401,7 @@ private fun SlideHint(
     ) {
         Icon(
             imageVector = Icons.Filled.KeyboardArrowLeft,
-            contentDescription = null,
+            contentDescription = "Slide to cancel",
             tint = CancelGray,
             modifier = Modifier
                 .size(18.dp)
