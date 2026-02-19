@@ -3,6 +3,9 @@ package com.whatsappclone.feature.chat.ui.chatdetail
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,11 +28,15 @@ import com.whatsappclone.feature.chat.data.UserRepository
 import com.whatsappclone.feature.chat.domain.MarkMessagesReadUseCase
 import com.whatsappclone.feature.chat.domain.SendMessageUseCase
 import com.whatsappclone.feature.chat.model.MessageUi
+import com.whatsappclone.feature.media.audio.RecordingState
+import com.whatsappclone.feature.media.audio.VoiceRecorder
+import com.whatsappclone.feature.media.data.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -53,6 +60,8 @@ class ChatDetailViewModel @Inject constructor(
     private val messageDao: MessageDao,
     private val chatParticipantDao: ChatParticipantDao,
     private val userDao: UserDao,
+    private val mediaRepository: MediaRepository,
+    private val voiceRecorder: VoiceRecorder,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -67,6 +76,9 @@ class ChatDetailViewModel @Inject constructor(
 
     private val _replyToMessage = MutableStateFlow<MessageUi?>(null)
     val replyToMessage: StateFlow<MessageUi?> = _replyToMessage.asStateFlow()
+
+    val recordingState: StateFlow<RecordingState> = voiceRecorder.state
+    val recordingAmplitudes: SharedFlow<Int> = voiceRecorder.amplitudes
 
     private var typingJob: Job? = null
     private var isTypingSent = false
@@ -118,6 +130,7 @@ class ChatDetailViewModel @Inject constructor(
                             chatAvatarUrl = chatAvatar,
                             chatType = chat.chatType,
                             otherUserId = resolvedOtherUserId,
+                            isMuted = chat.isMuted,
                             isLoading = false
                         )
                     }
@@ -222,7 +235,9 @@ class ChatDetailViewModel @Inject constructor(
             replyToContent = replyContent,
             replyToSenderName = replySenderName,
             replyToType = replyType,
-            replyToMediaThumbnailUrl = replyMediaThumb
+            replyToMediaThumbnailUrl = replyMediaThumb,
+            isScheduled = scheduledAt != null,
+            scheduledAt = scheduledAt
         )
     }
 
@@ -291,6 +306,18 @@ class ChatDetailViewModel @Inject constructor(
         }
     }
 
+    fun sendLocationMessage(latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            val content = "$latitude,$longitude"
+            when (val result = sendMessageUseCase(chatId, content, messageType = "location")) {
+                is AppResult.Error -> {
+                    _uiState.update { it.copy(error = result.message) }
+                }
+                else -> Unit
+            }
+        }
+    }
+
     // ── Reply ───────────────────────────────────────────────────────────
 
     fun setReplyTo(message: MessageUi?) {
@@ -347,11 +374,120 @@ class ChatDetailViewModel @Inject constructor(
         clipboardManager.setPrimaryClip(clip)
     }
 
+    // ── Media messages ────────────────────────────────────────────────
+
+    fun sendMediaMessage(uri: Uri, messageType: String, mimeType: String?) {
+        viewModelScope.launch {
+            val uploadResult = when (messageType) {
+                "image" -> mediaRepository.uploadImage(uri, currentUserId)
+                "video" -> mediaRepository.uploadVideo(uri, currentUserId)
+                else -> mediaRepository.uploadDocument(uri, currentUserId)
+            }
+
+            when (uploadResult) {
+                is AppResult.Success -> {
+                    val media = uploadResult.data
+                    val result = sendMessageUseCase(
+                        chatId = chatId,
+                        content = media.originalFilename ?: "",
+                        messageType = messageType,
+                        mediaId = media.mediaId,
+                        mediaUrl = media.storageUrl,
+                        mediaThumbnailUrl = media.thumbnailUrl,
+                        mediaMimeType = media.mimeType,
+                        mediaSize = media.sizeBytes,
+                        mediaDuration = media.durationMs
+                    )
+                    if (result is AppResult.Error) {
+                        _uiState.update { it.copy(error = result.message) }
+                    }
+                }
+                is AppResult.Error -> {
+                    _uiState.update { it.copy(error = uploadResult.message) }
+                }
+                is AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    // ── Voice recording ──────────────────────────────────────────────
+
+    fun startRecording() {
+        if (!voiceRecorder.startRecording()) {
+            _uiState.update { it.copy(error = "Unable to start recording. Check microphone permission.") }
+        }
+    }
+
+    fun stopRecording() {
+        val result = voiceRecorder.stopRecording() ?: return
+        uploadAndSendVoiceNote(result.file, result.durationMs)
+    }
+
+    fun cancelRecording() {
+        voiceRecorder.cancelRecording()
+    }
+
+    fun lockRecording() {
+        voiceRecorder.lockRecording()
+    }
+
+    fun sendRecording() {
+        val result = voiceRecorder.stopRecording() ?: return
+        uploadAndSendVoiceNote(result.file, result.durationMs)
+    }
+
+    private fun uploadAndSendVoiceNote(file: java.io.File, durationMs: Long) {
+        viewModelScope.launch {
+            val uri = Uri.fromFile(file)
+            when (val uploadResult = mediaRepository.uploadDocument(uri, currentUserId)) {
+                is AppResult.Success -> {
+                    val media = uploadResult.data
+                    val result = sendMessageUseCase(
+                        chatId = chatId,
+                        content = "",
+                        messageType = "audio",
+                        mediaId = media.mediaId,
+                        mediaUrl = media.storageUrl,
+                        mediaMimeType = "audio/mp4",
+                        mediaSize = media.sizeBytes,
+                        mediaDuration = durationMs
+                    )
+                    if (result is AppResult.Error) {
+                        _uiState.update { it.copy(error = result.message) }
+                    }
+                }
+                is AppResult.Error -> {
+                    _uiState.update { it.copy(error = uploadResult.message) }
+                }
+                is AppResult.Loading -> Unit
+            }
+            file.delete()
+        }
+    }
+
     // ── Read receipts ───────────────────────────────────────────────────
 
     fun markAsRead() {
         viewModelScope.launch {
             markMessagesReadUseCase(chatId)
+        }
+    }
+
+    // ── Mute / Unmute ────────────────────────────────────────────────
+
+    fun toggleMute() {
+        val currentlyMuted = _uiState.value.isMuted
+        viewModelScope.launch {
+            val result = chatRepository.muteChat(chatId, !currentlyMuted)
+            when (result) {
+                is AppResult.Success -> {
+                    _uiState.update { it.copy(isMuted = !currentlyMuted) }
+                }
+                is AppResult.Error -> {
+                    _uiState.update { it.copy(error = result.message) }
+                }
+                is AppResult.Loading -> Unit
+            }
         }
     }
 
@@ -430,6 +566,168 @@ class ChatDetailViewModel @Inject constructor(
             state.matchedMessageIds.size - 1
         }
         _uiState.update { it.copy(currentMatchIndex = prevIndex) }
+    }
+
+    // ── Disappearing messages ─────────────────────────────────────────
+
+    fun setDisappearingMessages(timer: String) {
+        viewModelScope.launch {
+            val result = chatRepository.setDisappearingTimer(chatId, timer)
+            when (result) {
+                is AppResult.Success -> {
+                    _uiState.update { it.copy(disappearingTimer = timer) }
+                }
+                is AppResult.Error -> {
+                    _uiState.update { it.copy(error = result.message) }
+                }
+                is AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    // ── Multi-select ─────────────────────────────────────────────────────
+
+    fun enterSelectionMode(messageId: String) {
+        _uiState.update {
+            it.copy(isSelectionMode = true, selectedMessageIds = setOf(messageId))
+        }
+    }
+
+    fun toggleMessageSelection(messageId: String) {
+        _uiState.update { state ->
+            val updated = if (messageId in state.selectedMessageIds) {
+                state.selectedMessageIds - messageId
+            } else {
+                state.selectedMessageIds + messageId
+            }
+            if (updated.isEmpty()) {
+                state.copy(isSelectionMode = false, selectedMessageIds = emptySet())
+            } else {
+                state.copy(selectedMessageIds = updated)
+            }
+        }
+    }
+
+    fun exitSelectionMode() {
+        _uiState.update {
+            it.copy(isSelectionMode = false, selectedMessageIds = emptySet())
+        }
+    }
+
+    fun deleteSelectedMessages() {
+        val ids = _uiState.value.selectedMessageIds.toList()
+        viewModelScope.launch {
+            ids.forEach { id -> messageRepository.softDelete(id, forEveryone = false) }
+        }
+        exitSelectionMode()
+    }
+
+    fun starSelectedMessages() {
+        val ids = _uiState.value.selectedMessageIds.toList()
+        viewModelScope.launch {
+            ids.forEach { id ->
+                val entity = messageDao.getById(id)
+                if (entity != null) {
+                    messageRepository.starMessage(id, !entity.isStarred)
+                }
+            }
+        }
+        exitSelectionMode()
+    }
+
+    fun copySelectedMessages() {
+        viewModelScope.launch {
+            val contents = _uiState.value.selectedMessageIds.mapNotNull { id ->
+                messageDao.getById(id)?.content
+            }
+            if (contents.isNotEmpty()) {
+                copyToClipboard(contents.joinToString("\n"))
+            }
+        }
+        exitSelectionMode()
+    }
+
+    // ── Scheduled messages ─────────────────────────────────────────────
+
+    fun scheduleMessage(scheduledAtMillis: Long) {
+        val text = _uiState.value.composerText.trim()
+        if (text.isBlank()) return
+
+        _uiState.update { it.copy(composerText = "") }
+        _replyToMessage.value = null
+
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val entity = MessageEntity(
+                messageId = "scheduled_${java.util.UUID.randomUUID()}",
+                clientMsgId = java.util.UUID.randomUUID().toString(),
+                chatId = chatId,
+                senderId = currentUserId,
+                messageType = "text",
+                content = text,
+                status = "scheduled",
+                timestamp = scheduledAtMillis,
+                createdAt = now,
+                scheduledAt = scheduledAtMillis
+            )
+            messageDao.insert(entity)
+        }
+    }
+
+    // ── Chat export ──────────────────────────────────────────────────────
+
+    fun exportChat() {
+        viewModelScope.launch {
+            try {
+                val messages = messageDao.getAllForChat(chatId)
+                if (messages.isEmpty()) {
+                    _uiState.update { it.copy(error = "No messages to export") }
+                    return@launch
+                }
+
+                val senderNameCache = mutableMapOf<String, String>()
+                val lines = messages.sortedBy { it.timestamp }.map { msg ->
+                    val senderName = senderNameCache.getOrPut(msg.senderId) {
+                        if (msg.senderId == currentUserId) {
+                            "You"
+                        } else {
+                            userDao.getById(msg.senderId)?.displayName ?: msg.senderId.take(8)
+                        }
+                    }
+                    val time = TimeUtils.formatExportTimestamp(msg.timestamp)
+                    val content = when {
+                        msg.isDeleted -> "<deleted>"
+                        msg.messageType != "text" && msg.content.isNullOrBlank() -> "<${msg.messageType}>"
+                        else -> msg.content ?: ""
+                    }
+                    "[$time] $senderName: $content"
+                }
+
+                val chatName = _uiState.value.chatName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+                val file = java.io.File(appContext.cacheDir, "export_${chatName}.txt")
+                file.writeText(lines.joinToString("\n"))
+
+                val uri = FileProvider.getUriForFile(
+                    appContext,
+                    "${appContext.packageName}.fileprovider",
+                    file
+                )
+
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                appContext.startActivity(
+                    Intent.createChooser(shareIntent, "Export chat").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Export failed: ${e.message}") }
+            }
+        }
     }
 
     // ── Error handling ──────────────────────────────────────────────────
