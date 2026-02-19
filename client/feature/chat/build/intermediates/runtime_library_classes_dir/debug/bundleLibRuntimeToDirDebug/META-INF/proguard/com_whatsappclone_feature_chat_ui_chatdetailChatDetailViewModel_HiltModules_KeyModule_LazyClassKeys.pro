@@ -1,6 +1,12 @@
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.receipts.ReceiptDetailsViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatlist.ChatListViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.status.StatusViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.status.StatusViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.search.GlobalSearchViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel
+-keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.starred.StarredMessagesViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel
 -keep,allowobfuscation,allowshrinking class com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel
