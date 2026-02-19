@@ -12,21 +12,31 @@ data class ChatDetailUiState(
     val composerText: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
+    val isMuted: Boolean = false,
 
     // Admin-only messaging state
     val isAdminOnlyChat: Boolean = false,
     val isCurrentUserAdmin: Boolean = false,
 
+    // Disappearing messages
+    val disappearingTimer: String = "off",
+
     // In-chat search state
     val isSearchActive: Boolean = false,
     val searchQuery: String = "",
     val matchedMessageIds: List<String> = emptyList(),
-    val currentMatchIndex: Int = 0
+    val currentMatchIndex: Int = 0,
+
+    // Multi-select state
+    val isSelectionMode: Boolean = false,
+    val selectedMessageIds: Set<String> = emptySet()
 ) {
     val isComposerDisabled: Boolean
         get() = isAdminOnlyChat && !isCurrentUserAdmin && chatType == "group"
 
     val canSend: Boolean get() = composerText.isNotBlank() && !isComposerDisabled
+
+    val selectedCount: Int get() = selectedMessageIds.size
 
     val totalSearchMatches: Int get() = matchedMessageIds.size
 
