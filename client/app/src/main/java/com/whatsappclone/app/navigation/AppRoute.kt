@@ -94,6 +94,8 @@ sealed class AppRoute(val route: String) {
 
     data object ThemeSettings : AppRoute("theme_settings")
 
+    data object StorageUsage : AppRoute("storage_usage")
+
     data object Wallpaper : AppRoute("wallpaper/{chatId}") {
         fun create(chatId: String): String = "wallpaper/$chatId"
     }
