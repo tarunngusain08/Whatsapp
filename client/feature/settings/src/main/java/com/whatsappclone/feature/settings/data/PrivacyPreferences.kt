@@ -24,7 +24,8 @@ data class PrivacyPreferences(
     val profilePhotoVisibility: Visibility = Visibility.EVERYONE,
     val aboutVisibility: Visibility = Visibility.EVERYONE,
     val readReceipts: Boolean = true,
-    val groupsVisibility: Visibility = Visibility.EVERYONE
+    val groupsVisibility: Visibility = Visibility.EVERYONE,
+    val appLockEnabled: Boolean = false
 )
 
 private val Context.privacyDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -41,6 +42,7 @@ class PrivacyPreferencesStore @Inject constructor(
         val ABOUT_VISIBILITY = stringPreferencesKey("about_visibility")
         val READ_RECEIPTS = booleanPreferencesKey("read_receipts")
         val GROUPS_VISIBILITY = stringPreferencesKey("groups_visibility")
+        val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
     }
 
     val preferences: Flow<PrivacyPreferences> = context.privacyDataStore.data.map { prefs ->
@@ -53,8 +55,13 @@ class PrivacyPreferencesStore @Inject constructor(
                 ?.toVisibility() ?: Visibility.EVERYONE,
             readReceipts = prefs[Keys.READ_RECEIPTS] ?: true,
             groupsVisibility = prefs[Keys.GROUPS_VISIBILITY]
-                ?.toVisibility() ?: Visibility.EVERYONE
+                ?.toVisibility() ?: Visibility.EVERYONE,
+            appLockEnabled = prefs[Keys.APP_LOCK_ENABLED] ?: false
         )
+    }
+
+    val appLockEnabled: Flow<Boolean> = context.privacyDataStore.data.map { prefs ->
+        prefs[Keys.APP_LOCK_ENABLED] ?: false
     }
 
     suspend fun updateLastSeenVisibility(visibility: Visibility) {
@@ -84,6 +91,12 @@ class PrivacyPreferencesStore @Inject constructor(
     suspend fun updateGroupsVisibility(visibility: Visibility) {
         context.privacyDataStore.edit { prefs ->
             prefs[Keys.GROUPS_VISIBILITY] = visibility.name
+        }
+    }
+
+    suspend fun updateAppLock(enabled: Boolean) {
+        context.privacyDataStore.edit { prefs ->
+            prefs[Keys.APP_LOCK_ENABLED] = enabled
         }
     }
 
