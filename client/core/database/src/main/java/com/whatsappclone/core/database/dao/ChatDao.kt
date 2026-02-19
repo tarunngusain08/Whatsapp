@@ -19,7 +19,8 @@ interface ChatDao {
             m.senderId AS lastMessageSenderId,
             u.displayName AS lastMessageSenderName,
             pu.displayName AS directChatOtherUserName,
-            pu.avatarUrl AS directChatOtherUserAvatarUrl
+            pu.avatarUrl AS directChatOtherUserAvatarUrl,
+            pu.isOnline AS otherUserIsOnline
         FROM chats c
         LEFT JOIN messages m ON c.lastMessageId = m.messageId
         LEFT JOIN users u ON m.senderId = u.id
@@ -96,7 +97,8 @@ interface ChatDao {
             m.senderId AS lastMessageSenderId,
             u.displayName AS lastMessageSenderName,
             pu.displayName AS directChatOtherUserName,
-            pu.avatarUrl AS directChatOtherUserAvatarUrl
+            pu.avatarUrl AS directChatOtherUserAvatarUrl,
+            pu.isOnline AS otherUserIsOnline
         FROM chats c
         LEFT JOIN messages m ON c.lastMessageId = m.messageId
         LEFT JOIN users u ON m.senderId = u.id
@@ -117,6 +119,9 @@ interface ChatDao {
 
     @Query("DELETE FROM chats WHERE chatId = :chatId")
     suspend fun deleteById(chatId: String)
+
+    @Query("SELECT * FROM chats ORDER BY lastMessageTimestamp DESC")
+    suspend fun getAllChats(): List<ChatEntity>
 
     @Query("DELETE FROM chats")
     suspend fun deleteAll()
