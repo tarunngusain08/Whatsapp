@@ -21,6 +21,7 @@ data class ChatEntity(
     val unreadCount: Int = 0,
     val isMuted: Boolean = false,
     val isPinned: Boolean = false,
+    val isArchived: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long
 )
