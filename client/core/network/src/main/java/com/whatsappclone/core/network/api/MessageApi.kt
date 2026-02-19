@@ -4,6 +4,7 @@ import com.whatsappclone.core.network.model.ApiResponse
 import com.whatsappclone.core.network.model.PaginatedData
 import com.whatsappclone.core.network.model.dto.MarkReadRequest
 import com.whatsappclone.core.network.model.dto.MessageDto
+import com.whatsappclone.core.network.model.dto.ReceiptDto
 import com.whatsappclone.core.network.model.dto.SendMessageRequest
 import retrofit2.Response
 import retrofit2.http.Body
@@ -52,4 +53,9 @@ interface MessageApi {
         @Path("chatId") chatId: String,
         @Body request: MarkReadRequest
     ): Response<ApiResponse<Unit>>
+
+    @GET("messages/{messageId}/receipts")
+    suspend fun getMessageReceipts(
+        @Path("messageId") messageId: String
+    ): Response<ApiResponse<List<ReceiptDto>>>
 }
