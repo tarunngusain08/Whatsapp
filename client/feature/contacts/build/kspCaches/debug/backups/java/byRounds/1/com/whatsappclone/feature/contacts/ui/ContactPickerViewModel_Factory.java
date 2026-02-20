@@ -2,6 +2,7 @@ package com.whatsappclone.feature.contacts.ui;
 
 import android.content.Context;
 import com.whatsappclone.feature.chat.data.ChatRepository;
+import com.whatsappclone.feature.chat.data.UserRepository;
 import com.whatsappclone.feature.contacts.data.ContactRepository;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -33,27 +34,33 @@ public final class ContactPickerViewModel_Factory implements Factory<ContactPick
 
   private final Provider<ChatRepository> chatRepositoryProvider;
 
+  private final Provider<UserRepository> userRepositoryProvider;
+
   public ContactPickerViewModel_Factory(Provider<Context> contextProvider,
       Provider<ContactRepository> contactRepositoryProvider,
-      Provider<ChatRepository> chatRepositoryProvider) {
+      Provider<ChatRepository> chatRepositoryProvider,
+      Provider<UserRepository> userRepositoryProvider) {
     this.contextProvider = contextProvider;
     this.contactRepositoryProvider = contactRepositoryProvider;
     this.chatRepositoryProvider = chatRepositoryProvider;
+    this.userRepositoryProvider = userRepositoryProvider;
   }
 
   @Override
   public ContactPickerViewModel get() {
-    return newInstance(contextProvider.get(), contactRepositoryProvider.get(), chatRepositoryProvider.get());
+    return newInstance(contextProvider.get(), contactRepositoryProvider.get(), chatRepositoryProvider.get(), userRepositoryProvider.get());
   }
 
   public static ContactPickerViewModel_Factory create(Provider<Context> contextProvider,
       Provider<ContactRepository> contactRepositoryProvider,
-      Provider<ChatRepository> chatRepositoryProvider) {
-    return new ContactPickerViewModel_Factory(contextProvider, contactRepositoryProvider, chatRepositoryProvider);
+      Provider<ChatRepository> chatRepositoryProvider,
+      Provider<UserRepository> userRepositoryProvider) {
+    return new ContactPickerViewModel_Factory(contextProvider, contactRepositoryProvider, chatRepositoryProvider, userRepositoryProvider);
   }
 
   public static ContactPickerViewModel newInstance(Context context,
-      ContactRepository contactRepository, ChatRepository chatRepository) {
-    return new ContactPickerViewModel(context, contactRepository, chatRepository);
+      ContactRepository contactRepository, ChatRepository chatRepository,
+      UserRepository userRepository) {
+    return new ContactPickerViewModel(context, contactRepository, chatRepository, userRepository);
   }
 }
