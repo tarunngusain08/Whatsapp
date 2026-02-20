@@ -212,7 +212,10 @@ func (h *HTTPHandler) DeleteMessage(c *gin.Context) {
 			return
 		}
 	} else {
-		_ = h.msgSvc.UnstarMessage(c.Request.Context(), messageID, userID)
+		if err := h.msgSvc.SoftDeleteForUser(c.Request.Context(), messageID, userID); err != nil {
+			response.Error(c, err)
+			return
+		}
 	}
 
 	response.NoContent(c)
