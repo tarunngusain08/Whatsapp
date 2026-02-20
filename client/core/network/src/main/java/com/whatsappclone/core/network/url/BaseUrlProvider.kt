@@ -4,8 +4,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,6 +18,17 @@ import javax.inject.Singleton
 class BaseUrlProvider @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var cachedBaseUrl: String = DEFAULT_BASE_URL
+
+    init {
+        dataStore.data
+            .map { prefs -> prefs[KEY_BASE_URL] ?: DEFAULT_BASE_URL }
+            .onEach { cachedBaseUrl = it }
+            .launchIn(scope)
+    }
 
     val baseUrl: Flow<String> = dataStore.data.map { preferences ->
         preferences[KEY_BASE_URL] ?: DEFAULT_BASE_URL
@@ -25,7 +41,7 @@ class BaseUrlProvider @Inject constructor(
     }
 
     fun getBaseUrl(): String {
-        return DEFAULT_BASE_URL
+        return cachedBaseUrl
     }
 
     fun getWsUrl(): String {
