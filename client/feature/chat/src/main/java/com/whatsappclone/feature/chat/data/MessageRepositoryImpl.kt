@@ -242,13 +242,19 @@ class MessageRepositoryImpl @Inject constructor(
 
         return try {
             if (alreadyReacted) {
-                messageApi.removeReaction(chatId, messageId)
+                val response = messageApi.removeReaction(chatId, messageId)
+                if (!response.isSuccessful) {
+                    return AppResult.Error(ErrorCode.SERVER_ERROR, "Remove reaction failed: ${response.code()}")
+                }
                 val updated = reactions.toMutableMap()
                 updated[emoji] = usersForEmoji - currentUserId
-                if (updated[emoji]!!.isEmpty()) updated.remove(emoji)
+                if (updated[emoji].isNullOrEmpty()) updated.remove(emoji)
                 messageDao.updateReactions(messageId, serializeReactionsMap(updated))
             } else {
-                messageApi.reactToMessage(chatId, messageId, ReactRequest(emoji))
+                val response = messageApi.reactToMessage(chatId, messageId, ReactRequest(emoji))
+                if (!response.isSuccessful) {
+                    return AppResult.Error(ErrorCode.SERVER_ERROR, "React failed: ${response.code()}")
+                }
                 val updated = reactions.toMutableMap()
                 updated[emoji] = usersForEmoji + currentUserId
                 messageDao.updateReactions(messageId, serializeReactionsMap(updated))
