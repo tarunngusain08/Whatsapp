@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 import com.whatsappclone.core.ui.components.ErrorBanner
 import com.whatsappclone.core.ui.components.LoadingOverlay
 
@@ -145,7 +146,7 @@ fun ProfileSetupScreen(
                     ) {
                         if (!uiState.avatarUrl.isNullOrBlank()) {
                             AsyncImage(
-                                model = uiState.avatarUrl,
+                                model = UrlResolver.resolve(uiState.avatarUrl),
                                 contentDescription = "Profile Photo",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
