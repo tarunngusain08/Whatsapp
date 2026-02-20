@@ -195,8 +195,8 @@ class ChatDetailViewModel @Inject constructor(
             merge(flowOf(Unit), refreshTrigger)
                 .flatMapLatest {
                     messageRepository.observeMessages(chatId)
+                        .cachedIn(viewModelScope)
                 }
-                .cachedIn(viewModelScope)
                 .collectLatest { pagingData ->
                     _messages.value = pagingData.map { entity ->
                         entity.toMessageUi()
