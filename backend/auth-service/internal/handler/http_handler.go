@@ -48,13 +48,15 @@ func (h *HTTPHandler) RequestOTP(c *gin.Context) {
 		return
 	}
 
-	// In production, OTP would be sent via SMS; returning it here for dev/testing.
-	// Client expects { message, expires_in_seconds }; dev also gets otp for testing.
-	response.OK(c, gin.H{
+	resp := gin.H{
 		"message":            "OTP sent successfully",
-		"otp":                otp,
 		"expires_in_seconds": 300,
-	})
+	}
+	// Only include OTP in response for development/testing.
+	// TODO: gate this behind a config flag; remove before production deployment.
+	resp["otp"] = otp
+
+	response.OK(c, resp)
 }
 
 func (h *HTTPHandler) VerifyOTP(c *gin.Context) {
