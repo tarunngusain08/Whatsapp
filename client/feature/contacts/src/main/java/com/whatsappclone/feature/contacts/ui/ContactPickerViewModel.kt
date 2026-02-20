@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.database.relation.ContactWithUser
 import com.whatsappclone.feature.chat.data.ChatRepository
+import com.whatsappclone.feature.chat.data.UserRepository
 import com.whatsappclone.feature.contacts.data.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -59,7 +60,8 @@ sealed class ContactPickerNavigationEvent {
 class ContactPickerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val contactRepository: ContactRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -67,6 +69,8 @@ class ContactPickerViewModel @Inject constructor(
 
     private val _navigationEvent = MutableSharedFlow<ContactPickerNavigationEvent>()
     val navigationEvent: SharedFlow<ContactPickerNavigationEvent> = _navigationEvent.asSharedFlow()
+
+    private val currentUserId: String? = userRepository.getCurrentUserId()
 
     val uiState: StateFlow<ContactPickerUiState> = combine(
         _searchQuery.flatMapLatest { query ->
@@ -80,7 +84,7 @@ class ContactPickerViewModel @Inject constructor(
         _loadingState
     ) { contacts, query, loading ->
         ContactPickerUiState(
-            contacts = contacts,
+            contacts = contacts.filter { it.userId != currentUserId },
             searchQuery = query,
             isLoading = loading.isLoading,
             isSyncing = loading.isSyncing,
