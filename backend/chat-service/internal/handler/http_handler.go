@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -43,10 +43,19 @@ func getUserID(c *gin.Context) string {
 	return c.GetHeader("X-User-ID")
 }
 
+func requireChatID(c *gin.Context) (string, bool) {
+	chatID := strings.TrimSpace(c.Param("id"))
+	if chatID == "" {
+		response.Error(c, apperr.NewBadRequest("chat ID is required"))
+		return "", false
+	}
+	return chatID, true
+}
+
 func (h *HTTPHandler) CreateChat(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
@@ -150,7 +159,7 @@ func extractStringSlice(raw map[string]interface{}, key string) []string {
 func (h *HTTPHandler) ListChats(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
@@ -177,11 +186,14 @@ func (h *HTTPHandler) ListChats(c *gin.Context) {
 func (h *HTTPHandler) GetChat(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 	item, err := h.chatSvc.GetChat(c.Request.Context(), userID, chatID)
 	if err != nil {
 		response.Error(c, err)
@@ -194,11 +206,14 @@ func (h *HTTPHandler) GetChat(c *gin.Context) {
 func (h *HTTPHandler) UpdateGroup(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 	var req model.UpdateGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
@@ -216,11 +231,14 @@ func (h *HTTPHandler) UpdateGroup(c *gin.Context) {
 func (h *HTTPHandler) AddMember(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 	var req model.AddMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
@@ -238,11 +256,14 @@ func (h *HTTPHandler) AddMember(c *gin.Context) {
 func (h *HTTPHandler) RemoveMember(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 	targetUserID := c.Param("userId")
 
 	if err := h.chatSvc.RemoveMember(c.Request.Context(), userID, chatID, targetUserID); err != nil {
@@ -256,11 +277,14 @@ func (h *HTTPHandler) RemoveMember(c *gin.Context) {
 func (h *HTTPHandler) ChangeRole(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 	targetUserID := c.Param("userId")
 
 	var body struct {
@@ -293,11 +317,14 @@ func (h *HTTPHandler) ChangeRole(c *gin.Context) {
 func (h *HTTPHandler) MuteChat(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 
 	var body struct {
 		Muted     bool    `json:"muted"`
@@ -329,11 +356,14 @@ func (h *HTTPHandler) MuteChat(c *gin.Context) {
 func (h *HTTPHandler) PinChat(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing X-User-ID header"})
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
 
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 
 	var body struct {
 		Pinned bool `json:"pinned"`
@@ -357,7 +387,10 @@ func (h *HTTPHandler) UploadGroupAvatar(c *gin.Context) {
 		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 
 	file, header, err := c.Request.FormFile("avatar")
 	if err != nil {
@@ -392,7 +425,10 @@ func (h *HTTPHandler) SetDisappearingMessages(c *gin.Context) {
 		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
 		return
 	}
-	chatID := c.Param("id")
+	chatID, ok := requireChatID(c)
+	if !ok {
+		return
+	}
 
 	var body struct {
 		Timer string `json:"timer"` // "off", "24h", "7d", "90d"
