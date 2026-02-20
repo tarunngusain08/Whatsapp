@@ -104,17 +104,20 @@ fun AppNavGraph(
     // Navigate to CallScreen when an incoming call arrives
     if (callService != null) {
         val incomingSession = callService.session.collectAsState().value
-        LaunchedEffect(incomingSession?.callId, incomingSession?.state) {
+        LaunchedEffect(incomingSession?.callId) {
             val session = incomingSession ?: return@LaunchedEffect
             if (!session.isOutgoing && session.state == CallState.INCOMING_RINGING) {
-                navController.navigate(
-                    AppRoute.CallScreen.create(
-                        calleeName = session.remoteName,
-                        avatarUrl = session.remoteAvatarUrl ?: "",
-                        callType = session.callType,
-                        calleeUserId = session.remoteUserId
+                val currentRoute = navController.currentBackStackEntry?.destination?.route
+                if (currentRoute != AppRoute.CallScreen.route) {
+                    navController.navigate(
+                        AppRoute.CallScreen.create(
+                            calleeName = session.remoteName,
+                            avatarUrl = session.remoteAvatarUrl ?: "",
+                            callType = session.callType,
+                            calleeUserId = session.remoteUserId
+                        )
                     )
-                )
+                }
             }
         }
     }
