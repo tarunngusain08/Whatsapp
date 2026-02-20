@@ -36,10 +36,10 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE clientMsgId = :clientMsgId")
     suspend fun getByClientMsgId(clientMsgId: String): MessageEntity?
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(messages: List<MessageEntity>): List<Long>
 
     @Query("UPDATE messages SET status = :status WHERE messageId = :messageId")
