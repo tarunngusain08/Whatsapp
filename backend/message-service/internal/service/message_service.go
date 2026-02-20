@@ -12,6 +12,7 @@ type MessageService interface {
 	GetMessageByID(ctx context.Context, messageID string) (*model.Message, error)
 	UpdateStatus(ctx context.Context, messageID, userID, status string) error
 	DeleteMessage(ctx context.Context, messageID, senderID string) error
+	SoftDeleteForUser(ctx context.Context, messageID, userID string) error
 	StarMessage(ctx context.Context, messageID, userID string) error
 	UnstarMessage(ctx context.Context, messageID, userID string) error
 	ReactToMessage(ctx context.Context, messageID, userID, emoji string) error
