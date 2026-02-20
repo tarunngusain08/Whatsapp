@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.whatsappclone.core.common.util.UrlResolver
 import com.whatsappclone.core.ui.components.MessageStatusIcon
 import com.whatsappclone.core.ui.theme.WhatsAppColors
 import com.whatsappclone.feature.chat.model.MessageUi
@@ -162,7 +163,7 @@ private fun ImageContent(
     onImageClick: (MessageUi) -> Unit,
     onDownloadClick: (MessageUi) -> Unit
 ) {
-    val thumbnailUrl = message.mediaThumbnailUrl ?: message.mediaUrl
+    val thumbnailUrl = UrlResolver.resolve(message.mediaThumbnailUrl ?: message.mediaUrl)
     val context = LocalContext.current
 
     Box(
@@ -235,7 +236,7 @@ private fun VideoContent(
     onVideoClick: (MessageUi) -> Unit,
     onDownloadClick: (MessageUi) -> Unit
 ) {
-    val thumbnailUrl = message.mediaThumbnailUrl ?: message.mediaUrl
+    val thumbnailUrl = UrlResolver.resolve(message.mediaThumbnailUrl ?: message.mediaUrl)
     val context = LocalContext.current
 
     Box(
