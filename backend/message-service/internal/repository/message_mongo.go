@@ -194,6 +194,20 @@ func (r *messageMongoRepo) SoftDelete(ctx context.Context, messageID, senderID s
 	return nil
 }
 
+func (r *messageMongoRepo) SoftDeleteForUser(ctx context.Context, messageID, userID string) error {
+	result, err := r.col.UpdateOne(ctx,
+		bson.M{"message_id": messageID},
+		bson.M{"$addToSet": bson.M{"deleted_for_users": userID}},
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
+}
+
 // StarMessage adds userID to the is_starred_by array (idempotent via $addToSet).
 func (r *messageMongoRepo) StarMessage(ctx context.Context, messageID, userID string) error {
 	result, err := r.col.UpdateOne(ctx,
