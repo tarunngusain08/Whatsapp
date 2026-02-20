@@ -204,6 +204,22 @@ func (s *messageServiceImpl) DeleteMessage(ctx context.Context, messageID, sende
 	return nil
 }
 
+func (s *messageServiceImpl) SoftDeleteForUser(ctx context.Context, messageID, userID string) error {
+	msg, err := s.messageRepo.GetByID(ctx, messageID)
+	if err != nil {
+		return apperr.NewInternal("failed to get message", err)
+	}
+	if msg == nil {
+		return apperr.NewNotFound("message not found")
+	}
+
+	if err := s.messageRepo.SoftDeleteForUser(ctx, messageID, userID); err != nil {
+		return apperr.NewInternal("failed to soft delete message for user", err)
+	}
+
+	return nil
+}
+
 // ForwardMessage fetches the original message and re-sends it to the target chat.
 func (s *messageServiceImpl) ForwardMessage(ctx context.Context, senderID, targetChatID, sourceMessageID string) (*model.Message, error) {
 	original, err := s.messageRepo.GetByID(ctx, sourceMessageID)
@@ -268,6 +284,10 @@ func (s *messageServiceImpl) GetMessageByID(ctx context.Context, messageID strin
 func (s *messageServiceImpl) ReactToMessage(ctx context.Context, messageID, userID, emoji string) error {
 	if emoji == "" {
 		return apperr.NewBadRequest("emoji is required")
+	}
+	// Limit reaction length to prevent abuse (standard emoji are 1-12 bytes)
+	if len(emoji) > 32 {
+		return apperr.NewBadRequest("invalid emoji: too long")
 	}
 	err := s.messageRepo.AddReaction(ctx, messageID, userID, emoji)
 	if err != nil {
