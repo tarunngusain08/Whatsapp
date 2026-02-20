@@ -71,7 +71,7 @@ func (s *authServiceImpl) SendOTP(ctx context.Context, phone string) (string, er
 		return "", err
 	}
 
-	s.log.Info().Str("phone", phone).Msg("OTP generated and stored")
+	s.log.Info().Str("phone", maskPhone(phone)).Msg("OTP generated and stored")
 
 	return otp, nil
 }
@@ -110,7 +110,7 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, phone, code string) (*m
 		return nil, err
 	}
 
-	s.log.Info().Str("user_id", user.ID).Str("phone", phone).Bool("is_new_user", isNewUser).Msg("OTP verified, tokens issued")
+	s.log.Info().Str("user_id", user.ID).Str("phone", maskPhone(phone)).Bool("is_new_user", isNewUser).Msg("OTP verified, tokens issued")
 
 	return &model.AuthResult{
 		AccessToken:      pair.AccessToken,
@@ -241,4 +241,11 @@ func generateOpaqueToken(byteLen int) (string, error) {
 func sha256Hash(data string) string {
 	h := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(h[:])
+}
+
+func maskPhone(phone string) string {
+	if len(phone) <= 4 {
+		return "****"
+	}
+	return phone[:4] + "****"
 }
