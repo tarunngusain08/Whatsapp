@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.paging.map
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.util.Constants
@@ -18,6 +19,7 @@ import com.whatsappclone.core.database.dao.ChatParticipantDao
 import com.whatsappclone.core.database.dao.MessageDao
 import com.whatsappclone.core.database.dao.UserDao
 import com.whatsappclone.core.database.entity.MessageEntity
+import com.whatsappclone.core.network.websocket.ServerWsEvent
 import com.whatsappclone.core.network.websocket.TypingStateHolder
 import com.whatsappclone.core.network.websocket.WebSocketManager
 import com.whatsappclone.core.network.websocket.WsConnectionState
@@ -36,12 +38,18 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -81,6 +89,8 @@ class ChatDetailViewModel @Inject constructor(
     val recordingState: StateFlow<RecordingState> = voiceRecorder.state
     val recordingAmplitudes: SharedFlow<Int> = voiceRecorder.amplitudes
 
+    private val refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     private var typingJob: Job? = null
     private var isTypingSent = false
 
@@ -88,6 +98,7 @@ class ChatDetailViewModel @Inject constructor(
         loadChatDetail()
         observeMessages()
         observeTypingIndicators()
+        observeIncomingMessages()
     }
 
     // ── Chat metadata ───────────────────────────────────────────────────
@@ -178,14 +189,33 @@ class ChatDetailViewModel @Inject constructor(
 
     // ── Messages ────────────────────────────────────────────────────────
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeMessages() {
         viewModelScope.launch {
-            messageRepository.observeMessages(chatId)
+            merge(flowOf(Unit), refreshTrigger)
+                .flatMapLatest {
+                    messageRepository.observeMessages(chatId)
+                }
+                .cachedIn(viewModelScope)
                 .collectLatest { pagingData ->
                     _messages.value = pagingData.map { entity ->
                         entity.toMessageUi()
                     }
                 }
+        }
+    }
+
+    /**
+     * Re-creates the Pager whenever a new WebSocket message arrives for
+     * this chat, so the UI picks up inserts made by [WsEventRouter].
+     */
+    private fun observeIncomingMessages() {
+        viewModelScope.launch {
+            webSocketManager.events
+                .filter { event ->
+                    event is ServerWsEvent.NewMessage && event.chatId == chatId
+                }
+                .collect { refreshTrigger.tryEmit(Unit) }
         }
     }
 
@@ -250,7 +280,10 @@ class ChatDetailViewModel @Inject constructor(
             typingStateHolder.getTypingUsersForChat(chatId)
                 .distinctUntilChanged()
                 .collect { userIds ->
-                    _uiState.update { it.copy(typingUsers = userIds) }
+                    val names = userIds.map { uid ->
+                        userDao.getById(uid)?.displayName ?: uid.take(8)
+                    }.toSet()
+                    _uiState.update { it.copy(typingUsers = names) }
                 }
         }
     }
@@ -328,6 +361,17 @@ class ChatDetailViewModel @Inject constructor(
 
     fun clearReply() {
         _replyToMessage.value = null
+    }
+
+    // ── Reactions ─────────────────────────────────────────────────────────
+
+    fun toggleReaction(messageId: String, emoji: String) {
+        viewModelScope.launch {
+            val result = messageRepository.toggleReaction(chatId, messageId, emoji)
+            if (result is AppResult.Error) {
+                _uiState.update { it.copy(error = result.message) }
+            }
+        }
     }
 
     // ── Star / Unstar ───────────────────────────────────────────────────
