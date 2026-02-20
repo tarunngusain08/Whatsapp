@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 import com.whatsappclone.core.common.util.Constants
 import com.whatsappclone.core.ui.components.LoadingOverlay
 import com.whatsappclone.core.ui.components.UserAvatar
@@ -297,7 +298,7 @@ private fun GroupAvatarPlaceholder(
         ) {
             if (!avatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = avatarUrl,
+                    model = UrlResolver.resolve(avatarUrl),
                     contentDescription = "Group icon",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
