@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -277,7 +278,7 @@ private fun AvatarSection(
         ) {
             if (!avatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = avatarUrl,
+                    model = UrlResolver.resolve(avatarUrl),
                     contentDescription = "Profile avatar",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
