@@ -10,6 +10,7 @@ import com.whatsappclone.feature.auth.di.AuthModule;
 import com.whatsappclone.feature.auth.ui.login.LoginViewModel_HiltModules;
 import com.whatsappclone.feature.auth.ui.otp.OtpViewModel_HiltModules;
 import com.whatsappclone.feature.auth.ui.profile.ProfileSetupViewModel_HiltModules;
+import com.whatsappclone.feature.chat.call.CallViewModel_HiltModules;
 import com.whatsappclone.feature.chat.di.ChatModule;
 import com.whatsappclone.feature.chat.ui.archived.ArchivedChatsViewModel_HiltModules;
 import com.whatsappclone.feature.chat.ui.chatdetail.ChatDetailViewModel_HiltModules;
@@ -208,6 +209,7 @@ public final class WhatsAppApplication_HiltComponents {
       modules = {
           ArchivedChatsViewModel_HiltModules.KeyModule.class,
           BlockedContactsViewModel_HiltModules.KeyModule.class,
+          CallViewModel_HiltModules.KeyModule.class,
           ChatDetailViewModel_HiltModules.KeyModule.class,
           ChatListViewModel_HiltModules.KeyModule.class,
           ContactInfoViewModel_HiltModules.KeyModule.class,
@@ -271,6 +273,7 @@ public final class WhatsAppApplication_HiltComponents {
       modules = {
           ArchivedChatsViewModel_HiltModules.BindsModule.class,
           BlockedContactsViewModel_HiltModules.BindsModule.class,
+          CallViewModel_HiltModules.BindsModule.class,
           ChatDetailViewModel_HiltModules.BindsModule.class,
           ChatListViewModel_HiltModules.BindsModule.class,
           ContactInfoViewModel_HiltModules.BindsModule.class,
