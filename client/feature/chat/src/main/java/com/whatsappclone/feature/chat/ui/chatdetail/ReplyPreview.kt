@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 import com.whatsappclone.feature.chat.model.MessageUi
 
 private val SenderColors = listOf(
@@ -138,7 +139,7 @@ fun ReplyPreview(
                     // Thumbnail for media messages
                     if (message.mediaThumbnailUrl != null) {
                         AsyncImage(
-                            model = message.mediaThumbnailUrl,
+                            model = UrlResolver.resolve(message.mediaThumbnailUrl),
                             contentDescription = "Media thumbnail",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
