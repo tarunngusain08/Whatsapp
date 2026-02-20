@@ -223,8 +223,13 @@ func (h *HTTPHandler) RegisterDevice(c *gin.Context) {
 }
 
 func (h *HTTPHandler) RemoveDevice(c *gin.Context) {
+	userID := extractUserID(c)
+	if userID == "" {
+		response.Error(c, apperr.NewUnauthorized("missing user identity"))
+		return
+	}
 	token := c.Param("token")
-	if err := h.userSvc.RemoveDeviceToken(c.Request.Context(), token); err != nil {
+	if err := h.userSvc.RemoveDeviceTokenForUser(c.Request.Context(), userID, token); err != nil {
 		response.Error(c, err)
 		return
 	}
