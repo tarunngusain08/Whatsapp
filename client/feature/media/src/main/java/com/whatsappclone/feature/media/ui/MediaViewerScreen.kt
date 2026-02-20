@@ -54,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.whatsappclone.core.common.util.UrlResolver
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -173,7 +174,7 @@ fun MediaViewerScreen(
                             model = ImageRequest.Builder(context)
                                 .data(
                                     if (localFile != null) localFile
-                                    else entity.storageUrl
+                                    else UrlResolver.resolve(entity.storageUrl)
                                 )
                                 .crossfade(300)
                                 .build(),
