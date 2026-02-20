@@ -217,6 +217,7 @@ class MessageRepositoryImpl @Inject constructor(
         if (webSocketManager.connectionState.value == WsConnectionState.CONNECTED) {
             val payload = buildJsonObject {
                 put("message_id", JsonPrimitive(upToMessageId))
+                put("chat_id", JsonPrimitive(chatId))
             }
             webSocketManager.send(WsFrame(event = "message.read", data = payload))
         }
