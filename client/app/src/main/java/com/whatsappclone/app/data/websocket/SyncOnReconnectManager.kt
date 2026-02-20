@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,7 +48,8 @@ class SyncOnReconnectManager @Inject constructor(
         Log.e(TAG, "Uncaught coroutine exception", throwable)
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
-    private var started = false
+    @Volatile private var started = false
+    private val syncMutex = Mutex()
 
     fun start() {
         if (started) return
@@ -59,11 +62,19 @@ class SyncOnReconnectManager @Inject constructor(
     }
 
     private suspend fun performSync() {
-        Log.d(TAG, "Connection established, starting sync...")
-        try { syncChats() } catch (e: Exception) { Log.e(TAG, "Failed to sync chats", e) }
-        try { flushPendingMessages() } catch (e: Exception) { Log.e(TAG, "Failed to flush pending", e) }
-        try { updateLastSyncTimestamp() } catch (e: Exception) { Log.e(TAG, "Failed to update timestamp", e) }
-        Log.d(TAG, "Sync completed")
+        if (!syncMutex.tryLock()) {
+            Log.d(TAG, "Sync already in progress, skipping")
+            return
+        }
+        try {
+            Log.d(TAG, "Connection established, starting sync...")
+            try { syncChats() } catch (e: Exception) { Log.e(TAG, "Failed to sync chats", e) }
+            try { flushPendingMessages() } catch (e: Exception) { Log.e(TAG, "Failed to flush pending", e) }
+            try { updateLastSyncTimestamp() } catch (e: Exception) { Log.e(TAG, "Failed to update timestamp", e) }
+            Log.d(TAG, "Sync completed")
+        } finally {
+            syncMutex.unlock()
+        }
     }
 
     private suspend fun syncChats() {
