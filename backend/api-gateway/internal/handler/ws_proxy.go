@@ -4,18 +4,43 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
 var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin:     wsCheckOrigin,
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
 }
 
+// wsCheckOrigin validates WebSocket Origin header.
+// TODO: load allowed origins from config for production.
+func wsCheckOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	allowedOrigins := []string{
+		"http://localhost", "https://localhost",
+		"http://127.0.0.1", "https://127.0.0.1",
+	}
+	for _, allowed := range allowedOrigins {
+		if strings.HasPrefix(origin, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
 func WSProxyHandler(wsTargetURL string) gin.HandlerFunc {
+	target, err := url.Parse(wsTargetURL)
+	if err != nil {
+		panic("invalid ws target URL: " + wsTargetURL)
+	}
+
 	return func(c *gin.Context) {
 		clientConn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -23,13 +48,16 @@ func WSProxyHandler(wsTargetURL string) gin.HandlerFunc {
 		}
 		defer clientConn.Close()
 
-		target, _ := url.Parse(wsTargetURL)
 		header := http.Header{}
-		if uid, exists := c.Get("user_id"); exists {
-			header.Set("X-User-ID", uid.(string))
+		if uid, ok := c.Get("user_id"); ok {
+			if uidStr, ok := uid.(string); ok {
+				header.Set("X-User-ID", uidStr)
+			}
 		}
-		if phone, exists := c.Get("phone"); exists {
-			header.Set("X-User-Phone", phone.(string))
+		if phone, ok := c.Get("phone"); ok {
+			if phoneStr, ok := phone.(string); ok {
+				header.Set("X-User-Phone", phoneStr)
+			}
 		}
 		header.Set("Authorization", c.GetHeader("Authorization"))
 
