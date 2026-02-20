@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 
 @Composable
 fun UserAvatar(
@@ -37,14 +38,16 @@ fun UserAvatar(
             else Modifier
         )
 
-    if (!url.isNullOrBlank()) {
+    val resolvedUrl = UrlResolver.resolve(url)
+
+    if (!resolvedUrl.isNullOrBlank()) {
         Surface(
             modifier = avatarModifier,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             AsyncImage(
-                model = url,
+                model = resolvedUrl,
                 contentDescription = "$name avatar",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
