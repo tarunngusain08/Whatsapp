@@ -87,6 +87,9 @@ dependencies {
     // Security
     implementation(libs.security.crypto)
 
+    // WebRTC
+    implementation("io.getstream:stream-webrtc-android:1.1.3")
+
     // Kotlinx
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
