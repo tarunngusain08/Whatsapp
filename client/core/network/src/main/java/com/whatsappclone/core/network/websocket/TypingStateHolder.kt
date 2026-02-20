@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,23 +21,15 @@ class TypingStateHolder @Inject constructor() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    /**
-     * Map of chatId -> Set of userIds currently typing.
-     */
     private val _typingUsers = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
     val typingUsers: StateFlow<Map<String, Set<String>>> = _typingUsers.asStateFlow()
 
-    /**
-     * Tracks auto-clear jobs per (chatId, userId) so we can cancel a previous
-     * timer when a new typing event arrives.
-     */
-    private val clearJobs = mutableMapOf<Pair<String, String>, Job>()
+    private val clearJobs = ConcurrentHashMap<Pair<String, String>, Job>()
 
     fun onTyping(chatId: String, userId: String, isTyping: Boolean) {
         val key = chatId to userId
 
-        clearJobs[key]?.cancel()
-        clearJobs.remove(key)
+        clearJobs.remove(key)?.cancel()
 
         if (isTyping) {
             addTypingUser(chatId, userId)
@@ -62,20 +55,24 @@ class TypingStateHolder @Inject constructor() {
     }
 
     private fun addTypingUser(chatId: String, userId: String) {
-        _typingUsers.value = _typingUsers.value.toMutableMap().apply {
-            val current = get(chatId) ?: emptySet()
-            put(chatId, current + userId)
+        _typingUsers.update { currentMap ->
+            currentMap.toMutableMap().apply {
+                val current = get(chatId) ?: emptySet()
+                put(chatId, current + userId)
+            }
         }
     }
 
     private fun removeTypingUser(chatId: String, userId: String) {
-        _typingUsers.value = _typingUsers.value.toMutableMap().apply {
-            val current = get(chatId) ?: return@apply
-            val updated = current - userId
-            if (updated.isEmpty()) {
-                remove(chatId)
-            } else {
-                put(chatId, updated)
+        _typingUsers.update { currentMap ->
+            currentMap.toMutableMap().apply {
+                val current = get(chatId) ?: return@apply
+                val updated = current - userId
+                if (updated.isEmpty()) {
+                    remove(chatId)
+                } else {
+                    put(chatId, updated)
+                }
             }
         }
     }
