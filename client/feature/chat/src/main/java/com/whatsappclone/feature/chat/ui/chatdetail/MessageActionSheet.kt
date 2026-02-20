@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
@@ -48,7 +49,7 @@ private val StarColor = Color(0xFFFFC107)
 private val DeleteColor = Color(0xFFE53935)
 
 enum class MessageAction {
-    REPLY, FORWARD, COPY, STAR, INFO, DELETE, SELECT
+    REACT, REPLY, FORWARD, COPY, STAR, INFO, DELETE, SELECT
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +92,16 @@ fun MessageActionSheet(
 
             // Action grid — 2 columns
             val actions = buildList {
+                if (!message.isDeleted) {
+                    add(
+                        ActionItem(
+                            action = MessageAction.REACT,
+                            icon = Icons.Filled.AddReaction,
+                            label = "React",
+                            tint = ActionIconTint
+                        )
+                    )
+                }
                 add(
                     ActionItem(
                         action = MessageAction.REPLY,
