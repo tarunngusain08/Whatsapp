@@ -61,6 +61,12 @@ func (h *HTTPHandler) Upload(c *gin.Context) {
 
 // GetMetadata returns media metadata with fresh presigned URLs.
 func (h *HTTPHandler) GetMetadata(c *gin.Context) {
+	userID := c.GetHeader("X-User-ID")
+	if userID == "" {
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
+		return
+	}
+
 	mediaID := c.Param("mediaId")
 	if mediaID == "" {
 		response.Error(c, apperr.NewBadRequest("media_id is required"))
