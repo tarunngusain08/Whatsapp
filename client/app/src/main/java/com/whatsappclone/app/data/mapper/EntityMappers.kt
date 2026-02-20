@@ -18,8 +18,7 @@ fun UserDto.toEntity(): UserEntity = UserEntity(
     statusText = statusText,
     avatarUrl = avatarUrl,
     isOnline = isOnline ?: false,
-    lastSeen = null,
-    isBlocked = false,
+    lastSeen = lastSeen?.toEpochMillisOrNull(),
     createdAt = System.currentTimeMillis(),
     updatedAt = System.currentTimeMillis()
 )
@@ -35,7 +34,7 @@ fun ChatDto.toEntity(): ChatEntity = ChatEntity(
     lastMessageTimestamp = lastMessage?.timestamp?.toEpochMillisOrNull(),
     unreadCount = unreadCount,
     isMuted = isMuted,
-    createdAt = System.currentTimeMillis(),
+    createdAt = createdAt?.toEpochMillisOrNull() ?: System.currentTimeMillis(),
     updatedAt = updatedAt?.toEpochMillisOrNull() ?: System.currentTimeMillis()
 )
 
@@ -69,7 +68,7 @@ fun MessageDto.toEntity(): MessageEntity = MessageEntity(
     mediaMimeType = payload.mimeType,
     mediaSize = payload.fileSize,
     mediaDuration = payload.duration,
-    replyToMessageId = null,
+    replyToMessageId = replyToMessageId,
     status = status,
     isDeleted = isDeleted,
     isStarred = isStarred,
