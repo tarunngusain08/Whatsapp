@@ -29,6 +29,7 @@ type MessageContent struct {
 type MessageStatusPayload struct {
 	MessageID string `json:"message_id"`
 	ChatID    string `json:"chat_id,omitempty"`
+	SenderID  string `json:"sender_id,omitempty"`
 	Status    string `json:"status"` // "delivered" or "read"
 }
 
