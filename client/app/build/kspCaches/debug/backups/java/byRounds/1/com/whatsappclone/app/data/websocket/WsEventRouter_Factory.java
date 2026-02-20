@@ -7,6 +7,7 @@ import com.whatsappclone.core.database.dao.MessageDao;
 import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.websocket.TypingStateHolder;
 import com.whatsappclone.core.network.websocket.WebSocketManager;
+import com.whatsappclone.feature.chat.call.CallService;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
 import dagger.internal.QualifierMetadata;
@@ -44,6 +45,8 @@ public final class WsEventRouter_Factory implements Factory<WsEventRouter> {
 
   private final Provider<TypingStateHolder> typingStateHolderProvider;
 
+  private final Provider<CallService> callServiceProvider;
+
   private final Provider<Json> jsonProvider;
 
   private final Provider<SharedPreferences> encryptedPrefsProvider;
@@ -51,7 +54,8 @@ public final class WsEventRouter_Factory implements Factory<WsEventRouter> {
   public WsEventRouter_Factory(Provider<WebSocketManager> webSocketManagerProvider,
       Provider<MessageDao> messageDaoProvider, Provider<ChatDao> chatDaoProvider,
       Provider<UserDao> userDaoProvider, Provider<ChatParticipantDao> chatParticipantDaoProvider,
-      Provider<TypingStateHolder> typingStateHolderProvider, Provider<Json> jsonProvider,
+      Provider<TypingStateHolder> typingStateHolderProvider,
+      Provider<CallService> callServiceProvider, Provider<Json> jsonProvider,
       Provider<SharedPreferences> encryptedPrefsProvider) {
     this.webSocketManagerProvider = webSocketManagerProvider;
     this.messageDaoProvider = messageDaoProvider;
@@ -59,26 +63,29 @@ public final class WsEventRouter_Factory implements Factory<WsEventRouter> {
     this.userDaoProvider = userDaoProvider;
     this.chatParticipantDaoProvider = chatParticipantDaoProvider;
     this.typingStateHolderProvider = typingStateHolderProvider;
+    this.callServiceProvider = callServiceProvider;
     this.jsonProvider = jsonProvider;
     this.encryptedPrefsProvider = encryptedPrefsProvider;
   }
 
   @Override
   public WsEventRouter get() {
-    return newInstance(webSocketManagerProvider.get(), messageDaoProvider.get(), chatDaoProvider.get(), userDaoProvider.get(), chatParticipantDaoProvider.get(), typingStateHolderProvider.get(), jsonProvider.get(), encryptedPrefsProvider.get());
+    return newInstance(webSocketManagerProvider.get(), messageDaoProvider.get(), chatDaoProvider.get(), userDaoProvider.get(), chatParticipantDaoProvider.get(), typingStateHolderProvider.get(), callServiceProvider.get(), jsonProvider.get(), encryptedPrefsProvider.get());
   }
 
   public static WsEventRouter_Factory create(Provider<WebSocketManager> webSocketManagerProvider,
       Provider<MessageDao> messageDaoProvider, Provider<ChatDao> chatDaoProvider,
       Provider<UserDao> userDaoProvider, Provider<ChatParticipantDao> chatParticipantDaoProvider,
-      Provider<TypingStateHolder> typingStateHolderProvider, Provider<Json> jsonProvider,
+      Provider<TypingStateHolder> typingStateHolderProvider,
+      Provider<CallService> callServiceProvider, Provider<Json> jsonProvider,
       Provider<SharedPreferences> encryptedPrefsProvider) {
-    return new WsEventRouter_Factory(webSocketManagerProvider, messageDaoProvider, chatDaoProvider, userDaoProvider, chatParticipantDaoProvider, typingStateHolderProvider, jsonProvider, encryptedPrefsProvider);
+    return new WsEventRouter_Factory(webSocketManagerProvider, messageDaoProvider, chatDaoProvider, userDaoProvider, chatParticipantDaoProvider, typingStateHolderProvider, callServiceProvider, jsonProvider, encryptedPrefsProvider);
   }
 
   public static WsEventRouter newInstance(WebSocketManager webSocketManager, MessageDao messageDao,
       ChatDao chatDao, UserDao userDao, ChatParticipantDao chatParticipantDao,
-      TypingStateHolder typingStateHolder, Json json, SharedPreferences encryptedPrefs) {
-    return new WsEventRouter(webSocketManager, messageDao, chatDao, userDao, chatParticipantDao, typingStateHolder, json, encryptedPrefs);
+      TypingStateHolder typingStateHolder, CallService callService, Json json,
+      SharedPreferences encryptedPrefs) {
+    return new WsEventRouter(webSocketManager, messageDao, chatDao, userDao, chatParticipantDao, typingStateHolder, callService, json, encryptedPrefs);
   }
 }
