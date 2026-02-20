@@ -58,7 +58,8 @@ class WebSocketManager @Inject constructor(
 
     private val _events = MutableSharedFlow<ServerWsEvent>(
         replay = 0,
-        extraBufferCapacity = 256
+        extraBufferCapacity = 512,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
     )
     val events: SharedFlow<ServerWsEvent> = _events.asSharedFlow()
 
@@ -68,10 +69,10 @@ class WebSocketManager @Inject constructor(
     private var heartbeatJob: Job? = null
     private var pongTimeoutJob: Job? = null
     private var reconnectJob: Job? = null
-    private var awaitingPong = false
+    @Volatile private var awaitingPong = false
 
-    private var reconnectAttempt = 0
-    private var intentionalDisconnect = false
+    @Volatile private var reconnectAttempt = 0
+    @Volatile private var intentionalDisconnect = false
 
     // ── Public API ──────────────────────────────────────────────────────
 
@@ -138,17 +139,14 @@ class WebSocketManager @Inject constructor(
                 return
             }
 
-            val wsUrl = buildString {
-                append(baseUrlProvider.getWsUrl())
-                append("?token=")
-                append(token)
-            }
+            val wsUrl = baseUrlProvider.getWsUrl()
 
             _connectionState.value = WsConnectionState.CONNECTING
             Log.d(TAG, "Connecting to WebSocket...")
 
             val request = Request.Builder()
                 .url(wsUrl)
+                .header("Authorization", "Bearer $token")
                 .build()
 
             webSocket = okHttpClient.newWebSocket(request, createListener())
@@ -174,6 +172,12 @@ class WebSocketManager @Inject constructor(
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
             Log.d(TAG, "WebSocket closing: code=$code reason=$reason")
+            if (code == 4401) {
+                scope.launch {
+                    Log.d(TAG, "WS close 4401 — refreshing token before reconnect")
+                    tokenManager.refreshToken()
+                }
+            }
             webSocket.close(CLOSE_NORMAL, null)
         }
 
@@ -192,7 +196,21 @@ class WebSocketManager @Inject constructor(
             cancelHeartbeat()
             closeSocketSilently()
             if (!intentionalDisconnect) {
-                scheduleReconnect()
+                val httpCode = response?.code
+                if (httpCode == 401) {
+                    scope.launch {
+                        Log.d(TAG, "WS 401 — attempting token refresh before reconnect")
+                        val refreshed = tokenManager.refreshToken()
+                        if (refreshed) {
+                            scheduleReconnect()
+                        } else {
+                            Log.e(TAG, "Token refresh failed, not reconnecting")
+                            _connectionState.value = WsConnectionState.DISCONNECTED
+                        }
+                    }
+                } else {
+                    scheduleReconnect()
+                }
             } else {
                 _connectionState.value = WsConnectionState.DISCONNECTED
             }
