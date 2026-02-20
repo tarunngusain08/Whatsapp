@@ -61,6 +61,11 @@ data class MarkReadRequest(
 )
 
 @Serializable
+data class ReactRequest(
+    val emoji: String
+)
+
+@Serializable
 data class ReceiptDto(
     @SerialName("user_id")
     val userId: String,
