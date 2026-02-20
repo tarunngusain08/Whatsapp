@@ -16,6 +16,7 @@ import com.whatsappclone.core.network.api.MessageApi
 import com.whatsappclone.core.network.model.dto.MarkReadRequest
 import com.whatsappclone.core.network.model.dto.MessageDto
 import com.whatsappclone.core.network.model.dto.MessagePayloadDto
+import com.whatsappclone.core.network.model.dto.ReactRequest
 import com.whatsappclone.core.network.model.dto.SendMessageRequest
 import com.whatsappclone.core.network.model.safeApiCall
 import com.whatsappclone.core.network.model.safeApiCallUnit
@@ -223,6 +224,63 @@ class MessageRepositoryImpl @Inject constructor(
         return safeApiCallUnit {
             messageApi.markRead(chatId, MarkReadRequest(upToMessageId))
         }
+    }
+
+    // ── Reactions ─────────────────────────────────────────────────────────
+
+    override suspend fun toggleReaction(
+        chatId: String,
+        messageId: String,
+        emoji: String
+    ): AppResult<Unit> {
+        val currentUserId = getCurrentUserId()
+            ?: return AppResult.Error(ErrorCode.UNAUTHORIZED, "Not logged in")
+        val existingJson = messageDao.getReactionsJson(messageId)
+        val reactions = parseReactionsMap(existingJson)
+        val usersForEmoji = reactions[emoji] ?: emptyList()
+        val alreadyReacted = currentUserId in usersForEmoji
+
+        return try {
+            if (alreadyReacted) {
+                messageApi.removeReaction(chatId, messageId)
+                val updated = reactions.toMutableMap()
+                updated[emoji] = usersForEmoji - currentUserId
+                if (updated[emoji]!!.isEmpty()) updated.remove(emoji)
+                messageDao.updateReactions(messageId, serializeReactionsMap(updated))
+            } else {
+                messageApi.reactToMessage(chatId, messageId, ReactRequest(emoji))
+                val updated = reactions.toMutableMap()
+                updated[emoji] = usersForEmoji + currentUserId
+                messageDao.updateReactions(messageId, serializeReactionsMap(updated))
+            }
+            AppResult.Success(Unit)
+        } catch (e: Exception) {
+            AppResult.Error(ErrorCode.UNKNOWN, e.message ?: "Reaction failed", e)
+        }
+    }
+
+    private fun parseReactionsMap(jsonStr: String?): Map<String, List<String>> {
+        if (jsonStr.isNullOrBlank()) return emptyMap()
+        return try {
+            val obj = json.decodeFromString(
+                kotlinx.serialization.json.JsonObject.serializer(), jsonStr
+            )
+            obj.mapValues { (_, value) ->
+                json.decodeFromString<List<String>>(value.toString())
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun serializeReactionsMap(reactions: Map<String, List<String>>): String {
+        return kotlinx.serialization.json.buildJsonObject {
+            reactions.forEach { (emoji, userIds) ->
+                put(emoji, kotlinx.serialization.json.JsonArray(
+                    userIds.map { JsonPrimitive(it) }
+                ))
+            }
+        }.toString()
     }
 
     // ── Pending messages ─────────────────────────────────────────────────
