@@ -4,6 +4,7 @@ import com.whatsappclone.app.error.GlobalErrorHandler;
 import com.whatsappclone.app.lifecycle.WsLifecycleManager;
 import com.whatsappclone.core.network.url.BaseUrlProvider;
 import com.whatsappclone.feature.auth.data.AuthRepository;
+import com.whatsappclone.feature.chat.call.CallService;
 import com.whatsappclone.feature.settings.data.PrivacyPreferencesStore;
 import com.whatsappclone.feature.settings.data.ThemePreferencesStore;
 import dagger.MembersInjector;
@@ -37,6 +38,8 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
 
   private final Provider<WsLifecycleManager> wsLifecycleManagerProvider;
 
+  private final Provider<CallService> callServiceProvider;
+
   private final Provider<ThemePreferencesStore> themePreferencesStoreProvider;
 
   private final Provider<PrivacyPreferencesStore> privacyPreferencesStoreProvider;
@@ -44,12 +47,14 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
   public MainActivity_MembersInjector(Provider<GlobalErrorHandler> globalErrorHandlerProvider,
       Provider<AuthRepository> authRepositoryProvider, Provider<BaseUrlProvider> baseUrlProvider,
       Provider<WsLifecycleManager> wsLifecycleManagerProvider,
+      Provider<CallService> callServiceProvider,
       Provider<ThemePreferencesStore> themePreferencesStoreProvider,
       Provider<PrivacyPreferencesStore> privacyPreferencesStoreProvider) {
     this.globalErrorHandlerProvider = globalErrorHandlerProvider;
     this.authRepositoryProvider = authRepositoryProvider;
     this.baseUrlProvider = baseUrlProvider;
     this.wsLifecycleManagerProvider = wsLifecycleManagerProvider;
+    this.callServiceProvider = callServiceProvider;
     this.themePreferencesStoreProvider = themePreferencesStoreProvider;
     this.privacyPreferencesStoreProvider = privacyPreferencesStoreProvider;
   }
@@ -58,9 +63,10 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
       Provider<GlobalErrorHandler> globalErrorHandlerProvider,
       Provider<AuthRepository> authRepositoryProvider, Provider<BaseUrlProvider> baseUrlProvider,
       Provider<WsLifecycleManager> wsLifecycleManagerProvider,
+      Provider<CallService> callServiceProvider,
       Provider<ThemePreferencesStore> themePreferencesStoreProvider,
       Provider<PrivacyPreferencesStore> privacyPreferencesStoreProvider) {
-    return new MainActivity_MembersInjector(globalErrorHandlerProvider, authRepositoryProvider, baseUrlProvider, wsLifecycleManagerProvider, themePreferencesStoreProvider, privacyPreferencesStoreProvider);
+    return new MainActivity_MembersInjector(globalErrorHandlerProvider, authRepositoryProvider, baseUrlProvider, wsLifecycleManagerProvider, callServiceProvider, themePreferencesStoreProvider, privacyPreferencesStoreProvider);
   }
 
   @Override
@@ -69,6 +75,7 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
     injectAuthRepository(instance, authRepositoryProvider.get());
     injectBaseUrlProvider(instance, baseUrlProvider.get());
     injectWsLifecycleManager(instance, wsLifecycleManagerProvider.get());
+    injectCallService(instance, callServiceProvider.get());
     injectThemePreferencesStore(instance, themePreferencesStoreProvider.get());
     injectPrivacyPreferencesStore(instance, privacyPreferencesStoreProvider.get());
   }
@@ -93,6 +100,11 @@ public final class MainActivity_MembersInjector implements MembersInjector<MainA
   public static void injectWsLifecycleManager(MainActivity instance,
       WsLifecycleManager wsLifecycleManager) {
     instance.wsLifecycleManager = wsLifecycleManager;
+  }
+
+  @InjectedFieldSignature("com.whatsappclone.app.MainActivity.callService")
+  public static void injectCallService(MainActivity instance, CallService callService) {
+    instance.callService = callService;
   }
 
   @InjectedFieldSignature("com.whatsappclone.app.MainActivity.themePreferencesStore")
