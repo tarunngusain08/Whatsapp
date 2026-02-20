@@ -1,8 +1,10 @@
 package com.whatsappclone.feature.chat.data
 
 import android.content.SharedPreferences
+import androidx.room.withTransaction
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.result.map
+import com.whatsappclone.core.database.AppDatabase
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ChatParticipantDao
 import com.whatsappclone.core.database.dao.MessageDao
@@ -30,6 +32,7 @@ class ChatRepositoryImpl @Inject constructor(
     private val chatParticipantDao: ChatParticipantDao,
     private val userDao: UserDao,
     private val messageDao: MessageDao,
+    private val database: AppDatabase,
     @Named("encrypted") private val encryptedPrefs: SharedPreferences
 ) : ChatRepository {
 
@@ -222,8 +225,11 @@ class ChatRepositoryImpl @Inject constructor(
     // ── Delete ───────────────────────────────────────────────────────────
 
     override suspend fun deleteChat(chatId: String) {
-        messageDao.deleteAllForChat(chatId)
-        chatDao.deleteById(chatId)
+        database.withTransaction {
+            messageDao.deleteAllForChat(chatId)
+            chatParticipantDao.deleteAllForChat(chatId)
+            chatDao.deleteById(chatId)
+        }
     }
 
     override fun observeArchivedChats(currentUserId: String?): Flow<List<ChatWithLastMessage>> {
@@ -252,18 +258,24 @@ class ChatRepositoryImpl @Inject constructor(
     // ── Private helpers ──────────────────────────────────────────────────
 
     private suspend fun upsertChatWithRelations(chatDto: ChatDto) {
-        chatDao.upsert(chatDto.toEntity())
+        database.withTransaction {
+            chatDao.upsert(chatDto.toEntity())
 
-        chatDto.participants?.let { participants ->
-            val participantEntities = participants.map { it.toEntity(chatDto.chatId) }
-            chatParticipantDao.upsertAll(participantEntities)
+            chatDto.participants?.let { participants ->
+                val participantEntities = participants.map { it.toEntity(chatDto.chatId) }
+                chatParticipantDao.upsertAll(participantEntities)
 
-            for (p in participants) {
-                val existing = userDao.getById(p.userId)
-                if (existing != null && p.displayName.isNullOrBlank()) {
-                    continue
+                val userIds = participants.map { it.userId }
+                val existingUsers = userDao.getByIds(userIds)
+                val existingUserMap = existingUsers.associateBy { it.id }
+
+                for (p in participants) {
+                    val existing = existingUserMap[p.userId]
+                    if (existing != null && p.displayName.isNullOrBlank()) {
+                        continue
+                    }
+                    userDao.upsert(p.toUserEntity())
                 }
-                userDao.upsert(p.toUserEntity())
             }
         }
     }
