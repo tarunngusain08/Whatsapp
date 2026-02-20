@@ -98,6 +98,10 @@ class WsEventRouter @Inject constructor(
     }
 
     private suspend fun routeEvent(event: ServerWsEvent) {
+        if (!validateEvent(event)) {
+            Log.w(TAG, "Dropping event with empty required fields: ${event::class.simpleName}")
+            return
+        }
         when (event) {
             is ServerWsEvent.NewMessage -> handleNewMessage(event)
             is ServerWsEvent.MessageSent -> handleMessageSent(event)
@@ -118,6 +122,31 @@ class WsEventRouter @Inject constructor(
         }
     }
 
+    private fun validateEvent(event: ServerWsEvent): Boolean = when (event) {
+        is ServerWsEvent.NewMessage -> event.chatId.isNotBlank()
+        is ServerWsEvent.MessageSent ->
+            event.messageId.isNotBlank() && event.chatId.isNotBlank() && event.clientMsgId.isNotBlank()
+        is ServerWsEvent.MessageStatus ->
+            event.messageId.isNotBlank() && event.status.isNotBlank()
+        is ServerWsEvent.MessageDeleted -> event.messageId.isNotBlank() && event.chatId.isNotBlank()
+        is ServerWsEvent.MessageReaction ->
+            event.messageId.isNotBlank() && event.chatId.isNotBlank() && event.userId.isNotBlank()
+        is ServerWsEvent.TypingEvent -> event.chatId.isNotBlank() && event.userId.isNotBlank()
+        is ServerWsEvent.PresenceEvent -> event.userId.isNotBlank()
+        is ServerWsEvent.ChatCreated -> event.chatJson.isNotBlank()
+        is ServerWsEvent.ChatUpdated -> event.chatId.isNotBlank()
+        is ServerWsEvent.GroupMemberAdded -> event.chatId.isNotBlank() && event.userId.isNotBlank()
+        is ServerWsEvent.GroupMemberRemoved -> event.chatId.isNotBlank() && event.userId.isNotBlank()
+        is ServerWsEvent.CallOffer ->
+            event.callId.isNotBlank() && event.callerId.isNotBlank() && event.sdp.isNotBlank()
+        is ServerWsEvent.CallAnswer ->
+            event.callId.isNotBlank() && event.answererId.isNotBlank() && event.sdp.isNotBlank()
+        is ServerWsEvent.CallIceCandidate ->
+            event.callId.isNotBlank() && event.candidate.isNotBlank()
+        is ServerWsEvent.CallEnd -> event.callId.isNotBlank()
+        is ServerWsEvent.Error -> true
+    }
+
     private suspend fun handleNewMessage(event: ServerWsEvent.NewMessage) {
         val messageDto = json.decodeFromString(MessageDto.serializer(), event.messageJson)
         val entity = messageDto.toEntity()
@@ -131,7 +160,11 @@ class WsEventRouter @Inject constructor(
             timestamp = timestampMs,
             updatedAt = System.currentTimeMillis()
         )
-        chatDao.incrementUnreadCount(chatId = event.chatId, updatedAt = System.currentTimeMillis())
+
+        val currentUserId = encryptedPrefs.getString("current_user_id", null)
+        if (messageDto.senderId != currentUserId) {
+            chatDao.incrementUnreadCount(chatId = event.chatId, updatedAt = System.currentTimeMillis())
+        }
 
         sendDeliveryReceipt(messageDto.messageId, messageDto.senderId, event.chatId)
     }
