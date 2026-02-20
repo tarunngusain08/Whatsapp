@@ -274,6 +274,10 @@ func (r *chatPostgres) IsMember(ctx context.Context, chatID, userID string) (boo
 	return exists, nil
 }
 
+var allowedGroupFields = map[string]bool{
+	"name": true, "description": true, "avatar_url": true, "is_admin_only": true,
+}
+
 func (r *chatPostgres) UpdateGroupRaw(ctx context.Context, chatID string, fields map[string]interface{}) error {
 	if len(fields) == 0 {
 		return nil
@@ -284,6 +288,9 @@ func (r *chatPostgres) UpdateGroupRaw(ctx context.Context, chatID string, fields
 	argIdx := 1
 
 	for key, val := range fields {
+		if !allowedGroupFields[key] {
+			return fmt.Errorf("disallowed field: %s", key)
+		}
 		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", key, argIdx))
 		args = append(args, val)
 		argIdx++
