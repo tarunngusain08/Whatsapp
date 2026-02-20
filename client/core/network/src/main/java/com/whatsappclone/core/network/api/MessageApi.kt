@@ -4,6 +4,7 @@ import com.whatsappclone.core.network.model.ApiResponse
 import com.whatsappclone.core.network.model.PaginatedData
 import com.whatsappclone.core.network.model.dto.MarkReadRequest
 import com.whatsappclone.core.network.model.dto.MessageDto
+import com.whatsappclone.core.network.model.dto.ReactRequest
 import com.whatsappclone.core.network.model.dto.ReceiptDto
 import com.whatsappclone.core.network.model.dto.SendMessageRequest
 import retrofit2.Response
@@ -53,6 +54,19 @@ interface MessageApi {
         @Path("chatId") chatId: String,
         @Body request: MarkReadRequest
     ): Response<ApiResponse<Unit>>
+
+    @POST("chats/{chatId}/messages/{messageId}/react")
+    suspend fun reactToMessage(
+        @Path("chatId") chatId: String,
+        @Path("messageId") messageId: String,
+        @Body request: ReactRequest
+    ): Response<Unit>
+
+    @DELETE("chats/{chatId}/messages/{messageId}/react")
+    suspend fun removeReaction(
+        @Path("chatId") chatId: String,
+        @Path("messageId") messageId: String
+    ): Response<Unit>
 
     @GET("messages/{messageId}/receipts")
     suspend fun getMessageReceipts(
