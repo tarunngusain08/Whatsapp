@@ -25,6 +25,9 @@ type MessageRepository interface {
 	// SoftDelete marks a message as deleted (sets is_deleted=true, clears payload).
 	SoftDelete(ctx context.Context, messageID, senderID string) error
 
+	// SoftDeleteForUser adds a user to the deleted_for_users list for per-user deletion.
+	SoftDeleteForUser(ctx context.Context, messageID, userID string) error
+
 	// StarMessage adds userID to is_starred_by array.
 	StarMessage(ctx context.Context, messageID, userID string) error
 
