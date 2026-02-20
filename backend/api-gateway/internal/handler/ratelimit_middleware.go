@@ -10,12 +10,14 @@ import (
 func RateLimitMiddleware(limiter service.RateLimiter, rps int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := "rate:" + c.ClientIP()
-		if uid, exists := c.Get("user_id"); exists {
-			key = "rate:user:" + uid.(string)
+		if uid := c.GetString("user_id"); uid != "" {
+			key = "rate:user:" + uid
 		}
 		allowed, err := limiter.Allow(c.Request.Context(), key, rps, 60)
 		if err != nil {
-			c.Next()
+			// Fail-closed: reject requests when rate limiter is unavailable
+			response.Error(c, apperr.NewInternal("rate limiter unavailable", err))
+			c.Abort()
 			return
 		}
 		if !allowed {
