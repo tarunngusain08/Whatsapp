@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -152,7 +153,7 @@ private fun BannerContent(
             // Avatar
             if (!notification.avatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = notification.avatarUrl,
+                    model = UrlResolver.resolve(notification.avatarUrl),
                     contentDescription = "${notification.senderName} avatar",
                     modifier = Modifier
                         .size(44.dp)
