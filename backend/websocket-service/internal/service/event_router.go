@@ -81,11 +81,11 @@ func (s *wsServiceImpl) handleMessageStatus(ctx context.Context, client *model.C
 		return fmt.Errorf("invalid status payload: %w", err)
 	}
 
-	// Fast path: if we have chat_id, resolve participants and push the
-	// status update directly to the sender's WebSocket connection before
-	// persisting to avoid the gRPC -> NATS -> Redis round-trip.
+	// Fast path: push the status update directly to the original message
+	// sender's WebSocket connection to avoid the gRPC -> NATS -> Redis
+	// round-trip. If sender_id is provided, target only that user;
+	// otherwise fall back to all other participants (for backwards compat).
 	if p.ChatID != "" {
-		participants := s.getChatParticipants(ctx, p.ChatID)
 		statusEvent := model.WSEvent{Type: "message.status"}
 		statusEvent.Payload, _ = json.Marshal(map[string]string{
 			"message_id": p.MessageID,
@@ -94,11 +94,17 @@ func (s *wsServiceImpl) handleMessageStatus(ctx context.Context, client *model.C
 			"status":     statusVal,
 		})
 		data, _ := json.Marshal(statusEvent)
-		for _, uid := range participants {
-			if uid == client.UserID {
-				continue
+
+		if p.SenderID != "" && p.SenderID != client.UserID {
+			s.rdb.Publish(ctx, "user:channel:"+p.SenderID, data)
+		} else {
+			participants := s.getChatParticipants(ctx, p.ChatID)
+			for _, uid := range participants {
+				if uid == client.UserID {
+					continue
+				}
+				s.rdb.Publish(ctx, "user:channel:"+uid, data)
 			}
-			s.rdb.Publish(ctx, "user:channel:"+uid, data)
 		}
 	}
 
