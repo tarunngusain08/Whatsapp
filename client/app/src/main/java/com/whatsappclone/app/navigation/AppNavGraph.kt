@@ -3,9 +3,14 @@ package com.whatsappclone.app.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +43,8 @@ import androidx.navigation.navArgument
 import com.whatsappclone.app.lifecycle.WsLifecycleManager
 import com.whatsappclone.core.network.url.BaseUrlProvider
 import com.whatsappclone.feature.auth.data.AuthRepository
+import com.whatsappclone.feature.chat.call.CallService
+import com.whatsappclone.feature.chat.call.CallState
 import com.whatsappclone.feature.auth.ui.login.LoginScreen
 import com.whatsappclone.feature.auth.ui.otp.OtpScreen
 import com.whatsappclone.feature.auth.ui.profile.ProfileSetupScreen
@@ -72,6 +79,7 @@ fun AppNavGraph(
     authRepository: AuthRepository,
     baseUrlProvider: BaseUrlProvider,
     wsLifecycleManager: WsLifecycleManager,
+    callService: CallService? = null,
     isDebug: Boolean = false,
     onRestartApp: () -> Unit = {}
 ) {
@@ -93,34 +101,54 @@ fun AppNavGraph(
         }
     }
 
-    val navDuration = 300
+    // Navigate to CallScreen when an incoming call arrives
+    if (callService != null) {
+        val incomingSession = callService.session.collectAsState().value
+        LaunchedEffect(incomingSession?.callId, incomingSession?.state) {
+            val session = incomingSession ?: return@LaunchedEffect
+            if (!session.isOutgoing && session.state == CallState.INCOMING_RINGING) {
+                navController.navigate(
+                    AppRoute.CallScreen.create(
+                        calleeName = session.remoteName,
+                        avatarUrl = session.remoteAvatarUrl ?: "",
+                        callType = session.callType,
+                        calleeUserId = session.remoteUserId
+                    )
+                )
+            }
+        }
+    }
+
+    val navDuration = 350
+    val navEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
+
     NavHost(
         navController = navController,
         startDestination = AppRoute.Splash.route,
         modifier = modifier,
         enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(navDuration)
-            ) + fadeIn(tween(navDuration))
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> fullWidth },
+                animationSpec = tween(navDuration, easing = navEasing)
+            )
         },
         exitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(navDuration)
-            ) + fadeOut(tween(navDuration / 2))
+            slideOutHorizontally(
+                targetOffsetX = { fullWidth -> -fullWidth / 4 },
+                animationSpec = tween(navDuration, easing = navEasing)
+            )
         },
         popEnterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(navDuration)
-            ) + fadeIn(tween(navDuration))
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> -fullWidth / 4 },
+                animationSpec = tween(navDuration, easing = navEasing)
+            )
         },
         popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(navDuration)
-            ) + fadeOut(tween(navDuration / 2))
+            slideOutHorizontally(
+                targetOffsetX = { fullWidth -> fullWidth },
+                animationSpec = tween(navDuration, easing = navEasing)
+            )
         }
     ) {
 
@@ -310,9 +338,9 @@ fun AppNavGraph(
                 onNavigateToSharedMedia = { userId ->
                     navController.navigate(AppRoute.SharedMedia.create(userId))
                 },
-                onNavigateToCall = { name, avatarUrl, callType ->
+                onNavigateToCall = { userId, name, avatarUrl, callType ->
                     navController.navigate(
-                        AppRoute.CallScreen.create(name, avatarUrl ?: "", callType)
+                        AppRoute.CallScreen.create(name, avatarUrl ?: "", callType, userId)
                     )
                 }
             )
@@ -419,10 +447,20 @@ fun AppNavGraph(
                     defaultValue = ""
                 }
             ),
-            enterTransition = { fadeIn(tween(navDuration)) },
-            exitTransition = { fadeOut(tween(navDuration)) },
-            popEnterTransition = { fadeIn(tween(navDuration)) },
-            popExitTransition = { fadeOut(tween(navDuration)) }
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                ) + fadeIn(tween(navDuration / 2))
+            },
+            exitTransition = { fadeOut(tween(navDuration / 2)) },
+            popEnterTransition = { fadeIn(tween(navDuration / 2)) },
+            popExitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { it / 3 },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                ) + fadeOut(tween(navDuration / 2))
+            }
         ) { backStackEntry ->
             val url = backStackEntry.arguments?.getString("url") ?: ""
             val title = backStackEntry.arguments?.getString("title") ?: ""
@@ -620,10 +658,20 @@ fun AppNavGraph(
                     defaultValue = 0
                 }
             ),
-            enterTransition = { fadeIn(tween(navDuration)) },
-            exitTransition = { fadeOut(tween(navDuration)) },
-            popEnterTransition = { fadeIn(tween(navDuration)) },
-            popExitTransition = { fadeOut(tween(navDuration)) }
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                ) + fadeIn(tween(navDuration / 2))
+            },
+            exitTransition = { fadeOut(tween(navDuration / 2)) },
+            popEnterTransition = { fadeIn(tween(navDuration / 2)) },
+            popExitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { it / 3 },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                ) + fadeOut(tween(navDuration / 2))
+            }
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             com.whatsappclone.feature.chat.ui.status.StatusViewerScreen(
@@ -637,15 +685,15 @@ fun AppNavGraph(
         composable(
             AppRoute.StatusCreator.route,
             enterTransition = {
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                    animationSpec = tween(navDuration)
+                slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(navDuration, easing = navEasing)
                 )
             },
             popExitTransition = {
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                    animationSpec = tween(navDuration)
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(navDuration, easing = navEasing)
                 )
             }
         ) {
@@ -684,12 +732,26 @@ fun AppNavGraph(
                 navArgument("callType") {
                     type = NavType.StringType
                     defaultValue = "audio"
+                },
+                navArgument("calleeUserId") {
+                    type = NavType.StringType
+                    defaultValue = ""
                 }
             ),
-            enterTransition = { fadeIn(tween(navDuration)) },
-            exitTransition = { fadeOut(tween(navDuration)) },
-            popEnterTransition = { fadeIn(tween(navDuration)) },
-            popExitTransition = { fadeOut(tween(navDuration)) }
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                )
+            },
+            exitTransition = { fadeOut(tween(navDuration / 2)) },
+            popEnterTransition = { fadeIn(tween(navDuration / 2)) },
+            popExitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                )
+            }
         ) { backStackEntry ->
             val calleeName = backStackEntry.arguments?.getString("calleeName") ?: ""
             val avatarUrl = backStackEntry.arguments?.getString("avatarUrl")?.ifBlank { null }
@@ -705,10 +767,20 @@ fun AppNavGraph(
         // ── Camera Screen ───────────────────────────────────────────────────
         composable(
             route = AppRoute.Camera.route,
-            enterTransition = { fadeIn(tween(navDuration)) },
-            exitTransition = { fadeOut(tween(navDuration)) },
-            popEnterTransition = { fadeIn(tween(navDuration)) },
-            popExitTransition = { fadeOut(tween(navDuration)) }
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                )
+            },
+            exitTransition = { fadeOut(tween(navDuration / 2)) },
+            popEnterTransition = { fadeIn(tween(navDuration / 2)) },
+            popExitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(navDuration, easing = navEasing)
+                )
+            }
         ) {
             com.whatsappclone.feature.media.ui.CameraScreen(
                 onNavigateBack = { navController.popBackStack() },
