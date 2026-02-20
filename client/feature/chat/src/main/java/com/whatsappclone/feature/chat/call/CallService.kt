@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.chat.call
 
 import android.content.Context
+import android.media.AudioManager
 import android.util.Log
 import com.whatsappclone.core.network.websocket.WebSocketManager
 import com.whatsappclone.core.network.websocket.WsConnectionState
@@ -48,6 +49,7 @@ class CallService @Inject constructor(
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     val eglBase: EglBase by lazy { EglBase.create() }
 
     private val _session = MutableStateFlow<CallSession?>(null)
@@ -266,12 +268,16 @@ class CallService @Inject constructor(
     // ── Controls ─────────────────────────────────────────────────────────
 
     fun toggleMute() {
-        _isMuted.update { !it }
-        localAudioTrack?.setEnabled(_isMuted.value.not())
+        val newMuted = !_isMuted.value
+        _isMuted.value = newMuted
+        localAudioTrack?.setEnabled(!newMuted)
     }
 
     fun toggleSpeaker() {
-        _isSpeakerOn.update { !it }
+        val newSpeaker = !_isSpeakerOn.value
+        _isSpeakerOn.value = newSpeaker
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        audioManager.isSpeakerphoneOn = newSpeaker
     }
 
     fun endCall(reason: String = "user_hangup") {
@@ -282,17 +288,21 @@ class CallService @Inject constructor(
             }
         }
 
-        peerConnection?.close()
-        peerConnection?.dispose()
-        peerConnection = null
+        _localVideoTrack.value?.dispose()
+        _localVideoTrack.value = null
+        _remoteVideoTrack.value = null
 
         localAudioTrack?.dispose()
         localAudioTrack = null
 
-        _remoteVideoTrack.value = null
-        _localVideoTrack.value = null
+        peerConnection?.close()
+        peerConnection?.dispose()
+        peerConnection = null
+
         _isMuted.value = false
         _isSpeakerOn.value = false
+        audioManager.mode = AudioManager.MODE_NORMAL
+        audioManager.isSpeakerphoneOn = false
         pendingIceCandidates.clear()
 
         _session.update { it?.copy(state = CallState.ENDED) }
