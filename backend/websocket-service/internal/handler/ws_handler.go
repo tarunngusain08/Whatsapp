@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -17,7 +18,26 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin:     checkOrigin,
+}
+
+// checkOrigin validates the WebSocket Origin header.
+// TODO: load allowed origins from config for production.
+func checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	allowedOrigins := []string{
+		"http://localhost", "https://localhost",
+		"http://127.0.0.1", "https://127.0.0.1",
+	}
+	for _, allowed := range allowedOrigins {
+		if strings.HasPrefix(origin, allowed) {
+			return true
+		}
+	}
+	return false
 }
 
 // WSHandler handles WebSocket upgrade requests and manages read/write pumps.
