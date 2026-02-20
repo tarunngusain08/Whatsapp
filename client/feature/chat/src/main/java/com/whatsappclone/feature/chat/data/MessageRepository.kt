@@ -46,6 +46,8 @@ interface MessageRepository {
 
     suspend fun markRead(chatId: String, upToMessageId: String): AppResult<Unit>
 
+    suspend fun toggleReaction(chatId: String, messageId: String, emoji: String): AppResult<Unit>
+
     suspend fun getAllPending(): List<MessageEntity>
 
     /**
