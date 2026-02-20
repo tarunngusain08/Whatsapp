@@ -1,7 +1,9 @@
 package com.whatsappclone.feature.contacts.data
 
 import android.content.ContentResolver
+import android.content.Context
 import android.provider.ContactsContract
+import android.telephony.TelephonyManager
 import android.util.Log
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.result.ErrorCode
@@ -22,6 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class ContactRepositoryImpl @Inject constructor(
     private val contentResolver: ContentResolver,
+    private val context: Context,
     private val userApi: UserApi,
     private val contactDao: ContactDao,
     private val userDao: UserDao
@@ -222,6 +225,14 @@ class ContactRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun getDeviceCountryCode(): String {
+        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        val iso = tm?.simCountryIso?.uppercase()
+            ?: tm?.networkCountryIso?.uppercase()
+            ?: java.util.Locale.getDefault().country.uppercase()
+        return PhoneUtils.countryCodeForIso(iso) ?: "+91"
+    }
+
     private fun normalizePhoneNumber(rawNumber: String): String? {
         val cleaned = rawNumber.replace(Regex("[\\s\\-().]"), "")
         return if (cleaned.startsWith("+") && PhoneUtils.isValidE164(cleaned)) {
@@ -231,8 +242,9 @@ class ContactRepositoryImpl @Inject constructor(
             if (PhoneUtils.isValidE164(digits)) digits else null
         } else {
             val digitsOnly = cleaned.replace(Regex("[^\\d]"), "")
-            if (digitsOnly.length == 10) {
-                val withCountryCode = "+91$digitsOnly"
+            if (digitsOnly.length in 7..10) {
+                val countryCode = getDeviceCountryCode()
+                val withCountryCode = "$countryCode$digitsOnly"
                 if (PhoneUtils.isValidE164(withCountryCode)) withCountryCode else null
             } else {
                 val withPlus = "+$digitsOnly"
