@@ -1136,8 +1136,8 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     }
 
     @Override
-    public void injectWhatsAppApplication(WhatsAppApplication arg0) {
-      injectWhatsAppApplication2(arg0);
+    public void injectWhatsAppApplication(WhatsAppApplication whatsAppApplication) {
+      injectWhatsAppApplication2(whatsAppApplication);
     }
 
     @Override
