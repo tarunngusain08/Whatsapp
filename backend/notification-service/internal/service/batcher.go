@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -132,14 +133,22 @@ func (b *NotificationBatcher) flush(userID, chatID, key string) {
 		Msg("flushed batched group notification")
 }
 
-// Shutdown stops all pending timers.
+// Shutdown flushes pending notifications and stops all timers.
 func (b *NotificationBatcher) Shutdown() {
 	b.mu.Lock()
-	defer b.mu.Unlock()
+	keys := make([]string, 0, len(b.buffers))
 	for key, buf := range b.buffers {
 		if buf.timer != nil {
 			buf.timer.Stop()
 		}
-		delete(b.buffers, key)
+		keys = append(keys, key)
+	}
+	b.mu.Unlock()
+
+	for _, key := range keys {
+		parts := strings.SplitN(key, ":", 2)
+		if len(parts) == 2 {
+			b.flush(parts[0], parts[1], key)
+		}
 	}
 }
