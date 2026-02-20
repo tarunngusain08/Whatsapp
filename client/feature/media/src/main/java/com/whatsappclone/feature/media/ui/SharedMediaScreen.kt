@@ -69,6 +69,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.whatsappclone.core.common.util.UrlResolver
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -255,7 +256,7 @@ private fun MediaGridItem(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        val imageUrl = item.thumbnailUrl ?: item.mediaUrl
+        val imageUrl = UrlResolver.resolve(item.thumbnailUrl ?: item.mediaUrl)
         if (imageUrl != null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
