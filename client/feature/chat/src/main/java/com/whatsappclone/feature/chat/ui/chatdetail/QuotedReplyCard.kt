@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.whatsappclone.core.common.util.UrlResolver
 
 private val QuotedReplyColors = listOf(
     Color(0xFF1A73E8),
@@ -123,7 +124,7 @@ fun QuotedReplyCard(
         // Thumbnail for media replies
         if (thumbnailUrl != null) {
             AsyncImage(
-                model = thumbnailUrl,
+                model = UrlResolver.resolve(thumbnailUrl),
                 contentDescription = "Replied media",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
