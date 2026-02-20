@@ -86,6 +86,7 @@ class MessageRemoteMediator(
             mediaMimeType = payload.mimeType,
             mediaSize = payload.fileSize,
             mediaDuration = payload.duration,
+            replyToMessageId = replyToMessageId,
             status = status,
             isDeleted = isDeleted,
             isStarred = isStarred,
