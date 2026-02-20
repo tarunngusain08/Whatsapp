@@ -26,7 +26,7 @@ sealed class AppRoute(val route: String) {
     // ── Chat ─────────────────────────────────────────────────────────────────────
 
     data object ChatDetail : AppRoute("chat/{chatId}") {
-        fun create(chatId: String): String = "chat/$chatId"
+        fun create(chatId: String): String = "chat/${Uri.encode(chatId)}"
     }
 
     // ── Contacts ─────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ sealed class AppRoute(val route: String) {
     data object ContactPicker : AppRoute("contact_picker")
 
     data object ContactInfo : AppRoute("contact_info/{userId}") {
-        fun create(userId: String): String = "contact_info/$userId"
+        fun create(userId: String): String = "contact_info/${Uri.encode(userId)}"
     }
 
     // ── Groups ───────────────────────────────────────────────────────────────────
@@ -44,11 +44,11 @@ sealed class AppRoute(val route: String) {
     data object GroupSetup : AppRoute("group_setup")
 
     data object GroupInfo : AppRoute("group_info/{chatId}") {
-        fun create(chatId: String): String = "group_info/$chatId"
+        fun create(chatId: String): String = "group_info/${Uri.encode(chatId)}"
     }
 
     data object AddParticipants : AppRoute("add_participants/{chatId}") {
-        fun create(chatId: String): String = "add_participants/$chatId"
+        fun create(chatId: String): String = "add_participants/${Uri.encode(chatId)}"
     }
 
     // ── Media ────────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ sealed class AppRoute(val route: String) {
     // ── Shared Media ─────────────────────────────────────────────────────
 
     data object SharedMedia : AppRoute("shared_media/{chatId}") {
-        fun create(chatId: String): String = "shared_media/$chatId"
+        fun create(chatId: String): String = "shared_media/${Uri.encode(chatId)}"
     }
 
     // ── Starred Messages ─────────────────────────────────────────────────
@@ -97,13 +97,13 @@ sealed class AppRoute(val route: String) {
     data object StorageUsage : AppRoute("storage_usage")
 
     data object Wallpaper : AppRoute("wallpaper/{chatId}") {
-        fun create(chatId: String): String = "wallpaper/$chatId"
+        fun create(chatId: String): String = "wallpaper/${Uri.encode(chatId)}"
     }
 
     // ── Location ──────────────────────────────────────────────────────────────
 
     data object LocationPicker : AppRoute("location_picker/{chatId}") {
-        fun create(chatId: String): String = "location_picker/$chatId"
+        fun create(chatId: String): String = "location_picker/${Uri.encode(chatId)}"
     }
 
     // ── Status ─────────────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ sealed class AppRoute(val route: String) {
     // ── Receipt Details ───────────────────────────────────────────────────────
 
     data object ReceiptDetails : AppRoute("receipt_details/{messageId}") {
-        fun create(messageId: String): String = "receipt_details/$messageId"
+        fun create(messageId: String): String = "receipt_details/${Uri.encode(messageId)}"
     }
 
     // ── Forward ──────────────────────────────────────────────────────────────────
