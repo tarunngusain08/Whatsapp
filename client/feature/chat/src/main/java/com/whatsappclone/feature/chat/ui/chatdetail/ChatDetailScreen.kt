@@ -155,7 +155,8 @@ fun ChatDetailScreen(
         onExitSelectionMode = viewModel::exitSelectionMode,
         onDeleteSelectedMessages = viewModel::deleteSelectedMessages,
         onStarSelectedMessages = viewModel::starSelectedMessages,
-        onCopySelectedMessages = viewModel::copySelectedMessages
+        onCopySelectedMessages = viewModel::copySelectedMessages,
+        onReactionToggled = viewModel::toggleReaction
     )
 }
 
@@ -221,6 +222,7 @@ private fun ChatDetailContent(
     var selectedMessage by remember { mutableStateOf<MessageUi?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var messageToDelete by remember { mutableStateOf<MessageUi?>(null) }
+    var reactionPickerMessage by remember { mutableStateOf<MessageUi?>(null) }
 
     // Attachment bottom sheet state
     var showAttachmentSheet by remember { mutableStateOf(false) }
@@ -437,6 +439,9 @@ private fun ChatDetailContent(
             onAction = { action ->
                 val msg = selectedMessage ?: return@MessageActionSheet
                 when (action) {
+                    MessageAction.REACT -> {
+                        reactionPickerMessage = msg
+                    }
                     MessageAction.REPLY -> {
                         onSetReply(msg)
                     }
@@ -466,6 +471,26 @@ private fun ChatDetailContent(
                 selectedMessage = null
             }
         )
+    }
+
+    // ── Reaction picker ───────────────────────────────────────────────────
+
+    if (reactionPickerMessage != null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            ReactionPicker(
+                visible = true,
+                isOwnMessage = reactionPickerMessage!!.isOwnMessage,
+                onReactionSelected = { emoji ->
+                    onReactionToggled(reactionPickerMessage!!.messageId, emoji)
+                    reactionPickerMessage = null
+                },
+                onExpandEmojiPicker = { reactionPickerMessage = null },
+                onDismiss = { reactionPickerMessage = null }
+            )
+        }
     }
 
     // ── Delete confirmation dialog ──────────────────────────────────────
