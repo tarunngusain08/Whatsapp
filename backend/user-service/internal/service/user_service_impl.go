@@ -239,10 +239,15 @@ func (s *userServiceImpl) ContactSync(ctx context.Context, userID string, phones
 	// Auto-add matched users as contacts.
 	for _, r := range results {
 		if r.UserID != userID {
-			_ = s.contactRepo.Upsert(ctx, &model.Contact{
+			if err := s.contactRepo.Upsert(ctx, &model.Contact{
 				UserID:    userID,
 				ContactID: r.UserID,
-			})
+			}); err != nil {
+				s.log.Warn().Err(err).
+					Str("user_id", userID).
+					Str("contact_id", r.UserID).
+					Msg("failed to auto-add contact during sync")
+			}
 		}
 	}
 
@@ -305,6 +310,13 @@ func (s *userServiceImpl) RegisterDeviceToken(ctx context.Context, token *model.
 
 func (s *userServiceImpl) RemoveDeviceToken(ctx context.Context, token string) error {
 	if err := s.deviceTokenRepo.DeleteByToken(ctx, token); err != nil {
+		return apperr.NewInternal("failed to remove device token", err)
+	}
+	return nil
+}
+
+func (s *userServiceImpl) RemoveDeviceTokenForUser(ctx context.Context, userID, token string) error {
+	if err := s.deviceTokenRepo.DeleteByTokenAndUser(ctx, userID, token); err != nil {
 		return apperr.NewInternal("failed to remove device token", err)
 	}
 	return nil
