@@ -47,6 +47,9 @@ class MainActivity : FragmentActivity() {
     lateinit var wsLifecycleManager: WsLifecycleManager
 
     @Inject
+    lateinit var callService: com.whatsappclone.feature.chat.call.CallService
+
+    @Inject
     lateinit var themePreferencesStore: ThemePreferencesStore
 
     @Inject
@@ -101,6 +104,7 @@ class MainActivity : FragmentActivity() {
                         authRepository = authRepository,
                         baseUrlProvider = baseUrlProvider,
                         wsLifecycleManager = wsLifecycleManager,
+                        callService = callService,
                         isDebug = BuildConfig.DEBUG,
                         onRestartApp = {
                             val intent = packageManager.getLaunchIntentForPackage(packageName)
