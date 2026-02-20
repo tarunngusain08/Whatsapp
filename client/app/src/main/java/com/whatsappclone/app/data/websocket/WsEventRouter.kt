@@ -175,7 +175,12 @@ class WsEventRouter @Inject constructor(
 
     private suspend fun handleMessageStatus(event: ServerWsEvent.MessageStatus) {
         val existing = messageDao.getById(event.messageId) ?: return
-        if (statusRank(event.status) > statusRank(existing.status)) {
+        val newRank = statusRank(event.status)
+        if (newRank < 0) {
+            Log.w(TAG, "Ignoring unknown status '${event.status}' for message ${event.messageId}")
+            return
+        }
+        if (newRank > statusRank(existing.status)) {
             messageDao.updateStatus(messageId = event.messageId, status = event.status)
         }
     }
