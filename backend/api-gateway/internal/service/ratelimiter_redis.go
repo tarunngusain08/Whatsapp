@@ -16,13 +16,13 @@ func NewRedisRateLimiter(rdb *redis.Client) RateLimiter {
 }
 
 func (r *redisRateLimiter) Allow(ctx context.Context, key string, limit int, windowSec int) (bool, error) {
-	pipe := r.rdb.Pipeline()
-	incrCmd := pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, time.Duration(windowSec)*time.Second)
-	_, err := pipe.Exec(ctx)
+	count, err := r.rdb.Incr(ctx, key).Result()
 	if err != nil {
 		return false, err
 	}
-	count := incrCmd.Val()
+	// Only set TTL when the key is new (count == 1) to create a fixed window
+	if count == 1 {
+		r.rdb.Expire(ctx, key, time.Duration(windowSec)*time.Second)
+	}
 	return count <= int64(limit), nil
 }
