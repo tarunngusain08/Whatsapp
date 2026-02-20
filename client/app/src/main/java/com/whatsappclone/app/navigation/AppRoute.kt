@@ -136,9 +136,14 @@ sealed class AppRoute(val route: String) {
 
     // ── Calls ────────────────────────────────────────────────────────────────
 
-    data object CallScreen : AppRoute("call/{calleeName}?avatarUrl={avatarUrl}&callType={callType}") {
-        fun create(calleeName: String, avatarUrl: String = "", callType: String = "audio"): String =
-            "call/${Uri.encode(calleeName)}?avatarUrl=${Uri.encode(avatarUrl)}&callType=${Uri.encode(callType)}"
+    data object CallScreen : AppRoute("call/{calleeName}?avatarUrl={avatarUrl}&callType={callType}&calleeUserId={calleeUserId}") {
+        fun create(
+            calleeName: String,
+            avatarUrl: String = "",
+            callType: String = "audio",
+            calleeUserId: String = ""
+        ): String =
+            "call/${Uri.encode(calleeName)}?avatarUrl=${Uri.encode(avatarUrl)}&callType=${Uri.encode(callType)}&calleeUserId=${Uri.encode(calleeUserId)}"
     }
 
     // ── Camera ───────────────────────────────────────────────────────────────
