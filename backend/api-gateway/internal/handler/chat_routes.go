@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -126,14 +127,14 @@ func proxyErrorHandler(w http.ResponseWriter, _ *http.Request, _ error) {
 }
 
 func setUserHeaders(c *gin.Context) {
-	if uid, exists := c.Get("user_id"); exists {
-		c.Request.Header.Set("X-User-ID", uid.(string))
+	if uid := c.GetString("user_id"); uid != "" {
+		c.Request.Header.Set("X-User-ID", uid)
 	}
-	if phone, exists := c.Get("phone"); exists {
-		c.Request.Header.Set("X-User-Phone", phone.(string))
+	if phone := c.GetString("phone"); phone != "" {
+		c.Request.Header.Set("X-User-Phone", phone)
 	}
-	if rid, exists := c.Get("request_id"); exists {
-		c.Request.Header.Set("X-Request-ID", rid.(string))
+	if rid := c.GetString("request_id"); rid != "" {
+		c.Request.Header.Set("X-Request-ID", rid)
 	}
 }
 
@@ -149,7 +150,7 @@ func buildMiddlewareChain(authMW, rateLimitMW gin.HandlerFunc) []gin.HandlerFunc
 }
 
 // injectChatIDIntoBody reads the request body, injects "chat_id" into the JSON,
-// and replaces the body with the modified version.
+// and replaces the body with the modified version using proper JSON marshaling.
 func injectChatIDIntoBody(c *gin.Context, chatID string) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -157,14 +158,21 @@ func injectChatIDIntoBody(c *gin.Context, chatID string) {
 	}
 	defer c.Request.Body.Close()
 
-	bodyStr := string(body)
-	if bodyStr == "" || bodyStr == "{}" {
-		bodyStr = fmt.Sprintf(`{"chat_id":"%s"}`, chatID)
+	var data map[string]interface{}
+	if len(body) == 0 || string(body) == "{}" {
+		data = make(map[string]interface{})
 	} else {
-		// Insert chat_id after opening brace
-		bodyStr = fmt.Sprintf(`{"chat_id":"%s",%s`, chatID, bodyStr[1:])
+		if err := json.Unmarshal(body, &data); err != nil {
+			return
+		}
+	}
+	data["chat_id"] = chatID
+
+	newBody, err := json.Marshal(data)
+	if err != nil {
+		return
 	}
 
-	c.Request.Body = io.NopCloser(strings.NewReader(bodyStr))
-	c.Request.ContentLength = int64(len(bodyStr))
+	c.Request.Body = io.NopCloser(strings.NewReader(string(newBody)))
+	c.Request.ContentLength = int64(len(newBody))
 }
