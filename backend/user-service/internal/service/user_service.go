@@ -21,6 +21,7 @@ type UserService interface {
 	UpdatePrivacySettings(ctx context.Context, settings *model.PrivacySettings) error
 	RegisterDeviceToken(ctx context.Context, token *model.DeviceToken) error
 	RemoveDeviceToken(ctx context.Context, token string) error
+	RemoveDeviceTokenForUser(ctx context.Context, userID, token string) error
 	SetPresence(ctx context.Context, userID string, online bool) error
 	CheckPresence(ctx context.Context, userID string) (online bool, lastSeen *time.Time, err error)
 	CreateStatus(ctx context.Context, userID string, req *model.CreateStatusRequest) (*model.Status, error)
