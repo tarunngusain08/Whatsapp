@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -25,10 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,8 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whatsappclone.core.ui.components.UserAvatar
-import kotlinx.coroutines.delay
+import com.whatsappclone.feature.chat.call.CallState
+import com.whatsappclone.feature.chat.call.CallViewModel
 
 @Composable
 fun CallScreen(
@@ -45,24 +46,19 @@ fun CallScreen(
     calleeAvatarUrl: String?,
     callType: String,
     onEndCall: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: CallViewModel = hiltViewModel()
 ) {
-    var isMuted by remember { mutableStateOf(false) }
-    var isSpeakerOn by remember { mutableStateOf(false) }
-    var elapsedSeconds by remember { mutableLongStateOf(0L) }
-    var isConnected by remember { mutableStateOf(false) }
+    val session by viewModel.session.collectAsStateWithLifecycle()
+    val callState by viewModel.callState.collectAsStateWithLifecycle()
+    val isMuted by viewModel.isMuted.collectAsStateWithLifecycle()
+    val isSpeakerOn by viewModel.isSpeakerOn.collectAsStateWithLifecycle()
+    val elapsedSeconds by viewModel.elapsedSeconds.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        delay(2000)
-        isConnected = true
-    }
-
-    LaunchedEffect(isConnected) {
-        if (isConnected) {
-            while (true) {
-                delay(1000)
-                elapsedSeconds++
-            }
+    LaunchedEffect(callState) {
+        if (callState == CallState.ENDED) {
+            viewModel.callService.clearSession()
+            onEndCall()
         }
     }
 
@@ -71,6 +67,11 @@ fun CallScreen(
         val seconds = elapsedSeconds % 60
         "%02d:%02d".format(minutes, seconds)
     }
+
+    val displayName = session?.remoteName ?: calleeName
+    val displayAvatar = session?.remoteAvatarUrl ?: calleeAvatarUrl
+    val displayCallType = session?.callType ?: callType
+    val isIncoming = session?.isOutgoing == false && callState == CallState.INCOMING_RINGING
 
     Box(
         modifier = modifier
@@ -86,15 +87,15 @@ fun CallScreen(
             Spacer(modifier = Modifier.height(80.dp))
 
             UserAvatar(
-                url = calleeAvatarUrl,
-                name = calleeName,
+                url = displayAvatar,
+                name = displayName,
                 size = 120.dp
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = calleeName,
+                text = displayName,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -104,10 +105,14 @@ fun CallScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (isConnected) {
-                    "${callType.replaceFirstChar { it.uppercase() }} call · $formattedTime"
-                } else {
-                    "Calling…"
+                text = when (callState) {
+                    CallState.CONNECTED ->
+                        "${displayCallType.replaceFirstChar { it.uppercase() }} call · $formattedTime"
+                    CallState.CONNECTING -> "Connecting…"
+                    CallState.INCOMING_RINGING -> "Incoming ${displayCallType} call"
+                    CallState.OUTGOING_RINGING -> "Calling…"
+                    CallState.ENDED -> "Call ended"
+                    CallState.IDLE -> "Initialising…"
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White.copy(alpha = 0.7f),
@@ -116,54 +121,97 @@ fun CallScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CallActionButton(
-                    icon = {
+            if (isIncoming) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Decline
+                    FloatingActionButton(
+                        onClick = {
+                            viewModel.declineCall()
+                            onEndCall()
+                        },
+                        modifier = Modifier.size(64.dp),
+                        shape = CircleShape,
+                        containerColor = Color(0xFFEB5545)
+                    ) {
                         Icon(
-                            imageVector = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                            contentDescription = if (isMuted) "Unmute" else "Mute",
+                            imageVector = Icons.Filled.CallEnd,
+                            contentDescription = "Decline",
                             tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(32.dp)
                         )
-                    },
-                    label = if (isMuted) "Unmute" else "Mute",
-                    isActive = isMuted,
-                    onClick = { isMuted = !isMuted }
-                )
+                    }
 
-                CallActionButton(
-                    icon = {
+                    // Accept
+                    FloatingActionButton(
+                        onClick = { viewModel.acceptCall() },
+                        modifier = Modifier.size(64.dp),
+                        shape = CircleShape,
+                        containerColor = Color(0xFF25D366)
+                    ) {
                         Icon(
-                            imageVector = Icons.Filled.VolumeUp,
-                            contentDescription = "Speaker",
+                            imageVector = Icons.Filled.Call,
+                            contentDescription = "Accept",
                             tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(32.dp)
                         )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CallActionButton(
+                        icon = {
+                            Icon(
+                                imageVector = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                                contentDescription = if (isMuted) "Unmute" else "Mute",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        },
+                        label = if (isMuted) "Unmute" else "Mute",
+                        isActive = isMuted,
+                        onClick = { viewModel.toggleMute() }
+                    )
+
+                    CallActionButton(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.VolumeUp,
+                                contentDescription = "Speaker",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        },
+                        label = "Speaker",
+                        isActive = isSpeakerOn,
+                        onClick = { viewModel.toggleSpeaker() }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                FloatingActionButton(
+                    onClick = {
+                        viewModel.endCall()
                     },
-                    label = "Speaker",
-                    isActive = isSpeakerOn,
-                    onClick = { isSpeakerOn = !isSpeakerOn }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            FloatingActionButton(
-                onClick = onEndCall,
-                modifier = Modifier.size(64.dp),
-                shape = CircleShape,
-                containerColor = Color(0xFFEB5545)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.CallEnd,
-                    contentDescription = "End call",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
+                    modifier = Modifier.size(64.dp),
+                    shape = CircleShape,
+                    containerColor = Color(0xFFEB5545)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CallEnd,
+                        contentDescription = "End call",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(48.dp))
