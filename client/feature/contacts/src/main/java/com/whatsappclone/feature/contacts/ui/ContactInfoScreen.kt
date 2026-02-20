@@ -76,7 +76,7 @@ fun ContactInfoScreen(
     onNavigateToChat: (String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToSharedMedia: (String) -> Unit = {},
-    onNavigateToCall: (name: String, avatarUrl: String?, callType: String) -> Unit = { _, _, _ -> },
+    onNavigateToCall: (userId: String, name: String, avatarUrl: String?, callType: String) -> Unit = { _, _, _, _ -> },
     viewModel: ContactInfoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -203,6 +203,7 @@ fun ContactInfoScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 onClick = {
                                     onNavigateToCall(
+                                        user.id,
                                         user.displayName,
                                         user.avatarUrl,
                                         "audio"
@@ -215,6 +216,7 @@ fun ContactInfoScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 onClick = {
                                     onNavigateToCall(
+                                        user.id,
                                         user.displayName,
                                         user.avatarUrl,
                                         "video"
