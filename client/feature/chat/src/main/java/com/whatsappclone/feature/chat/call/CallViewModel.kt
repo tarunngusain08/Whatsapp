@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,6 +38,7 @@ class CallViewModel @Inject constructor(
 
     private val _elapsedSeconds = MutableStateFlow(0L)
     val elapsedSeconds: StateFlow<Long> = _elapsedSeconds.asStateFlow()
+    private var timerJob: Job? = null
 
     init {
         if (incomingCallId == null && calleeUserId != null) {
@@ -47,13 +49,17 @@ class CallViewModel @Inject constructor(
             callState.collect { state ->
                 if (state == CallState.CONNECTED) {
                     startTimer()
+                } else {
+                    timerJob?.cancel()
+                    timerJob = null
                 }
             }
         }
     }
 
     private fun startTimer() {
-        viewModelScope.launch {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
             while (callState.value == CallState.CONNECTED) {
                 delay(1000)
                 _elapsedSeconds.value++
