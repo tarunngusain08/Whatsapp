@@ -33,14 +33,14 @@ func RegisterProxyRoutes(engine *gin.Engine, routes []model.RouteTarget, authMW,
 			}
 		}
 		proxyHandler := func(c *gin.Context) {
-			if uid, exists := c.Get("user_id"); exists {
-				c.Request.Header.Set("X-User-ID", uid.(string))
+			if uid := c.GetString("user_id"); uid != "" {
+				c.Request.Header.Set("X-User-ID", uid)
 			}
-			if phone, exists := c.Get("phone"); exists {
-				c.Request.Header.Set("X-User-Phone", phone.(string))
+			if phone := c.GetString("phone"); phone != "" {
+				c.Request.Header.Set("X-User-Phone", phone)
 			}
-			if rid, exists := c.Get("request_id"); exists {
-				c.Request.Header.Set("X-Request-ID", rid.(string))
+			if rid := c.GetString("request_id"); rid != "" {
+				c.Request.Header.Set("X-Request-ID", rid)
 			}
 			proxy.ServeHTTP(c.Writer, c.Request)
 		}
