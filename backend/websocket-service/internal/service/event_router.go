@@ -110,7 +110,8 @@ func (s *wsServiceImpl) handleMessageStatus(ctx context.Context, client *model.C
 
 	// Async persistence via gRPC to message-service (runs in background)
 	go func() {
-		bgCtx := context.Background()
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		_, err := s.messageClient.UpdateMessageStatus(bgCtx, &messagev1.UpdateMessageStatusRequest{
 			MessageId: p.MessageID,
 			UserId:    client.UserID,
