@@ -106,9 +106,15 @@ func (t *ThumbnailGenerator) Generate(ctx context.Context, storageKey, fileType,
 	return thumbKey, nil
 }
 
+var downloadClient = &http.Client{Timeout: 30 * time.Second}
+
 // downloadFile fetches a URL and writes it to the given file path.
-func downloadFile(url, dest string) error {
-	resp, err := http.Get(url)
+func downloadFile(fileURL, dest string) error {
+	req, err := http.NewRequest(http.MethodGet, fileURL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := downloadClient.Do(req)
 	if err != nil {
 		return err
 	}
