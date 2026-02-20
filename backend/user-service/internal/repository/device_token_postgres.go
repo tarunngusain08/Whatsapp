@@ -65,6 +65,16 @@ func (r *postgresDeviceTokenRepository) DeleteByToken(ctx context.Context, token
 	return nil
 }
 
+func (r *postgresDeviceTokenRepository) DeleteByTokenAndUser(ctx context.Context, userID, token string) error {
+	_, err := r.pool.Exec(ctx,
+		`DELETE FROM device_tokens WHERE token = $1 AND user_id = $2`, token, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete device token for user: %w", err)
+	}
+	return nil
+}
+
 func (r *postgresDeviceTokenRepository) DeleteByUserID(ctx context.Context, userID string) error {
 	_, err := r.pool.Exec(ctx,
 		`DELETE FROM device_tokens WHERE user_id = $1`, userID,
