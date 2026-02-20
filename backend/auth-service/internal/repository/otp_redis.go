@@ -58,12 +58,17 @@ func (r *redisOTPRepository) IncrementAttempts(ctx context.Context, phone string
 		return 0, nil
 	}
 	entry.Attempts++
-	data, _ := json.Marshal(entry)
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return 0, apperr.NewInternal("failed to marshal OTP entry", err)
+	}
 	ttl := r.rdb.TTL(ctx, r.key(phone)).Val()
 	if ttl <= 0 {
 		ttl = r.ttl
 	}
-	r.rdb.Set(ctx, r.key(phone), data, ttl)
+	if err := r.rdb.Set(ctx, r.key(phone), data, ttl).Err(); err != nil {
+		return 0, apperr.NewInternal("failed to update OTP attempts", err)
+	}
 	return entry.Attempts, nil
 }
 
