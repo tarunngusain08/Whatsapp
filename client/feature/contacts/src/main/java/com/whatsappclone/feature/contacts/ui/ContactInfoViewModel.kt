@@ -96,7 +96,8 @@ class ContactInfoViewModel @Inject constructor(
 
     fun onMessageClicked() {
         viewModelScope.launch {
-            _event.emit(ContactInfoEvent.NavigateToChat(userId))
+            val chatId = _uiState.value.chatId ?: userId
+            _event.emit(ContactInfoEvent.NavigateToChat(chatId))
         }
     }
 
