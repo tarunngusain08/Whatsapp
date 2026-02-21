@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -121,7 +122,9 @@ func rewriteChatScopedMessage(c *gin.Context, chatID, remainder string) {
 	}
 }
 
-func proxyErrorHandler(w http.ResponseWriter, _ *http.Request, _ error) {
+func proxyErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf("proxy error for %s %s: %v", r.Method, r.URL.Path, err)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadGateway)
 	w.Write([]byte(`{"success":false,"error":{"code":"BAD_GATEWAY","message":"service unavailable"}}`))
 }
@@ -154,6 +157,10 @@ func buildMiddlewareChain(authMW, rateLimitMW gin.HandlerFunc) []gin.HandlerFunc
 func injectChatIDIntoBody(c *gin.Context, chatID string) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "BAD_REQUEST", "message": "failed to read request body"},
+		})
 		return
 	}
 	defer c.Request.Body.Close()
@@ -163,6 +170,10 @@ func injectChatIDIntoBody(c *gin.Context, chatID string) {
 		data = make(map[string]interface{})
 	} else {
 		if err := json.Unmarshal(body, &data); err != nil {
+			c.AbortWithStatusJSON(400, gin.H{
+				"success": false,
+				"error":   gin.H{"code": "BAD_REQUEST", "message": "invalid JSON body"},
+			})
 			return
 		}
 	}
@@ -170,6 +181,10 @@ func injectChatIDIntoBody(c *gin.Context, chatID string) {
 
 	newBody, err := json.Marshal(data)
 	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL", "message": "failed to marshal request body"},
+		})
 		return
 	}
 
