@@ -133,23 +133,38 @@ func (s *authServiceImpl) RefreshTokens(ctx context.Context, refreshToken string
 		return nil, apperr.Wrap(apperr.CodeTokenInvalid, 401, "invalid or expired refresh token", nil)
 	}
 
-	if err := s.refreshRepo.RevokeByID(ctx, stored.ID); err != nil {
-		return nil, err
-	}
-
 	user, err := s.userRepo.GetByID(ctx, stored.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	pair, err := s.issueTokenPair(ctx, user.ID, user.Phone)
+	accessToken, err := s.jwtManager.CreateAccessToken(user.ID, user.Phone)
 	if err != nil {
+		return nil, apperr.NewInternal("failed to create access token", err)
+	}
+
+	opaqueToken, err := generateOpaqueToken(32)
+	if err != nil {
+		return nil, apperr.NewInternal("failed to generate refresh token", err)
+	}
+
+	newRT := &model.RefreshToken{
+		UserID:    user.ID,
+		TokenHash: sha256Hash(opaqueToken),
+		ExpiresAt: time.Now().Add(s.refreshTTL),
+	}
+
+	if err := s.refreshRepo.ReplaceToken(ctx, stored.ID, newRT); err != nil {
 		return nil, err
 	}
 
 	s.log.Info().Str("user_id", user.ID).Msg("tokens refreshed")
 
-	return pair, nil
+	return &model.TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: opaqueToken,
+		ExpiresIn:    int64(s.refreshTTL.Seconds()),
+	}, nil
 }
 
 func (s *authServiceImpl) Logout(ctx context.Context, refreshToken string) error {
