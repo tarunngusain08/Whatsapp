@@ -8,9 +8,11 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	apperr "github.com/whatsapp-clone/backend/pkg/errors"
@@ -31,6 +33,8 @@ type userServiceImpl struct {
 	log             zerolog.Logger
 }
 
+var e164Regex = regexp.MustCompile(`^\+[1-9]\d{1,14}$`)
+
 func NewUserService(
 	userRepo repository.UserRepository,
 	contactRepo repository.ContactRepository,
@@ -39,12 +43,11 @@ func NewUserService(
 	presenceRepo repository.PresenceRepository,
 	statusRepo repository.StatusRepository,
 	presenceTTL time.Duration,
+	mediaServiceURL string,
 	log zerolog.Logger,
-	mediaServiceURL ...string,
 ) UserService {
-	mediaURL := "http://media-service:8080"
-	if len(mediaServiceURL) > 0 && mediaServiceURL[0] != "" {
-		mediaURL = mediaServiceURL[0]
+	if mediaServiceURL == "" {
+		mediaServiceURL = "http://media-service:8080"
 	}
 	return &userServiceImpl{
 		userRepo:        userRepo,
@@ -54,7 +57,7 @@ func NewUserService(
 		presenceRepo:    presenceRepo,
 		statusRepo:      statusRepo,
 		presenceTTL:     presenceTTL,
-		mediaServiceURL: mediaURL,
+		mediaServiceURL: mediaServiceURL,
 		httpClient:      &http.Client{Timeout: 30 * time.Second},
 		log:             log,
 	}
@@ -220,10 +223,9 @@ func (s *userServiceImpl) ContactSync(ctx context.Context, userID string, phones
 		return nil, apperr.NewBadRequest("max 1000 phones per sync request")
 	}
 
-	// Normalize and validate phone numbers (E.164)
 	validPhones := make([]string, 0, len(phones))
 	for _, p := range phones {
-		if strings.HasPrefix(p, "+") && len(p) >= 8 && len(p) <= 16 {
+		if e164Regex.MatchString(p) {
 			validPhones = append(validPhones, p)
 		}
 	}
@@ -363,7 +365,7 @@ func (s *userServiceImpl) CreateStatus(ctx context.Context, userID string, req *
 	}
 
 	status := &model.Status{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:        uuid.New().String(),
 		UserID:    userID,
 		Type:      req.Type,
 		Content:   req.Content,
