@@ -119,7 +119,7 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	httpHandler := handler.NewHTTPHandler(authSvc, log)
+	httpHandler := handler.NewHTTPHandler(authSvc, cfg.DevMode, log)
 	apiV1 := router.Group("/api/v1")
 	httpHandler.RegisterRoutes(apiV1)
 
