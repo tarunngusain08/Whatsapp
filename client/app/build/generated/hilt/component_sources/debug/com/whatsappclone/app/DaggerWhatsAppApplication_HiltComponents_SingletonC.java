@@ -1136,8 +1136,8 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     }
 
     @Override
-    public void injectWhatsAppApplication(WhatsAppApplication whatsAppApplication) {
-      injectWhatsAppApplication2(whatsAppApplication);
+    public void injectWhatsAppApplication(WhatsAppApplication arg0) {
+      injectWhatsAppApplication2(arg0);
     }
 
     @Override
@@ -1199,7 +1199,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           };
 
           case 1: // com.whatsappclone.feature.contacts.data.ContactRepositoryImpl 
-          return (T) new ContactRepositoryImpl(singletonCImpl.provideContentResolverProvider.get(), singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideContactDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get());
+          return (T) new ContactRepositoryImpl(singletonCImpl.provideContentResolverProvider.get(), ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideContactDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get());
 
           case 2: // android.content.ContentResolver 
           return (T) ContactsModule_Companion_ProvideContentResolverFactory.provideContentResolver(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
@@ -1337,7 +1337,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           return (T) new PrivacyPreferencesStore(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           case 42: // com.whatsappclone.feature.chat.data.ChatRepositoryImpl 
-          return (T) new ChatRepositoryImpl(singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+          return (T) new ChatRepositoryImpl(singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideAppDatabaseProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
           case 43: // com.whatsappclone.feature.chat.data.UserRepositoryImpl 
           return (T) new UserRepositoryImpl(singletonCImpl.provideUserApiProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
