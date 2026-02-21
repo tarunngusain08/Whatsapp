@@ -14,6 +14,7 @@ type Config struct {
 	OTPLength       int           `env:"AUTH_OTP_LENGTH"         envDefault:"6"`
 	OTPTTL          time.Duration `env:"AUTH_OTP_TTL"            envDefault:"5m"`
 	OTPMaxAttempts  int           `env:"AUTH_OTP_MAX_ATTEMPTS"   envDefault:"5"`
+	DevMode         bool          `env:"AUTH_DEV_MODE"           envDefault:"false"`
 	LogLevel        string        `env:"AUTH_LOG_LEVEL"          envDefault:"info"`
 	OTLPEndpoint    string        `env:"OTLP_ENDPOINT"           envDefault:""`
 }
