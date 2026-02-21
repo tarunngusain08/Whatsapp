@@ -259,8 +259,9 @@ func (s *chatServiceImpl) GetChat(ctx context.Context, callerID, chatID string) 
 	return item, nil
 }
 
+const maxGroupMembers = 1024
+
 func (s *chatServiceImpl) AddMember(ctx context.Context, callerID, chatID, targetUserID string) error {
-	// Verify caller is admin.
 	caller, err := s.chatRepo.GetParticipant(ctx, chatID, callerID)
 	if err != nil {
 		return apperr.NewInternal("failed to check caller membership", err)
@@ -272,7 +273,16 @@ func (s *chatServiceImpl) AddMember(ctx context.Context, callerID, chatID, targe
 		return apperr.Wrap(apperr.CodeNotAdmin, 403, "only admins can add members", nil)
 	}
 
-	// Check if target is already a member.
+	participants, err := s.chatRepo.GetParticipants(ctx, chatID)
+	if err != nil {
+		return apperr.NewInternal("failed to get participants", err)
+	}
+	if len(participants) >= maxGroupMembers {
+		return apperr.NewBadRequest(
+			fmt.Sprintf("group cannot exceed %d members", maxGroupMembers),
+		)
+	}
+
 	existing, err := s.chatRepo.GetParticipant(ctx, chatID, targetUserID)
 	if err != nil {
 		return apperr.NewInternal("failed to check target membership", err)
