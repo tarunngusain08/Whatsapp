@@ -75,6 +75,9 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
+    // Room (for withTransaction)
+    implementation(libs.room.ktx)
+
     // Paging
     implementation(libs.paging.runtime)
     implementation(libs.paging.compose)
