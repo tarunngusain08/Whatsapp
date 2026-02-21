@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -20,9 +21,11 @@ func (r *redisRateLimiter) Allow(ctx context.Context, key string, limit int, win
 	if err != nil {
 		return false, err
 	}
-	// Only set TTL when the key is new (count == 1) to create a fixed window
 	if count == 1 {
-		r.rdb.Expire(ctx, key, time.Duration(windowSec)*time.Second)
+		if err := r.rdb.Expire(ctx, key, time.Duration(windowSec)*time.Second).Err(); err != nil {
+			r.rdb.Del(ctx, key)
+			return false, fmt.Errorf("rate limiter: set TTL: %w", err)
+		}
 	}
 	return count <= int64(limit), nil
 }
