@@ -1,17 +1,24 @@
 package middleware
 
 import (
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
+var sensitivePathPrefixes = []string{"/auth", "/otp", "/token"}
+var sensitiveQueryKeys = map[string]bool{
+	"token": true, "otp": true, "code": true, "secret": true,
+}
+
 func Logger(log zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
-		query := c.Request.URL.RawQuery
+		query := redactQuery(path, c.Request.URL.RawQuery)
 
 		c.Next()
 
@@ -42,4 +49,25 @@ func Logger(log zerolog.Logger) gin.HandlerFunc {
 			Str("user_agent", c.Request.UserAgent()).
 			Msg("request completed")
 	}
+}
+
+func redactQuery(path, rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	for _, prefix := range sensitivePathPrefixes {
+		if strings.Contains(path, prefix) {
+			return "[REDACTED]"
+		}
+	}
+	parsed, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return "[REDACTED]"
+	}
+	for key := range parsed {
+		if sensitiveQueryKeys[strings.ToLower(key)] {
+			parsed.Set(key, "[REDACTED]")
+		}
+	}
+	return parsed.Encode()
 }
