@@ -11,12 +11,15 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomSQLiteQuery
 import androidx.room.RoomSQLiteQuery.Companion.acquire
 import androidx.room.SharedSQLiteStatement
+import androidx.room.util.appendPlaceholders
 import androidx.room.util.createCancellationSignal
 import androidx.room.util.getColumnIndexOrThrow
+import androidx.room.util.newStringBuilder
 import androidx.room.util.query
 import androidx.sqlite.db.SupportSQLiteStatement
 import com.whatsappclone.core.database.entity.UserEntity
 import java.lang.Class
+import java.lang.StringBuilder
 import java.util.ArrayList
 import java.util.concurrent.Callable
 import javax.`annotation`.processing.Generated
@@ -280,6 +283,87 @@ public class UserDao_Impl(
                 UserEntity(_tmpId,_tmpPhone,_tmpDisplayName,_tmpStatusText,_tmpAvatarUrl,_tmpIsOnline,_tmpLastSeen,_tmpIsBlocked,_tmpCreatedAt,_tmpUpdatedAt)
           } else {
             _result = null
+          }
+          return _result
+        } finally {
+          _cursor.close()
+          _statement.release()
+        }
+      }
+    })
+  }
+
+  public override suspend fun getByIds(userIds: List<String>): List<UserEntity> {
+    val _stringBuilder: StringBuilder = newStringBuilder()
+    _stringBuilder.append("SELECT * FROM users WHERE id IN (")
+    val _inputSize: Int = userIds.size
+    appendPlaceholders(_stringBuilder, _inputSize)
+    _stringBuilder.append(")")
+    val _sql: String = _stringBuilder.toString()
+    val _argCount: Int = 0 + _inputSize
+    val _statement: RoomSQLiteQuery = acquire(_sql, _argCount)
+    var _argIndex: Int = 1
+    for (_item: String in userIds) {
+      _statement.bindString(_argIndex, _item)
+      _argIndex++
+    }
+    val _cancellationSignal: CancellationSignal? = createCancellationSignal()
+    return execute(__db, false, _cancellationSignal, object : Callable<List<UserEntity>> {
+      public override fun call(): List<UserEntity> {
+        val _cursor: Cursor = query(__db, _statement, false, null)
+        try {
+          val _cursorIndexOfId: Int = getColumnIndexOrThrow(_cursor, "id")
+          val _cursorIndexOfPhone: Int = getColumnIndexOrThrow(_cursor, "phone")
+          val _cursorIndexOfDisplayName: Int = getColumnIndexOrThrow(_cursor, "displayName")
+          val _cursorIndexOfStatusText: Int = getColumnIndexOrThrow(_cursor, "statusText")
+          val _cursorIndexOfAvatarUrl: Int = getColumnIndexOrThrow(_cursor, "avatarUrl")
+          val _cursorIndexOfIsOnline: Int = getColumnIndexOrThrow(_cursor, "isOnline")
+          val _cursorIndexOfLastSeen: Int = getColumnIndexOrThrow(_cursor, "lastSeen")
+          val _cursorIndexOfIsBlocked: Int = getColumnIndexOrThrow(_cursor, "isBlocked")
+          val _cursorIndexOfCreatedAt: Int = getColumnIndexOrThrow(_cursor, "createdAt")
+          val _cursorIndexOfUpdatedAt: Int = getColumnIndexOrThrow(_cursor, "updatedAt")
+          val _result: MutableList<UserEntity> = ArrayList<UserEntity>(_cursor.getCount())
+          while (_cursor.moveToNext()) {
+            val _item_1: UserEntity
+            val _tmpId: String
+            _tmpId = _cursor.getString(_cursorIndexOfId)
+            val _tmpPhone: String
+            _tmpPhone = _cursor.getString(_cursorIndexOfPhone)
+            val _tmpDisplayName: String
+            _tmpDisplayName = _cursor.getString(_cursorIndexOfDisplayName)
+            val _tmpStatusText: String?
+            if (_cursor.isNull(_cursorIndexOfStatusText)) {
+              _tmpStatusText = null
+            } else {
+              _tmpStatusText = _cursor.getString(_cursorIndexOfStatusText)
+            }
+            val _tmpAvatarUrl: String?
+            if (_cursor.isNull(_cursorIndexOfAvatarUrl)) {
+              _tmpAvatarUrl = null
+            } else {
+              _tmpAvatarUrl = _cursor.getString(_cursorIndexOfAvatarUrl)
+            }
+            val _tmpIsOnline: Boolean
+            val _tmp: Int
+            _tmp = _cursor.getInt(_cursorIndexOfIsOnline)
+            _tmpIsOnline = _tmp != 0
+            val _tmpLastSeen: Long?
+            if (_cursor.isNull(_cursorIndexOfLastSeen)) {
+              _tmpLastSeen = null
+            } else {
+              _tmpLastSeen = _cursor.getLong(_cursorIndexOfLastSeen)
+            }
+            val _tmpIsBlocked: Boolean
+            val _tmp_1: Int
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsBlocked)
+            _tmpIsBlocked = _tmp_1 != 0
+            val _tmpCreatedAt: Long
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt)
+            val _tmpUpdatedAt: Long
+            _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt)
+            _item_1 =
+                UserEntity(_tmpId,_tmpPhone,_tmpDisplayName,_tmpStatusText,_tmpAvatarUrl,_tmpIsOnline,_tmpLastSeen,_tmpIsBlocked,_tmpCreatedAt,_tmpUpdatedAt)
+            _result.add(_item_1)
           }
           return _result
         } finally {
