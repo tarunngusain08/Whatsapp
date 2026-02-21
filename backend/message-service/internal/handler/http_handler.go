@@ -137,8 +137,11 @@ func (h *HTTPHandler) ListMessages(c *gin.Context) {
 		limit = 100
 	}
 
+	userID := c.GetHeader("X-User-ID")
+
 	query := &model.ListMessagesQuery{
 		ChatID:   chatID,
+		UserID:   userID,
 		Cursor:   c.Query("cursor"),
 		CursorID: c.Query("cursor_id"),
 		Limit:    limit,
@@ -149,8 +152,6 @@ func (h *HTTPHandler) ListMessages(c *gin.Context) {
 		response.Error(c, err)
 		return
 	}
-
-	userID := c.GetHeader("X-User-ID")
 	clientMsgs := toClientMessages(msgs, userID)
 
 	var nextCursor string
@@ -343,7 +344,8 @@ func (h *HTTPHandler) SearchMessages(c *gin.Context) {
 		}
 	}
 
-	msgs, err := h.msgSvc.SearchMessages(c.Request.Context(), chatID, q, limit)
+	userID := c.GetHeader("X-User-ID")
+	msgs, err := h.msgSvc.SearchMessages(c.Request.Context(), chatID, userID, q, limit)
 	if err != nil {
 		response.Error(c, err)
 		return
