@@ -15,6 +15,7 @@ type UpdateStatusRequest struct {
 
 type ListMessagesQuery struct {
 	ChatID   string `form:"chat_id"   binding:"required"`
+	UserID   string `form:"-"`
 	Cursor   string `form:"cursor"`
 	CursorID string `form:"cursor_id"`
 	Limit    int    `form:"limit"`
