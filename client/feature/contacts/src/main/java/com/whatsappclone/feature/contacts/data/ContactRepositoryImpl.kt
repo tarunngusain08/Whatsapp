@@ -17,6 +17,7 @@ import com.whatsappclone.core.network.api.UserApi
 import com.whatsappclone.core.network.model.dto.ContactSyncRequest
 import com.whatsappclone.core.network.model.safeApiCall
 import kotlinx.coroutines.flow.Flow
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +25,7 @@ import javax.inject.Singleton
 @Singleton
 class ContactRepositoryImpl @Inject constructor(
     private val contentResolver: ContentResolver,
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val userApi: UserApi,
     private val contactDao: ContactDao,
     private val userDao: UserDao
