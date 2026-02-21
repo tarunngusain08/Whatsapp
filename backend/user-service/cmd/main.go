@@ -89,6 +89,7 @@ func main() {
 		presenceRepo,
 		statusRepo,
 		cfg.PresenceTTL,
+		cfg.MediaServiceURL,
 		log,
 	)
 
