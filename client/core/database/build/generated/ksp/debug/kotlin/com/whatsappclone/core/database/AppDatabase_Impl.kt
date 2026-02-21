@@ -81,7 +81,7 @@ public class AppDatabase_Impl : AppDatabase() {
 
   protected override fun createOpenHelper(config: DatabaseConfiguration): SupportSQLiteOpenHelper {
     val _openCallback: SupportSQLiteOpenHelper.Callback = RoomOpenHelper(config, object :
-        RoomOpenHelper.Delegate(5) {
+        RoomOpenHelper.Delegate(6) {
       public override fun createAllTables(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `users` (`id` TEXT NOT NULL, `phone` TEXT NOT NULL, `displayName` TEXT NOT NULL, `statusText` TEXT, `avatarUrl` TEXT, `isOnline` INTEGER NOT NULL, `lastSeen` INTEGER, `isBlocked` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_users_phone` ON `users` (`phone`)")
@@ -90,10 +90,13 @@ public class AppDatabase_Impl : AppDatabase() {
         db.execSQL("CREATE TABLE IF NOT EXISTS `chats` (`chatId` TEXT NOT NULL, `chatType` TEXT NOT NULL, `name` TEXT, `description` TEXT, `avatarUrl` TEXT, `lastMessageId` TEXT, `lastMessagePreview` TEXT, `lastMessageTimestamp` INTEGER, `unreadCount` INTEGER NOT NULL, `isMuted` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`chatId`))")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_chats_lastMessageTimestamp` ON `chats` (`lastMessageTimestamp`)")
         db.execSQL("CREATE TABLE IF NOT EXISTS `chat_participants` (`chatId` TEXT NOT NULL, `userId` TEXT NOT NULL, `role` TEXT NOT NULL, `joinedAt` INTEGER NOT NULL, PRIMARY KEY(`chatId`, `userId`))")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_chat_participants_userId` ON `chat_participants` (`userId`)")
         db.execSQL("CREATE TABLE IF NOT EXISTS `messages` (`messageId` TEXT NOT NULL, `clientMsgId` TEXT NOT NULL, `chatId` TEXT NOT NULL, `senderId` TEXT NOT NULL, `messageType` TEXT NOT NULL, `content` TEXT, `mediaId` TEXT, `mediaUrl` TEXT, `mediaThumbnailUrl` TEXT, `mediaMimeType` TEXT, `mediaSize` INTEGER, `mediaDuration` INTEGER, `replyToMessageId` TEXT, `status` TEXT NOT NULL, `isDeleted` INTEGER NOT NULL, `deletedForEveryone` INTEGER NOT NULL, `isStarred` INTEGER NOT NULL, `latitude` REAL, `longitude` REAL, `reactionsJson` TEXT, `timestamp` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `scheduledAt` INTEGER, PRIMARY KEY(`messageId`))")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_chatId_timestamp` ON `messages` (`chatId`, `timestamp`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_chatId_status` ON `messages` (`chatId`, `status`)")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_messages_clientMsgId` ON `messages` (`clientMsgId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_senderId` ON `messages` (`senderId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_replyToMessageId` ON `messages` (`replyToMessageId`)")
         db.execSQL("CREATE TABLE IF NOT EXISTS `groups` (`chatId` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `avatarUrl` TEXT, `createdBy` TEXT NOT NULL, `isAdminOnly` INTEGER NOT NULL, `memberCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`chatId`))")
         db.execSQL("CREATE TABLE IF NOT EXISTS `media` (`mediaId` TEXT NOT NULL, `uploaderId` TEXT NOT NULL, `fileType` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `originalFilename` TEXT, `sizeBytes` INTEGER NOT NULL, `width` INTEGER, `height` INTEGER, `durationMs` INTEGER, `storageUrl` TEXT NOT NULL, `thumbnailUrl` TEXT, `localPath` TEXT, `localThumbnailPath` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`mediaId`))")
         db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `messages_fts` USING FTS4(`content` TEXT NOT NULL, content=`messages`)")
@@ -102,7 +105,7 @@ public class AppDatabase_Impl : AppDatabase() {
         db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_messages_fts_AFTER_UPDATE AFTER UPDATE ON `messages` BEGIN INSERT INTO `messages_fts`(`docid`, `content`) VALUES (NEW.`rowid`, NEW.`content`); END")
         db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_messages_fts_AFTER_INSERT AFTER INSERT ON `messages` BEGIN INSERT INTO `messages_fts`(`docid`, `content`) VALUES (NEW.`rowid`, NEW.`content`); END")
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)")
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '791d5f40375379962add8adbf9a9ac77')")
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '517bec5e58772fd025fb9cfa4ddb3645')")
       }
 
       public override fun dropAllTables(db: SupportSQLiteDatabase) {
@@ -277,7 +280,9 @@ public class AppDatabase_Impl : AppDatabase() {
             null, TableInfo.CREATED_FROM_ENTITY))
         val _foreignKeysChatParticipants: HashSet<TableInfo.ForeignKey> =
             HashSet<TableInfo.ForeignKey>(0)
-        val _indicesChatParticipants: HashSet<TableInfo.Index> = HashSet<TableInfo.Index>(0)
+        val _indicesChatParticipants: HashSet<TableInfo.Index> = HashSet<TableInfo.Index>(1)
+        _indicesChatParticipants.add(TableInfo.Index("index_chat_participants_userId", false,
+            listOf("userId"), listOf("ASC")))
         val _infoChatParticipants: TableInfo = TableInfo("chat_participants",
             _columnsChatParticipants, _foreignKeysChatParticipants, _indicesChatParticipants)
         val _existingChatParticipants: TableInfo = tableInfoRead(db, "chat_participants")
@@ -339,13 +344,17 @@ public class AppDatabase_Impl : AppDatabase() {
         _columnsMessages.put("scheduledAt", TableInfo.Column("scheduledAt", "INTEGER", false, 0,
             null, TableInfo.CREATED_FROM_ENTITY))
         val _foreignKeysMessages: HashSet<TableInfo.ForeignKey> = HashSet<TableInfo.ForeignKey>(0)
-        val _indicesMessages: HashSet<TableInfo.Index> = HashSet<TableInfo.Index>(3)
+        val _indicesMessages: HashSet<TableInfo.Index> = HashSet<TableInfo.Index>(5)
         _indicesMessages.add(TableInfo.Index("index_messages_chatId_timestamp", false,
             listOf("chatId", "timestamp"), listOf("ASC", "ASC")))
         _indicesMessages.add(TableInfo.Index("index_messages_chatId_status", false, listOf("chatId",
             "status"), listOf("ASC", "ASC")))
         _indicesMessages.add(TableInfo.Index("index_messages_clientMsgId", true,
             listOf("clientMsgId"), listOf("ASC")))
+        _indicesMessages.add(TableInfo.Index("index_messages_senderId", false, listOf("senderId"),
+            listOf("ASC")))
+        _indicesMessages.add(TableInfo.Index("index_messages_replyToMessageId", false,
+            listOf("replyToMessageId"), listOf("ASC")))
         val _infoMessages: TableInfo = TableInfo("messages", _columnsMessages, _foreignKeysMessages,
             _indicesMessages)
         val _existingMessages: TableInfo = tableInfoRead(db, "messages")
@@ -450,7 +459,7 @@ public class AppDatabase_Impl : AppDatabase() {
         }
         return RoomOpenHelper.ValidationResult(true, null)
       }
-    }, "791d5f40375379962add8adbf9a9ac77", "23a22630d5b22cc6e4511267cfec42d1")
+    }, "517bec5e58772fd025fb9cfa4ddb3645", "192b0711b6e3c38951a13c8e7fbee914")
     val _sqliteConfig: SupportSQLiteOpenHelper.Configuration =
         SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build()
     val _helper: SupportSQLiteOpenHelper = config.sqliteOpenHelperFactory.create(_sqliteConfig)
