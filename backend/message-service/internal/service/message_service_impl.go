@@ -90,6 +90,19 @@ func (s *messageServiceImpl) SendMessage(ctx context.Context, senderID string, r
 
 // GetMessages returns messages for a chat with cursor-based pagination.
 func (s *messageServiceImpl) GetMessages(ctx context.Context, query *model.ListMessagesQuery) ([]*model.Message, error) {
+	if query.UserID != "" {
+		permResp, err := s.chatClient.CheckChatPermission(ctx, &chatv1.CheckChatPermissionRequest{
+			ChatId: query.ChatID,
+			UserId: query.UserID,
+		})
+		if err != nil {
+			return nil, apperr.NewInternal("failed to verify chat membership", err)
+		}
+		if !permResp.IsMember {
+			return nil, apperr.NewForbidden("not a member of this chat")
+		}
+	}
+
 	limit := query.Limit
 	if limit <= 0 || limit > 100 {
 		limit = 50
@@ -333,8 +346,21 @@ func (s *messageServiceImpl) RemoveReaction(ctx context.Context, messageID, user
 	return nil
 }
 
-// SearchMessages delegates full-text search to the repository.
-func (s *messageServiceImpl) SearchMessages(ctx context.Context, chatID, query string, limit int) ([]*model.Message, error) {
+// SearchMessages delegates full-text search to the repository after verifying membership.
+func (s *messageServiceImpl) SearchMessages(ctx context.Context, chatID, userID, query string, limit int) ([]*model.Message, error) {
+	if userID != "" {
+		permResp, err := s.chatClient.CheckChatPermission(ctx, &chatv1.CheckChatPermissionRequest{
+			ChatId: chatID,
+			UserId: userID,
+		})
+		if err != nil {
+			return nil, apperr.NewInternal("failed to verify chat membership", err)
+		}
+		if !permResp.IsMember {
+			return nil, apperr.NewForbidden("not a member of this chat")
+		}
+	}
+
 	msgs, err := s.messageRepo.Search(ctx, chatID, query, limit)
 	if err != nil {
 		return nil, apperr.NewInternal("failed to search messages", err)
