@@ -62,3 +62,27 @@ func (r *postgresRefreshTokenRepository) RevokeAllByUserID(ctx context.Context, 
 	}
 	return nil
 }
+
+func (r *postgresRefreshTokenRepository) ReplaceToken(ctx context.Context, oldID string, newToken *model.RefreshToken) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return apperr.NewInternal("failed to begin transaction", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `UPDATE refresh_tokens SET revoked = TRUE WHERE id = $1`, oldID); err != nil {
+		return apperr.NewInternal("failed to revoke old refresh token", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)
+	`, newToken.UserID, newToken.TokenHash, newToken.ExpiresAt); err != nil {
+		return apperr.NewInternal("failed to create new refresh token", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return apperr.NewInternal("failed to commit token replacement", err)
+	}
+	return nil
+}
