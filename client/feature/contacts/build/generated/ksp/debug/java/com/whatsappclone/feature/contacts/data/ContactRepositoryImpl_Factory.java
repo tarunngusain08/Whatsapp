@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.contacts.data;
 
 import android.content.ContentResolver;
+import android.content.Context;
 import com.whatsappclone.core.database.dao.ContactDao;
 import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.api.UserApi;
@@ -12,7 +13,7 @@ import javax.annotation.processing.Generated;
 import javax.inject.Provider;
 
 @ScopeMetadata("javax.inject.Singleton")
-@QualifierMetadata
+@QualifierMetadata("dagger.hilt.android.qualifiers.ApplicationContext")
 @DaggerGenerated
 @Generated(
     value = "dagger.internal.codegen.ComponentProcessor",
@@ -30,6 +31,8 @@ import javax.inject.Provider;
 public final class ContactRepositoryImpl_Factory implements Factory<ContactRepositoryImpl> {
   private final Provider<ContentResolver> contentResolverProvider;
 
+  private final Provider<Context> contextProvider;
+
   private final Provider<UserApi> userApiProvider;
 
   private final Provider<ContactDao> contactDaoProvider;
@@ -37,9 +40,10 @@ public final class ContactRepositoryImpl_Factory implements Factory<ContactRepos
   private final Provider<UserDao> userDaoProvider;
 
   public ContactRepositoryImpl_Factory(Provider<ContentResolver> contentResolverProvider,
-      Provider<UserApi> userApiProvider, Provider<ContactDao> contactDaoProvider,
-      Provider<UserDao> userDaoProvider) {
+      Provider<Context> contextProvider, Provider<UserApi> userApiProvider,
+      Provider<ContactDao> contactDaoProvider, Provider<UserDao> userDaoProvider) {
     this.contentResolverProvider = contentResolverProvider;
+    this.contextProvider = contextProvider;
     this.userApiProvider = userApiProvider;
     this.contactDaoProvider = contactDaoProvider;
     this.userDaoProvider = userDaoProvider;
@@ -47,17 +51,18 @@ public final class ContactRepositoryImpl_Factory implements Factory<ContactRepos
 
   @Override
   public ContactRepositoryImpl get() {
-    return newInstance(contentResolverProvider.get(), userApiProvider.get(), contactDaoProvider.get(), userDaoProvider.get());
+    return newInstance(contentResolverProvider.get(), contextProvider.get(), userApiProvider.get(), contactDaoProvider.get(), userDaoProvider.get());
   }
 
   public static ContactRepositoryImpl_Factory create(
-      Provider<ContentResolver> contentResolverProvider, Provider<UserApi> userApiProvider,
-      Provider<ContactDao> contactDaoProvider, Provider<UserDao> userDaoProvider) {
-    return new ContactRepositoryImpl_Factory(contentResolverProvider, userApiProvider, contactDaoProvider, userDaoProvider);
+      Provider<ContentResolver> contentResolverProvider, Provider<Context> contextProvider,
+      Provider<UserApi> userApiProvider, Provider<ContactDao> contactDaoProvider,
+      Provider<UserDao> userDaoProvider) {
+    return new ContactRepositoryImpl_Factory(contentResolverProvider, contextProvider, userApiProvider, contactDaoProvider, userDaoProvider);
   }
 
-  public static ContactRepositoryImpl newInstance(ContentResolver contentResolver, UserApi userApi,
-      ContactDao contactDao, UserDao userDao) {
-    return new ContactRepositoryImpl(contentResolver, userApi, contactDao, userDao);
+  public static ContactRepositoryImpl newInstance(ContentResolver contentResolver, Context context,
+      UserApi userApi, ContactDao contactDao, UserDao userDao) {
+    return new ContactRepositoryImpl(contentResolver, context, userApi, contactDao, userDao);
   }
 }
