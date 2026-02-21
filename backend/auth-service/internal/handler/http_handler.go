@@ -12,11 +12,12 @@ import (
 
 type HTTPHandler struct {
 	authSvc service.AuthService
+	devMode bool
 	log     zerolog.Logger
 }
 
-func NewHTTPHandler(authSvc service.AuthService, log zerolog.Logger) *HTTPHandler {
-	return &HTTPHandler{authSvc: authSvc, log: log}
+func NewHTTPHandler(authSvc service.AuthService, devMode bool, log zerolog.Logger) *HTTPHandler {
+	return &HTTPHandler{authSvc: authSvc, devMode: devMode, log: log}
 }
 
 func (h *HTTPHandler) RegisterRoutes(rg *gin.RouterGroup) {
@@ -52,9 +53,9 @@ func (h *HTTPHandler) RequestOTP(c *gin.Context) {
 		"message":            "OTP sent successfully",
 		"expires_in_seconds": 300,
 	}
-	// Only include OTP in response for development/testing.
-	// TODO: gate this behind a config flag; remove before production deployment.
-	resp["otp"] = otp
+	if h.devMode {
+		resp["otp"] = otp
+	}
 
 	response.OK(c, resp)
 }
