@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.chat.data;
 
 import android.content.SharedPreferences;
+import com.whatsappclone.core.database.AppDatabase;
 import com.whatsappclone.core.database.dao.ChatDao;
 import com.whatsappclone.core.database.dao.ChatParticipantDao;
 import com.whatsappclone.core.database.dao.MessageDao;
@@ -40,35 +41,38 @@ public final class ChatRepositoryImpl_Factory implements Factory<ChatRepositoryI
 
   private final Provider<MessageDao> messageDaoProvider;
 
+  private final Provider<AppDatabase> databaseProvider;
+
   private final Provider<SharedPreferences> encryptedPrefsProvider;
 
   public ChatRepositoryImpl_Factory(Provider<ChatApi> chatApiProvider,
       Provider<ChatDao> chatDaoProvider, Provider<ChatParticipantDao> chatParticipantDaoProvider,
       Provider<UserDao> userDaoProvider, Provider<MessageDao> messageDaoProvider,
-      Provider<SharedPreferences> encryptedPrefsProvider) {
+      Provider<AppDatabase> databaseProvider, Provider<SharedPreferences> encryptedPrefsProvider) {
     this.chatApiProvider = chatApiProvider;
     this.chatDaoProvider = chatDaoProvider;
     this.chatParticipantDaoProvider = chatParticipantDaoProvider;
     this.userDaoProvider = userDaoProvider;
     this.messageDaoProvider = messageDaoProvider;
+    this.databaseProvider = databaseProvider;
     this.encryptedPrefsProvider = encryptedPrefsProvider;
   }
 
   @Override
   public ChatRepositoryImpl get() {
-    return newInstance(chatApiProvider.get(), chatDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), messageDaoProvider.get(), encryptedPrefsProvider.get());
+    return newInstance(chatApiProvider.get(), chatDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), messageDaoProvider.get(), databaseProvider.get(), encryptedPrefsProvider.get());
   }
 
   public static ChatRepositoryImpl_Factory create(Provider<ChatApi> chatApiProvider,
       Provider<ChatDao> chatDaoProvider, Provider<ChatParticipantDao> chatParticipantDaoProvider,
       Provider<UserDao> userDaoProvider, Provider<MessageDao> messageDaoProvider,
-      Provider<SharedPreferences> encryptedPrefsProvider) {
-    return new ChatRepositoryImpl_Factory(chatApiProvider, chatDaoProvider, chatParticipantDaoProvider, userDaoProvider, messageDaoProvider, encryptedPrefsProvider);
+      Provider<AppDatabase> databaseProvider, Provider<SharedPreferences> encryptedPrefsProvider) {
+    return new ChatRepositoryImpl_Factory(chatApiProvider, chatDaoProvider, chatParticipantDaoProvider, userDaoProvider, messageDaoProvider, databaseProvider, encryptedPrefsProvider);
   }
 
   public static ChatRepositoryImpl newInstance(ChatApi chatApi, ChatDao chatDao,
       ChatParticipantDao chatParticipantDao, UserDao userDao, MessageDao messageDao,
-      SharedPreferences encryptedPrefs) {
-    return new ChatRepositoryImpl(chatApi, chatDao, chatParticipantDao, userDao, messageDao, encryptedPrefs);
+      AppDatabase database, SharedPreferences encryptedPrefs) {
+    return new ChatRepositoryImpl(chatApi, chatDao, chatParticipantDao, userDao, messageDao, database, encryptedPrefs);
   }
 }
