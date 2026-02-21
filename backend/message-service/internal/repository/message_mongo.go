@@ -239,21 +239,30 @@ func (r *messageMongoRepo) UnstarMessage(ctx context.Context, messageID, userID 
 }
 
 // AddReaction adds or replaces a user's reaction on a message (one reaction per user).
+// Uses an aggregation pipeline update to atomically remove any existing reaction
+// and add the new one in a single operation.
 func (r *messageMongoRepo) AddReaction(ctx context.Context, messageID, userID, emoji string) error {
-	// Remove existing reaction from this user first (one reaction per user)
-	r.col.UpdateOne(ctx,
-		bson.M{"message_id": messageID},
-		bson.M{"$pull": bson.M{"reactions": bson.M{"user_id": userID}}},
-	)
-	// Add the new reaction
-	result, err := r.col.UpdateOne(ctx,
-		bson.M{"message_id": messageID},
-		bson.M{"$push": bson.M{"reactions": bson.M{
-			"emoji":      emoji,
-			"user_id":    userID,
-			"created_at": time.Now(),
+	now := time.Now()
+	pipeline := mongo.Pipeline{
+		bson.D{{Key: "$set", Value: bson.M{
+			"reactions": bson.M{
+				"$concatArrays": bson.A{
+					bson.M{"$filter": bson.M{
+						"input": bson.M{"$ifNull": bson.A{"$reactions", bson.A{}}},
+						"cond":  bson.M{"$ne": bson.A{"$$this.user_id", userID}},
+					}},
+					bson.A{bson.M{
+						"emoji":      emoji,
+						"user_id":    userID,
+						"created_at": now,
+					}},
+				},
+			},
+			"updated_at": now,
 		}}},
-	)
+	}
+
+	result, err := r.col.UpdateOne(ctx, bson.M{"message_id": messageID}, pipeline)
 	if err != nil {
 		return err
 	}
