@@ -56,7 +56,7 @@ public class MessageDao_Impl(
     this.__db = __db
     this.__insertionAdapterOfMessageEntity = object : EntityInsertionAdapter<MessageEntity>(__db) {
       protected override fun createQuery(): String =
-          "INSERT OR IGNORE INTO `messages` (`messageId`,`clientMsgId`,`chatId`,`senderId`,`messageType`,`content`,`mediaId`,`mediaUrl`,`mediaThumbnailUrl`,`mediaMimeType`,`mediaSize`,`mediaDuration`,`replyToMessageId`,`status`,`isDeleted`,`deletedForEveryone`,`isStarred`,`latitude`,`longitude`,`reactionsJson`,`timestamp`,`createdAt`,`scheduledAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+          "INSERT OR REPLACE INTO `messages` (`messageId`,`clientMsgId`,`chatId`,`senderId`,`messageType`,`content`,`mediaId`,`mediaUrl`,`mediaThumbnailUrl`,`mediaMimeType`,`mediaSize`,`mediaDuration`,`replyToMessageId`,`status`,`isDeleted`,`deletedForEveryone`,`isStarred`,`latitude`,`longitude`,`reactionsJson`,`timestamp`,`createdAt`,`scheduledAt`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
       protected override fun bind(statement: SupportSQLiteStatement, entity: MessageEntity) {
         statement.bindString(1, entity.messageId)
