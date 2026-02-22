@@ -1136,8 +1136,8 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
     }
 
     @Override
-    public void injectWhatsAppApplication(WhatsAppApplication arg0) {
-      injectWhatsAppApplication2(arg0);
+    public void injectWhatsAppApplication(WhatsAppApplication whatsAppApplication) {
+      injectWhatsAppApplication2(whatsAppApplication);
     }
 
     @Override
@@ -1266,7 +1266,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           };
 
           case 20: // com.whatsappclone.feature.chat.data.MessageRepositoryImpl 
-          return (T) new MessageRepositoryImpl(singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideJsonProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+          return (T) new MessageRepositoryImpl(singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideAppDatabaseProvider.get(), singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideJsonProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
           case 21: // com.whatsappclone.core.network.api.MessageApi 
           return (T) NetworkModule_ProvideMessageApiFactory.provideMessageApi(singletonCImpl.provideRetrofitProvider.get());
