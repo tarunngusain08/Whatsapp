@@ -19,6 +19,7 @@ func (s *wsServiceImpl) ensureStreams() error {
 	}{
 		{name: "MESSAGES", subjects: []string{"msg.>"}},
 		{name: "CHATS", subjects: []string{"chat.>", "group.>"}},
+		{name: "CALLS", subjects: []string{"call.>"}},
 	}
 	for _, st := range streams {
 		info, _ := s.js.StreamInfo(st.name)
