@@ -1,14 +1,21 @@
 package com.whatsappclone.app
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -65,6 +72,22 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             var sessionExpired by remember { mutableStateOf(false) }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission()
+                ) { /* granted or denied — no action needed */ }
+
+                LaunchedEffect(Unit) {
+                    val status = ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    )
+                    if (status != PackageManager.PERMISSION_GRANTED) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+            }
 
             LaunchedEffect(Unit) {
                 lifecycleScope.launch {
@@ -123,10 +146,16 @@ class MainActivity : FragmentActivity() {
         setIntent(intent)
     }
 
+    override fun onDestroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(wsLifecycleManager)
+        super.onDestroy()
+    }
+
     private fun extractDeepLinkChatId(intent: Intent?): String? {
         val uri = intent?.data ?: return null
         if (uri.scheme == "whatsapp-clone" && uri.host == "chat") {
-            return uri.lastPathSegment
+            val segment = uri.lastPathSegment ?: return null
+            return Uri.decode(segment)
         }
         return null
     }
