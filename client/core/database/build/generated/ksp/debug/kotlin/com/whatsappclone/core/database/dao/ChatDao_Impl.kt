@@ -467,7 +467,7 @@ public class ChatDao_Impl(
         |
         |        SELECT 
         |            c.*,
-        |            m.content AS lastMessageText,
+        |            COALESCE(m.content, c.lastMessagePreview) AS lastMessageText,
         |            m.messageType AS lastMessageType,
         |            m.senderId AS lastMessageSenderId,
         |            u.displayName AS lastMessageSenderName,
@@ -475,7 +475,8 @@ public class ChatDao_Impl(
         |            pu.avatarUrl AS directChatOtherUserAvatarUrl,
         |            pu.isOnline AS otherUserIsOnline
         |        FROM chats c
-        |        LEFT JOIN messages m ON c.lastMessageId = m.messageId
+        |        LEFT JOIN messages m 
+        |            ON (c.lastMessageId = m.messageId OR c.lastMessageId = m.clientMsgId)
         |        LEFT JOIN users u ON m.senderId = u.id
         |        LEFT JOIN chat_participants cp 
         |            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != ?
@@ -895,7 +896,7 @@ public class ChatDao_Impl(
         |
         |        SELECT 
         |            c.*,
-        |            m.content AS lastMessageText,
+        |            COALESCE(m.content, c.lastMessagePreview) AS lastMessageText,
         |            m.messageType AS lastMessageType,
         |            m.senderId AS lastMessageSenderId,
         |            u.displayName AS lastMessageSenderName,
@@ -903,7 +904,8 @@ public class ChatDao_Impl(
         |            pu.avatarUrl AS directChatOtherUserAvatarUrl,
         |            pu.isOnline AS otherUserIsOnline
         |        FROM chats c
-        |        LEFT JOIN messages m ON c.lastMessageId = m.messageId
+        |        LEFT JOIN messages m 
+        |            ON (c.lastMessageId = m.messageId OR c.lastMessageId = m.clientMsgId)
         |        LEFT JOIN users u ON m.senderId = u.id
         |        LEFT JOIN chat_participants cp 
         |            ON c.chatId = cp.chatId AND c.chatType = 'direct' AND cp.userId != ?
