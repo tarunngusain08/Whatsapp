@@ -19,6 +19,7 @@ type Consumer struct {
 	presenceRepo repository.PresenceRepository
 	muteRepo     repository.ParticipantRepository
 	tokenRepo    repository.DeviceTokenRepository
+	userRepo     repository.UserRepository
 	fcmClient    FCMClient
 	batcher      *NotificationBatcher
 	log          zerolog.Logger
@@ -29,6 +30,7 @@ func NewConsumer(
 	presenceRepo repository.PresenceRepository,
 	muteRepo repository.ParticipantRepository,
 	tokenRepo repository.DeviceTokenRepository,
+	userRepo repository.UserRepository,
 	fcmClient FCMClient,
 	batcher *NotificationBatcher,
 	log zerolog.Logger,
@@ -38,6 +40,7 @@ func NewConsumer(
 		presenceRepo: presenceRepo,
 		muteRepo:     muteRepo,
 		tokenRepo:    tokenRepo,
+		userRepo:     userRepo,
 		fcmClient:    fcmClient,
 		batcher:      batcher,
 		log:          log,
@@ -52,6 +55,7 @@ func (c *Consumer) ensureStreams() error {
 	}{
 		{name: "MESSAGES", subjects: []string{"msg.>"}},
 		{name: "CHATS", subjects: []string{"chat.>", "group.>"}},
+		{name: "CALLS", subjects: []string{"call.>"}},
 	}
 	for _, st := range streams {
 		info, _ := c.js.StreamInfo(st.name)
@@ -79,6 +83,9 @@ func (c *Consumer) Start(ctx context.Context) error {
 		return err
 	}
 	if err := c.subscribeMemberEvents(ctx); err != nil {
+		return err
+	}
+	if err := c.subscribeCallEvents(ctx); err != nil {
 		return err
 	}
 
@@ -143,12 +150,21 @@ func (c *Consumer) subscribeMemberEvents(ctx context.Context) error {
 // handleNewMessage processes a single message event and sends push notifications
 // to all offline, non-muted recipients.
 func (c *Consumer) handleNewMessage(ctx context.Context, event *model.MessageEvent) error {
+	body := event.Payload.Body
+	chatType := "direct"
+	if event.IsGroup {
+		chatType = "group"
+	}
+	chatName := event.ChatName
+	if chatName == "" {
+		chatName = event.SenderName
+	}
+
 	for _, recipientID := range event.ParticipantIDs {
 		if recipientID == event.SenderID {
 			continue
 		}
 
-		// Skip if user is online — WebSocket will deliver.
 		online, err := c.presenceRepo.IsOnline(ctx, recipientID)
 		if err != nil {
 			c.log.Warn().Err(err).Str("user_id", recipientID).Msg("presence check failed, proceeding with push")
@@ -156,7 +172,6 @@ func (c *Consumer) handleNewMessage(ctx context.Context, event *model.MessageEve
 			continue
 		}
 
-		// Skip if user has muted this chat.
 		muted, err := c.muteRepo.IsMuted(ctx, event.ChatID, recipientID)
 		if err != nil {
 			c.log.Warn().Err(err).Str("user_id", recipientID).Msg("mute check failed, proceeding with push")
@@ -165,17 +180,23 @@ func (c *Consumer) handleNewMessage(ctx context.Context, event *model.MessageEve
 		}
 
 		payload := map[string]string{
-			"type":      "message",
-			"chat_id":   event.ChatID,
-			"sender_id": event.SenderID,
-			"msg_type":  event.Type,
-			"body":      truncate(event.Body, 200),
+			"type":        "message",
+			"chatId":      event.ChatID,
+			"messageId":   event.MessageID,
+			"senderId":    event.SenderID,
+			"senderName":  event.SenderName,
+			"content":     truncate(body, 200),
+			"messageType": event.Type,
+			"chatType":    chatType,
+			"chatName":    chatName,
+			"avatarUrl":   event.SenderAvatar,
+			"timestamp":   event.CreatedAt,
 		}
 
 		if event.IsGroup {
-			c.batcher.Add(recipientID, event.ChatID, event.ChatName, payload)
+			c.batcher.Add(recipientID, event.ChatID, chatName, payload)
 		} else {
-			c.sendPushToUser(ctx, recipientID, event.SenderName, truncate(event.Body, 200), payload)
+			c.sendPushToUser(ctx, recipientID, event.SenderName, truncate(body, 200), payload)
 		}
 	}
 	return nil
@@ -202,6 +223,68 @@ func (c *Consumer) handleGroupMemberAdded(ctx context.Context, event *model.Memb
 	}
 
 	c.sendPushToUser(ctx, event.UserID, title, body, data)
+	return nil
+}
+
+// subscribeCallEvents sets up a durable consumer for call.new events.
+func (c *Consumer) subscribeCallEvents(ctx context.Context) error {
+	_, err := c.js.Subscribe("call.new", func(natsMsg *nats.Msg) {
+		var event model.CallEvent
+		if err := json.Unmarshal(natsMsg.Data, &event); err != nil {
+			c.log.Error().Err(err).Msg("failed to unmarshal call.new event")
+			_ = natsMsg.Nak()
+			return
+		}
+
+		if err := c.handleNewCall(ctx, &event); err != nil {
+			c.log.Error().Err(err).
+				Str("call_id", event.CallID).
+				Msg("failed to handle call.new notification")
+			_ = natsMsg.Nak()
+			return
+		}
+		_ = natsMsg.Ack()
+	}, nats.Durable("notif-call-consumer"), nats.ManualAck(), nats.AckWait(30*time.Second))
+
+	if err != nil {
+		return fmt.Errorf("subscribe to call.new: %w", err)
+	}
+	return nil
+}
+
+// handleNewCall sends a push notification for an incoming call to an offline user.
+func (c *Consumer) handleNewCall(ctx context.Context, event *model.CallEvent) error {
+	callerName := event.CallerName
+	avatarURL := event.AvatarURL
+
+	if callerName == "" {
+		name, avatar, err := c.userRepo.GetDisplayName(ctx, event.CallerID)
+		if err != nil {
+			c.log.Warn().Err(err).Str("caller_id", event.CallerID).Msg("failed to resolve caller name")
+			callerName = "Unknown"
+		} else {
+			callerName = name
+			if avatarURL == "" {
+				avatarURL = avatar
+			}
+		}
+	}
+
+	callLabel := "Incoming voice call"
+	if event.CallType == "video" {
+		callLabel = "Incoming video call"
+	}
+
+	payload := map[string]string{
+		"type":       "call",
+		"callId":     event.CallID,
+		"callerId":   event.CallerID,
+		"callerName": callerName,
+		"callType":   event.CallType,
+		"avatarUrl":  avatarURL,
+	}
+
+	c.sendPushToUser(ctx, event.TargetID, callerName, callLabel, payload)
 	return nil
 }
 
