@@ -32,16 +32,35 @@ func (p *EventPublisher) EnsureStream() error {
 	return err
 }
 
+// MessageEnrichment holds additional metadata resolved at send time so
+// downstream consumers (notification-service, websocket-service) can
+// build rich push notifications without extra lookups.
+type MessageEnrichment struct {
+	SenderName     string   `json:"sender_name"`
+	SenderAvatar   string   `json:"sender_avatar"`
+	ChatName       string   `json:"chat_name"`
+	IsGroup        bool     `json:"is_group"`
+	ParticipantIDs []string `json:"participant_ids"`
+}
+
 // PublishNewMessage publishes a msg.new event for real-time delivery.
-func (p *EventPublisher) PublishNewMessage(ctx context.Context, msg *model.Message) error {
-	data, err := json.Marshal(map[string]interface{}{
+func (p *EventPublisher) PublishNewMessage(ctx context.Context, msg *model.Message, enrichment *MessageEnrichment) error {
+	payload := map[string]interface{}{
 		"message_id": msg.MessageID,
 		"chat_id":    msg.ChatID,
 		"sender_id":  msg.SenderID,
 		"type":       msg.Type,
 		"payload":    msg.Payload,
 		"created_at": msg.CreatedAt,
-	})
+	}
+	if enrichment != nil {
+		payload["sender_name"] = enrichment.SenderName
+		payload["sender_avatar"] = enrichment.SenderAvatar
+		payload["chat_name"] = enrichment.ChatName
+		payload["is_group"] = enrichment.IsGroup
+		payload["participant_ids"] = enrichment.ParticipantIDs
+	}
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
