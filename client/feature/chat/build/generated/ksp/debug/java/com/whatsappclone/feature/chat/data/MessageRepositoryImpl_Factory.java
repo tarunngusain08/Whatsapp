@@ -1,6 +1,7 @@
 package com.whatsappclone.feature.chat.data;
 
 import android.content.SharedPreferences;
+import com.whatsappclone.core.database.AppDatabase;
 import com.whatsappclone.core.database.dao.ChatDao;
 import com.whatsappclone.core.database.dao.MessageDao;
 import com.whatsappclone.core.network.api.MessageApi;
@@ -36,6 +37,8 @@ public final class MessageRepositoryImpl_Factory implements Factory<MessageRepos
 
   private final Provider<ChatDao> chatDaoProvider;
 
+  private final Provider<AppDatabase> databaseProvider;
+
   private final Provider<WebSocketManager> webSocketManagerProvider;
 
   private final Provider<Json> jsonProvider;
@@ -44,11 +47,12 @@ public final class MessageRepositoryImpl_Factory implements Factory<MessageRepos
 
   public MessageRepositoryImpl_Factory(Provider<MessageApi> messageApiProvider,
       Provider<MessageDao> messageDaoProvider, Provider<ChatDao> chatDaoProvider,
-      Provider<WebSocketManager> webSocketManagerProvider, Provider<Json> jsonProvider,
-      Provider<SharedPreferences> encryptedPrefsProvider) {
+      Provider<AppDatabase> databaseProvider, Provider<WebSocketManager> webSocketManagerProvider,
+      Provider<Json> jsonProvider, Provider<SharedPreferences> encryptedPrefsProvider) {
     this.messageApiProvider = messageApiProvider;
     this.messageDaoProvider = messageDaoProvider;
     this.chatDaoProvider = chatDaoProvider;
+    this.databaseProvider = databaseProvider;
     this.webSocketManagerProvider = webSocketManagerProvider;
     this.jsonProvider = jsonProvider;
     this.encryptedPrefsProvider = encryptedPrefsProvider;
@@ -56,19 +60,19 @@ public final class MessageRepositoryImpl_Factory implements Factory<MessageRepos
 
   @Override
   public MessageRepositoryImpl get() {
-    return newInstance(messageApiProvider.get(), messageDaoProvider.get(), chatDaoProvider.get(), webSocketManagerProvider.get(), jsonProvider.get(), encryptedPrefsProvider.get());
+    return newInstance(messageApiProvider.get(), messageDaoProvider.get(), chatDaoProvider.get(), databaseProvider.get(), webSocketManagerProvider.get(), jsonProvider.get(), encryptedPrefsProvider.get());
   }
 
   public static MessageRepositoryImpl_Factory create(Provider<MessageApi> messageApiProvider,
       Provider<MessageDao> messageDaoProvider, Provider<ChatDao> chatDaoProvider,
-      Provider<WebSocketManager> webSocketManagerProvider, Provider<Json> jsonProvider,
-      Provider<SharedPreferences> encryptedPrefsProvider) {
-    return new MessageRepositoryImpl_Factory(messageApiProvider, messageDaoProvider, chatDaoProvider, webSocketManagerProvider, jsonProvider, encryptedPrefsProvider);
+      Provider<AppDatabase> databaseProvider, Provider<WebSocketManager> webSocketManagerProvider,
+      Provider<Json> jsonProvider, Provider<SharedPreferences> encryptedPrefsProvider) {
+    return new MessageRepositoryImpl_Factory(messageApiProvider, messageDaoProvider, chatDaoProvider, databaseProvider, webSocketManagerProvider, jsonProvider, encryptedPrefsProvider);
   }
 
   public static MessageRepositoryImpl newInstance(MessageApi messageApi, MessageDao messageDao,
-      ChatDao chatDao, WebSocketManager webSocketManager, Json json,
+      ChatDao chatDao, AppDatabase database, WebSocketManager webSocketManager, Json json,
       SharedPreferences encryptedPrefs) {
-    return new MessageRepositoryImpl(messageApi, messageDao, chatDao, webSocketManager, json, encryptedPrefs);
+    return new MessageRepositoryImpl(messageApi, messageDao, chatDao, database, webSocketManager, json, encryptedPrefs);
   }
 }
