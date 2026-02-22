@@ -20,16 +20,20 @@ class PendingMessageWorker @AssistedInject constructor(
         val pendingMessages = messageRepository.getAllPending()
         if (pendingMessages.isEmpty()) return Result.success()
 
-        var allSucceeded = true
+        var failureCount = 0
         for (message in pendingMessages) {
             val result = messageRepository.sendViaRest(message)
             if (result is AppResult.Error) {
-                allSucceeded = false
+                failureCount++
             }
         }
 
-        return if (allSucceeded) Result.success()
-        else if (runAttemptCount < MAX_RETRIES) Result.retry()
+        if (failureCount == 0) return Result.success()
+
+        val remaining = messageRepository.getAllPending()
+        if (remaining.isEmpty()) return Result.success()
+
+        return if (runAttemptCount < MAX_RETRIES) Result.retry()
         else Result.failure()
     }
 
