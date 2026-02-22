@@ -216,6 +216,21 @@ func (s *wsServiceImpl) handleCallOffer(ctx context.Context, client *model.Clien
 	})
 	data, _ := json.Marshal(event)
 	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+
+	if !s.hub.IsConnected(p.TargetUserID) {
+		callEvent, _ := json.Marshal(map[string]string{
+			"call_id":        p.CallID,
+			"caller_id":      client.UserID,
+			"target_user_id": p.TargetUserID,
+			"call_type":      p.CallType,
+		})
+		if _, err := s.js.Publish("call.new", callEvent); err != nil {
+			s.log.Error().Err(err).
+				Str("call_id", p.CallID).
+				Msg("failed to publish call.new for offline user")
+		}
+	}
+
 	return nil
 }
 
