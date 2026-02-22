@@ -8,7 +8,9 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.whatsappclone.app.notification.ActiveChatTrackerImpl
 import com.whatsappclone.app.notification.FCMTokenManager
+import com.whatsappclone.core.common.notification.ActiveChatTracker
 import com.whatsappclone.core.network.token.DeviceTokenManager
 import okhttp3.OkHttpClient
 import dagger.Module
@@ -71,6 +73,12 @@ object AppModule {
     fun provideDeviceTokenManager(
         fcmTokenManager: FCMTokenManager
     ): DeviceTokenManager = fcmTokenManager
+
+    @Provides
+    @Singleton
+    fun provideActiveChatTracker(
+        impl: ActiveChatTrackerImpl
+    ): ActiveChatTracker = impl
 
     @Provides
     @Singleton
