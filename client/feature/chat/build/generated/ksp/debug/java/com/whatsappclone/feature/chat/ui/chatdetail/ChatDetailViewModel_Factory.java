@@ -2,6 +2,7 @@ package com.whatsappclone.feature.chat.ui.chatdetail;
 
 import android.content.Context;
 import androidx.lifecycle.SavedStateHandle;
+import com.whatsappclone.core.common.notification.ActiveChatTracker;
 import com.whatsappclone.core.database.dao.ChatParticipantDao;
 import com.whatsappclone.core.database.dao.MessageDao;
 import com.whatsappclone.core.database.dao.UserDao;
@@ -64,6 +65,8 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
 
   private final Provider<VoiceRecorder> voiceRecorderProvider;
 
+  private final Provider<ActiveChatTracker> activeChatTrackerProvider;
+
   private final Provider<Context> appContextProvider;
 
   public ChatDetailViewModel_Factory(Provider<SavedStateHandle> savedStateHandleProvider,
@@ -77,7 +80,8 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
       Provider<MessageDao> messageDaoProvider,
       Provider<ChatParticipantDao> chatParticipantDaoProvider, Provider<UserDao> userDaoProvider,
       Provider<MediaRepository> mediaRepositoryProvider,
-      Provider<VoiceRecorder> voiceRecorderProvider, Provider<Context> appContextProvider) {
+      Provider<VoiceRecorder> voiceRecorderProvider,
+      Provider<ActiveChatTracker> activeChatTrackerProvider, Provider<Context> appContextProvider) {
     this.savedStateHandleProvider = savedStateHandleProvider;
     this.messageRepositoryProvider = messageRepositoryProvider;
     this.chatRepositoryProvider = chatRepositoryProvider;
@@ -91,12 +95,13 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
     this.userDaoProvider = userDaoProvider;
     this.mediaRepositoryProvider = mediaRepositoryProvider;
     this.voiceRecorderProvider = voiceRecorderProvider;
+    this.activeChatTrackerProvider = activeChatTrackerProvider;
     this.appContextProvider = appContextProvider;
   }
 
   @Override
   public ChatDetailViewModel get() {
-    return newInstance(savedStateHandleProvider.get(), messageRepositoryProvider.get(), chatRepositoryProvider.get(), userRepositoryProvider.get(), sendMessageUseCaseProvider.get(), markMessagesReadUseCaseProvider.get(), webSocketManagerProvider.get(), typingStateHolderProvider.get(), messageDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), mediaRepositoryProvider.get(), voiceRecorderProvider.get(), appContextProvider.get());
+    return newInstance(savedStateHandleProvider.get(), messageRepositoryProvider.get(), chatRepositoryProvider.get(), userRepositoryProvider.get(), sendMessageUseCaseProvider.get(), markMessagesReadUseCaseProvider.get(), webSocketManagerProvider.get(), typingStateHolderProvider.get(), messageDaoProvider.get(), chatParticipantDaoProvider.get(), userDaoProvider.get(), mediaRepositoryProvider.get(), voiceRecorderProvider.get(), activeChatTrackerProvider.get(), appContextProvider.get());
   }
 
   public static ChatDetailViewModel_Factory create(
@@ -111,8 +116,9 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
       Provider<MessageDao> messageDaoProvider,
       Provider<ChatParticipantDao> chatParticipantDaoProvider, Provider<UserDao> userDaoProvider,
       Provider<MediaRepository> mediaRepositoryProvider,
-      Provider<VoiceRecorder> voiceRecorderProvider, Provider<Context> appContextProvider) {
-    return new ChatDetailViewModel_Factory(savedStateHandleProvider, messageRepositoryProvider, chatRepositoryProvider, userRepositoryProvider, sendMessageUseCaseProvider, markMessagesReadUseCaseProvider, webSocketManagerProvider, typingStateHolderProvider, messageDaoProvider, chatParticipantDaoProvider, userDaoProvider, mediaRepositoryProvider, voiceRecorderProvider, appContextProvider);
+      Provider<VoiceRecorder> voiceRecorderProvider,
+      Provider<ActiveChatTracker> activeChatTrackerProvider, Provider<Context> appContextProvider) {
+    return new ChatDetailViewModel_Factory(savedStateHandleProvider, messageRepositoryProvider, chatRepositoryProvider, userRepositoryProvider, sendMessageUseCaseProvider, markMessagesReadUseCaseProvider, webSocketManagerProvider, typingStateHolderProvider, messageDaoProvider, chatParticipantDaoProvider, userDaoProvider, mediaRepositoryProvider, voiceRecorderProvider, activeChatTrackerProvider, appContextProvider);
   }
 
   public static ChatDetailViewModel newInstance(SavedStateHandle savedStateHandle,
@@ -121,7 +127,7 @@ public final class ChatDetailViewModel_Factory implements Factory<ChatDetailView
       MarkMessagesReadUseCase markMessagesReadUseCase, WebSocketManager webSocketManager,
       TypingStateHolder typingStateHolder, MessageDao messageDao,
       ChatParticipantDao chatParticipantDao, UserDao userDao, MediaRepository mediaRepository,
-      VoiceRecorder voiceRecorder, Context appContext) {
-    return new ChatDetailViewModel(savedStateHandle, messageRepository, chatRepository, userRepository, sendMessageUseCase, markMessagesReadUseCase, webSocketManager, typingStateHolder, messageDao, chatParticipantDao, userDao, mediaRepository, voiceRecorder, appContext);
+      VoiceRecorder voiceRecorder, ActiveChatTracker activeChatTracker, Context appContext) {
+    return new ChatDetailViewModel(savedStateHandle, messageRepository, chatRepository, userRepository, sendMessageUseCase, markMessagesReadUseCase, webSocketManager, typingStateHolder, messageDao, chatParticipantDao, userDao, mediaRepository, voiceRecorder, activeChatTracker, appContext);
   }
 }
