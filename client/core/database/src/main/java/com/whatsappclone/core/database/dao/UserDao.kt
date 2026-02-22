@@ -38,4 +38,7 @@ interface UserDao {
 
     @Query("SELECT * FROM users WHERE isBlocked = 1 ORDER BY displayName ASC")
     fun observeBlockedUsers(): Flow<List<UserEntity>>
+
+    @Query("UPDATE users SET isOnline = 0 WHERE isOnline = 1")
+    suspend fun setAllOffline()
 }
