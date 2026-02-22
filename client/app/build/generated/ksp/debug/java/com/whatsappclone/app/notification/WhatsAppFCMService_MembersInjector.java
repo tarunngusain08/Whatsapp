@@ -1,5 +1,6 @@
 package com.whatsappclone.app.notification;
 
+import com.whatsappclone.core.common.notification.ActiveChatTracker;
 import com.whatsappclone.core.database.dao.ChatDao;
 import com.whatsappclone.core.database.dao.MessageDao;
 import dagger.MembersInjector;
