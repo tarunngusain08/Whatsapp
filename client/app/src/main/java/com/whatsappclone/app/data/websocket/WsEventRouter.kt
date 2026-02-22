@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -62,6 +63,11 @@ class WsEventRouter @Inject constructor(
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private var started = false
+
+    fun shutdown() {
+        scope.cancel()
+        started = false
+    }
 
     fun start() {
         if (started) return
@@ -207,14 +213,16 @@ class WsEventRouter @Inject constructor(
     }
 
     private suspend fun handleMessageStatus(event: ServerWsEvent.MessageStatus) {
-        val existing = messageDao.getById(event.messageId) ?: return
+        val existing = messageDao.getById(event.messageId)
+            ?: messageDao.getByClientMsgId(event.messageId)
+            ?: return
         val newRank = statusRank(event.status)
         if (newRank < 0) {
             Log.w(TAG, "Ignoring unknown status '${event.status}' for message ${event.messageId}")
             return
         }
         if (newRank > statusRank(existing.status)) {
-            messageDao.updateStatus(messageId = event.messageId, status = event.status)
+            messageDao.updateStatus(messageId = existing.messageId, status = event.status)
         }
     }
 
@@ -321,13 +329,15 @@ class WsEventRouter @Inject constructor(
         }.toString()
     }
 
-    private fun handleCallOffer(event: ServerWsEvent.CallOffer) {
+    private suspend fun handleCallOffer(event: ServerWsEvent.CallOffer) {
         Log.i(TAG, "Incoming call offer: callId=${event.callId} from=${event.callerId} type=${event.callType}")
+        val callerUser = userDao.getById(event.callerId)
         callService.onIncomingOffer(
             callId = event.callId,
             callerId = event.callerId,
-            callerName = event.callerId.take(8),
-            callerAvatar = null,
+            callerName = callerUser?.displayName?.takeIf { it.isNotBlank() }
+                ?: event.callerId.take(8),
+            callerAvatar = callerUser?.avatarUrl,
             sdp = event.sdp,
             callType = event.callType
         )
