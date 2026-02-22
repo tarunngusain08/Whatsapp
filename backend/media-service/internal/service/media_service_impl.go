@@ -127,11 +127,10 @@ func (s *mediaServiceImpl) Upload(ctx context.Context, uploaderID string, fh *mu
 		return nil, apperr.NewInternal("failed to save media metadata", err)
 	}
 
-	// Generate presigned URLs.
-	downloadURL, _ := s.storageRepo.PresignedURL(ctx, storageKey, s.presignedTTL)
+	downloadURL := fmt.Sprintf("/api/v1/media/%s/download", mediaID)
 	var thumbURL string
 	if thumbnailKey != "" {
-		thumbURL, _ = s.storageRepo.PresignedURL(ctx, thumbnailKey, s.presignedTTL)
+		thumbURL = fmt.Sprintf("/api/v1/media/%s/thumbnail", mediaID)
 	}
 
 	return &model.UploadResult{
@@ -190,6 +189,25 @@ func (s *mediaServiceImpl) StreamFile(ctx context.Context, mediaID string) (io.R
 	reader, contentType, size, err := s.storageRepo.GetObject(ctx, media.StorageKey)
 	if err != nil {
 		return nil, "", 0, apperr.NewInternal("failed to stream file from storage", err)
+	}
+	return reader, contentType, size, nil
+}
+
+func (s *mediaServiceImpl) StreamThumbnail(ctx context.Context, mediaID string) (io.ReadCloser, string, int64, error) {
+	media, err := s.mediaRepo.GetByID(ctx, mediaID)
+	if err != nil {
+		return nil, "", 0, apperr.NewInternal("failed to get media", err)
+	}
+	if media == nil {
+		return nil, "", 0, apperr.NewNotFound("media not found")
+	}
+	if media.ThumbnailKey == "" {
+		return s.StreamFile(ctx, mediaID)
+	}
+
+	reader, contentType, size, err := s.storageRepo.GetObject(ctx, media.ThumbnailKey)
+	if err != nil {
+		return nil, "", 0, apperr.NewInternal("failed to stream thumbnail from storage", err)
 	}
 	return reader, contentType, size, nil
 }
