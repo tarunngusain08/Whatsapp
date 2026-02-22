@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences;
 import com.whatsappclone.core.database.dao.ChatDao;
 import com.whatsappclone.core.database.dao.ChatParticipantDao;
 import com.whatsappclone.core.database.dao.MessageDao;
+import com.whatsappclone.core.database.dao.UserDao;
 import com.whatsappclone.core.network.api.ChatApi;
 import com.whatsappclone.core.network.api.MessageApi;
 import com.whatsappclone.core.network.websocket.WebSocketManager;
@@ -44,38 +45,43 @@ public final class SyncOnReconnectManager_Factory implements Factory<SyncOnRecon
 
   private final Provider<MessageDao> messageDaoProvider;
 
+  private final Provider<UserDao> userDaoProvider;
+
   private final Provider<DataStore<Preferences>> dataStoreProvider;
 
   public SyncOnReconnectManager_Factory(Provider<WebSocketManager> webSocketManagerProvider,
       Provider<ChatApi> chatApiProvider, Provider<MessageApi> messageApiProvider,
       Provider<ChatDao> chatDaoProvider, Provider<ChatParticipantDao> chatParticipantDaoProvider,
-      Provider<MessageDao> messageDaoProvider, Provider<DataStore<Preferences>> dataStoreProvider) {
+      Provider<MessageDao> messageDaoProvider, Provider<UserDao> userDaoProvider,
+      Provider<DataStore<Preferences>> dataStoreProvider) {
     this.webSocketManagerProvider = webSocketManagerProvider;
     this.chatApiProvider = chatApiProvider;
     this.messageApiProvider = messageApiProvider;
     this.chatDaoProvider = chatDaoProvider;
     this.chatParticipantDaoProvider = chatParticipantDaoProvider;
     this.messageDaoProvider = messageDaoProvider;
+    this.userDaoProvider = userDaoProvider;
     this.dataStoreProvider = dataStoreProvider;
   }
 
   @Override
   public SyncOnReconnectManager get() {
-    return newInstance(webSocketManagerProvider.get(), chatApiProvider.get(), messageApiProvider.get(), chatDaoProvider.get(), chatParticipantDaoProvider.get(), messageDaoProvider.get(), dataStoreProvider.get());
+    return newInstance(webSocketManagerProvider.get(), chatApiProvider.get(), messageApiProvider.get(), chatDaoProvider.get(), chatParticipantDaoProvider.get(), messageDaoProvider.get(), userDaoProvider.get(), dataStoreProvider.get());
   }
 
   public static SyncOnReconnectManager_Factory create(
       Provider<WebSocketManager> webSocketManagerProvider, Provider<ChatApi> chatApiProvider,
       Provider<MessageApi> messageApiProvider, Provider<ChatDao> chatDaoProvider,
       Provider<ChatParticipantDao> chatParticipantDaoProvider,
-      Provider<MessageDao> messageDaoProvider, Provider<DataStore<Preferences>> dataStoreProvider) {
-    return new SyncOnReconnectManager_Factory(webSocketManagerProvider, chatApiProvider, messageApiProvider, chatDaoProvider, chatParticipantDaoProvider, messageDaoProvider, dataStoreProvider);
+      Provider<MessageDao> messageDaoProvider, Provider<UserDao> userDaoProvider,
+      Provider<DataStore<Preferences>> dataStoreProvider) {
+    return new SyncOnReconnectManager_Factory(webSocketManagerProvider, chatApiProvider, messageApiProvider, chatDaoProvider, chatParticipantDaoProvider, messageDaoProvider, userDaoProvider, dataStoreProvider);
   }
 
   public static SyncOnReconnectManager newInstance(WebSocketManager webSocketManager,
       ChatApi chatApi, MessageApi messageApi, ChatDao chatDao,
-      ChatParticipantDao chatParticipantDao, MessageDao messageDao,
+      ChatParticipantDao chatParticipantDao, MessageDao messageDao, UserDao userDao,
       DataStore<Preferences> dataStore) {
-    return new SyncOnReconnectManager(webSocketManager, chatApi, messageApi, chatDao, chatParticipantDao, messageDao, dataStore);
+    return new SyncOnReconnectManager(webSocketManager, chatApi, messageApi, chatDao, chatParticipantDao, messageDao, userDao, dataStore);
   }
 }
