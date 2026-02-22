@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ChatParticipantDao
 import com.whatsappclone.core.database.dao.MessageDao
+import com.whatsappclone.core.database.dao.UserDao
 import com.whatsappclone.core.database.entity.ChatEntity
 import com.whatsappclone.core.database.entity.ChatParticipantEntity
 import com.whatsappclone.core.network.api.ChatApi
@@ -36,6 +37,7 @@ class SyncOnReconnectManager @Inject constructor(
     private val chatDao: ChatDao,
     private val chatParticipantDao: ChatParticipantDao,
     private val messageDao: MessageDao,
+    private val userDao: UserDao,
     private val dataStore: DataStore<Preferences>
 ) {
 
@@ -68,6 +70,7 @@ class SyncOnReconnectManager @Inject constructor(
         }
         try {
             Log.d(TAG, "Connection established, starting sync...")
+            try { userDao.setAllOffline() } catch (e: Exception) { Log.e(TAG, "Failed to reset presence", e) }
             try { syncChats() } catch (e: Exception) { Log.e(TAG, "Failed to sync chats", e) }
             try { flushPendingMessages() } catch (e: Exception) { Log.e(TAG, "Failed to flush pending", e) }
             try { updateLastSyncTimestamp() } catch (e: Exception) { Log.e(TAG, "Failed to update timestamp", e) }
