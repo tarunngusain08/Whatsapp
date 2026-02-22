@@ -79,8 +79,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import com.whatsappclone.feature.chat.model.MessageUi
@@ -102,6 +104,8 @@ fun ChatDetailScreen(
     onNavigateToReceiptDetails: (messageId: String) -> Unit = {},
     onNavigateToWallpaper: (chatId: String) -> Unit = {},
     onNavigateToLocationPicker: (chatId: String) -> Unit = {},
+    onAudioCall: (userId: String, name: String, avatarUrl: String?) -> Unit = { _, _, _ -> },
+    onVideoCall: (userId: String, name: String, avatarUrl: String?) -> Unit = { _, _, _ -> },
     viewModel: ChatDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -109,8 +113,10 @@ fun ChatDetailScreen(
     val replyToMessage by viewModel.replyToMessage.collectAsStateWithLifecycle()
     val recordingState by viewModel.recordingState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.markAsRead()
+    LaunchedEffect(messages.itemCount) {
+        if (messages.itemCount > 0) {
+            viewModel.markAsRead()
+        }
     }
 
     ChatDetailContent(
@@ -156,7 +162,17 @@ fun ChatDetailScreen(
         onDeleteSelectedMessages = viewModel::deleteSelectedMessages,
         onStarSelectedMessages = viewModel::starSelectedMessages,
         onCopySelectedMessages = viewModel::copySelectedMessages,
-        onReactionToggled = viewModel::toggleReaction
+        onReactionToggled = viewModel::toggleReaction,
+        onAudioCall = {
+            uiState.otherUserId?.let { userId ->
+                onAudioCall(userId, uiState.chatName, uiState.chatAvatarUrl)
+            }
+        },
+        onVideoCall = {
+            uiState.otherUserId?.let { userId ->
+                onVideoCall(userId, uiState.chatName, uiState.chatAvatarUrl)
+            }
+        }
     )
 }
 
@@ -211,7 +227,9 @@ private fun ChatDetailContent(
     onVideoClick: (MessageUi) -> Unit = {},
     onDocumentClick: (MessageUi) -> Unit = {},
     onDownloadClick: (MessageUi) -> Unit = {},
-    onReactionToggled: (String, String) -> Unit = { _, _ -> }
+    onReactionToggled: (String, String) -> Unit = { _, _ -> },
+    onAudioCall: () -> Unit = {},
+    onVideoCall: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -333,7 +351,9 @@ private fun ChatDetailContent(
                         onOpenSearch = onOpenSearch,
                         onSetDisappearingTimer = onSetDisappearingTimer,
                         onWallpaperClick = onWallpaperClick,
-                        onExportChat = onExportChat
+                        onExportChat = onExportChat,
+                        onAudioCall = onAudioCall,
+                        onVideoCall = onVideoCall
                     )
                 }
             }
@@ -565,7 +585,9 @@ private fun ChatDetailTopBar(
     onOpenSearch: () -> Unit = {},
     onSetDisappearingTimer: (String) -> Unit = {},
     onWallpaperClick: () -> Unit = {},
-    onExportChat: () -> Unit = {}
+    onExportChat: () -> Unit = {},
+    onAudioCall: () -> Unit = {},
+    onVideoCall: () -> Unit = {}
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDisappearingSheet by remember { mutableStateOf(false) }
@@ -622,6 +644,20 @@ private fun ChatDetailTopBar(
             }
         },
         actions = {
+            IconButton(onClick = onVideoCall) {
+                Icon(
+                    imageVector = Icons.Filled.Videocam,
+                    contentDescription = "Video call",
+                    tint = Color.White
+                )
+            }
+            IconButton(onClick = onAudioCall) {
+                Icon(
+                    imageVector = Icons.Filled.Call,
+                    contentDescription = "Audio call",
+                    tint = Color.White
+                )
+            }
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.Filled.MoreVert,
