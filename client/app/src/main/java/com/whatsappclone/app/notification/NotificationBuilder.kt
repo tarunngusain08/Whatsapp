@@ -17,6 +17,7 @@ import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.whatsappclone.app.R
+import com.whatsappclone.app.WhatsAppApplication.Companion.CHANNEL_CALLS
 import com.whatsappclone.app.WhatsAppApplication.Companion.CHANNEL_GROUPS
 import com.whatsappclone.app.WhatsAppApplication.Companion.CHANNEL_MESSAGES
 import com.whatsappclone.core.database.dao.ChatDao
@@ -162,6 +163,78 @@ class NotificationBuilder @Inject constructor(
         val notificationId = chatId.hashCode()
         notificationManager.cancel(notificationId)
         notificationManager.cancel(notificationId + SUMMARY_ID_OFFSET)
+    }
+
+    /**
+     * Show a high-priority notification for an incoming call.
+     */
+    suspend fun showCallNotification(
+        callId: String,
+        callerName: String,
+        callType: String,
+        avatarUrl: String?
+    ) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE)
+                as NotificationManager
+
+        val notificationId = callId.hashCode()
+        val avatarBitmap = loadAvatarBitmap(avatarUrl)
+
+        val contentIntent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(
+                "whatsapp-clone://call/$callerName?callType=$callType"
+            )
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPending = PendingIntent.getActivity(
+            context,
+            notificationId,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val declineIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = ACTION_DECLINE_CALL
+            putExtra(EXTRA_CALL_ID, callId)
+            putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        val declinePending = PendingIntent.getBroadcast(
+            context,
+            notificationId + DECLINE_CALL_REQUEST_OFFSET,
+            declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        val callLabel = if (callType == "video") "Incoming video call" else "Incoming voice call"
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(callerName)
+            .setContentText(callLabel)
+            .setContentIntent(contentPending)
+            .setFullScreenIntent(contentPending, true)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .addAction(R.mipmap.ic_launcher, "Decline", declinePending)
+            .addAction(R.mipmap.ic_launcher, "Answer", contentPending)
+            .apply {
+                avatarBitmap?.let { setLargeIcon(it) }
+            }
+
+        try {
+            notificationManager.notify(notificationId, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Missing POST_NOTIFICATIONS permission for call", e)
+        }
+    }
+
+    fun cancelCallNotification(callId: String) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE)
+                as NotificationManager
+        notificationManager.cancel(callId.hashCode())
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
@@ -319,11 +392,14 @@ class NotificationBuilder @Inject constructor(
         private const val SUMMARY_ID_OFFSET = 100_000
         private const val MARK_READ_REQUEST_OFFSET = 200_000
         private const val REPLY_REQUEST_OFFSET = 300_000
+        private const val DECLINE_CALL_REQUEST_OFFSET = 400_000
         private const val AVATAR_SIZE_PX = 128
 
         const val ACTION_MARK_READ = "com.whatsappclone.ACTION_MARK_READ"
         const val ACTION_REPLY = "com.whatsappclone.ACTION_REPLY"
+        const val ACTION_DECLINE_CALL = "com.whatsappclone.ACTION_DECLINE_CALL"
         const val EXTRA_CHAT_ID = "extra_chat_id"
+        const val EXTRA_CALL_ID = "extra_call_id"
         const val EXTRA_NOTIFICATION_ID = "extra_notification_id"
         const val KEY_TEXT_REPLY = "key_text_reply"
     }
