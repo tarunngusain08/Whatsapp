@@ -77,6 +77,7 @@ fun ContactInfoScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSharedMedia: (String) -> Unit = {},
     onNavigateToCall: (userId: String, name: String, avatarUrl: String?, callType: String) -> Unit = { _, _, _, _ -> },
+    onNavigateToImageViewer: (url: String, title: String) -> Unit = { _, _ -> },
     viewModel: ContactInfoViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -146,7 +147,12 @@ fun ContactInfoScreen(
                         displayName = user.displayName,
                         phone = user.phone,
                         avatarUrl = user.avatarUrl,
-                        isOnline = user.isOnline
+                        isOnline = user.isOnline,
+                        onAvatarClick = {
+                            if (!user.avatarUrl.isNullOrBlank()) {
+                                onNavigateToImageViewer(user.avatarUrl!!, user.displayName)
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -463,6 +469,7 @@ private fun ProfileHeader(
     phone: String,
     avatarUrl: String?,
     isOnline: Boolean,
+    onAvatarClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -486,7 +493,8 @@ private fun ProfileHeader(
             UserAvatar(
                 url = avatarUrl,
                 name = displayName,
-                size = 96.dp
+                size = 96.dp,
+                onClick = onAvatarClick
             )
 
             // Online indicator
