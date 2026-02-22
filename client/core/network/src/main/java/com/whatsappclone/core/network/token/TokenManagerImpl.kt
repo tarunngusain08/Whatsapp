@@ -39,7 +39,7 @@ class TokenManagerImpl @Inject constructor(
             encryptedPrefs.edit()
                 .putString(KEY_ACCESS_TOKEN, accessToken)
                 .putString(KEY_REFRESH_TOKEN, refreshToken)
-                .apply()
+                .commit()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save tokens", e)
         }
@@ -75,7 +75,7 @@ class TokenManagerImpl @Inject constructor(
             encryptedPrefs.edit()
                 .remove(KEY_ACCESS_TOKEN)
                 .remove(KEY_REFRESH_TOKEN)
-                .apply()
+                .commit()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear tokens", e)
         }
