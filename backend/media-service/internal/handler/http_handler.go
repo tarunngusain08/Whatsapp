@@ -33,6 +33,7 @@ func (h *HTTPHandler) RegisterRoutes(rg *gin.RouterGroup) {
 		media.POST("/upload", h.Upload)
 		media.GET("/:mediaId", h.GetMetadata)
 		media.GET("/:mediaId/download", h.Download)
+		media.GET("/:mediaId/thumbnail", h.Thumbnail)
 	}
 }
 
@@ -73,10 +74,16 @@ func (h *HTTPHandler) GetMetadata(c *gin.Context) {
 		return
 	}
 
-	media, url, thumbURL, err := h.mediaSvc.GetMetadata(c.Request.Context(), mediaID)
+	media, _, _, err := h.mediaSvc.GetMetadata(c.Request.Context(), mediaID)
 	if err != nil {
 		response.Error(c, err)
 		return
+	}
+
+	downloadURL := "/api/v1/media/" + media.MediaID + "/download"
+	thumbURL := ""
+	if media.ThumbnailKey != "" {
+		thumbURL = "/api/v1/media/" + media.MediaID + "/thumbnail"
 	}
 
 	response.OK(c, gin.H{
@@ -84,7 +91,7 @@ func (h *HTTPHandler) GetMetadata(c *gin.Context) {
 		"file_type":     media.FileType,
 		"mime_type":     media.MIMEType,
 		"size_bytes":    media.SizeBytes,
-		"url":           url,
+		"url":           downloadURL,
 		"thumbnail_url": thumbURL,
 		"width":         media.Width,
 		"height":        media.Height,
@@ -111,6 +118,29 @@ func (h *HTTPHandler) Download(c *gin.Context) {
 
 	if contentType == "" {
 		contentType = "application/octet-stream"
+	}
+
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
+}
+
+// Thumbnail streams the thumbnail image for a given media item.
+func (h *HTTPHandler) Thumbnail(c *gin.Context) {
+	mediaID := c.Param("mediaId")
+	if mediaID == "" {
+		response.Error(c, apperr.NewBadRequest("media_id is required"))
+		return
+	}
+
+	reader, contentType, size, err := h.mediaSvc.StreamThumbnail(c.Request.Context(), mediaID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	defer reader.Close()
+
+	if contentType == "" {
+		contentType = "image/jpeg"
 	}
 
 	c.Header("Cache-Control", "public, max-age=86400")
