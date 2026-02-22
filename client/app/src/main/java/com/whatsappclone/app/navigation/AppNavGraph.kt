@@ -303,6 +303,16 @@ fun AppNavGraph(
                 },
                 onNavigateToLocationPicker = { chatId ->
                     navController.navigate(AppRoute.LocationPicker.create(chatId))
+                },
+                onAudioCall = { userId, name, avatarUrl ->
+                    navController.navigate(
+                        AppRoute.CallScreen.create(name, avatarUrl ?: "", "audio", userId)
+                    )
+                },
+                onVideoCall = { userId, name, avatarUrl ->
+                    navController.navigate(
+                        AppRoute.CallScreen.create(name, avatarUrl ?: "", "video", userId)
+                    )
                 }
             )
         }
@@ -316,7 +326,7 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToNewGroup = {
-                    navController.navigate("group_creation_flow")
+                    navController.navigate(AppRoute.GroupCreationFlow.route)
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -345,6 +355,9 @@ fun AppNavGraph(
                     navController.navigate(
                         AppRoute.CallScreen.create(name, avatarUrl ?: "", callType, userId)
                     )
+                },
+                onNavigateToImageViewer = { url, title ->
+                    navController.navigate(AppRoute.ImageViewer.create(url, title))
                 }
             )
         }
@@ -352,10 +365,10 @@ fun AppNavGraph(
         // ── Group Creation Flow (shared ViewModel) ─────────────────────────
         navigation(
             startDestination = AppRoute.NewGroup.route,
-            route = "group_creation_flow"
+            route = AppRoute.GroupCreationFlow.route
         ) {
             composable(AppRoute.NewGroup.route) { backStackEntry ->
-                val parentEntry = navController.getBackStackEntry("group_creation_flow")
+                val parentEntry = navController.getBackStackEntry(AppRoute.GroupCreationFlow.route)
                 val sharedViewModel: NewGroupViewModel = hiltViewModel(parentEntry)
                 ContactSelectionScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -367,7 +380,7 @@ fun AppNavGraph(
             }
 
             composable(AppRoute.GroupSetup.route) { backStackEntry ->
-                val parentEntry = navController.getBackStackEntry("group_creation_flow")
+                val parentEntry = navController.getBackStackEntry(AppRoute.GroupCreationFlow.route)
                 val sharedViewModel: NewGroupViewModel = hiltViewModel(parentEntry)
                 GroupSetupScreen(
                     onNavigateBack = { navController.popBackStack() },
