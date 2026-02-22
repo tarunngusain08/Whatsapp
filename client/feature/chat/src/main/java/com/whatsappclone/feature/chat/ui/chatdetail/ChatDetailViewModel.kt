@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import com.whatsappclone.core.common.notification.ActiveChatTracker
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.util.Constants
 import com.whatsappclone.core.common.util.TimeUtils
@@ -71,6 +72,7 @@ class ChatDetailViewModel @Inject constructor(
     private val userDao: UserDao,
     private val mediaRepository: MediaRepository,
     private val voiceRecorder: VoiceRecorder,
+    private val activeChatTracker: ActiveChatTracker,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -95,10 +97,16 @@ class ChatDetailViewModel @Inject constructor(
     private var isTypingSent = false
 
     init {
+        activeChatTracker.setActiveChat(chatId)
         loadChatDetail()
         observeMessages()
         observeTypingIndicators()
         observeIncomingMessages()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        activeChatTracker.setActiveChat(null)
     }
 
     // ── Chat metadata ───────────────────────────────────────────────────
@@ -162,7 +170,8 @@ class ChatDetailViewModel @Inject constructor(
 
     private fun observeOtherUserPresence() {
         val otherUserId = _uiState.value.otherUserId ?: return
-        viewModelScope.launch {
+
+        fun subscribePresence() {
             if (webSocketManager.connectionState.value == WsConnectionState.CONNECTED) {
                 val data = buildJsonObject {
                     put("user_ids", kotlinx.serialization.json.buildJsonArray {
@@ -171,7 +180,17 @@ class ChatDetailViewModel @Inject constructor(
                 }
                 webSocketManager.send(WsFrame(event = "presence.subscribe", data = data))
             }
+        }
 
+        viewModelScope.launch {
+            subscribePresence()
+
+            webSocketManager.connectionState
+                .filter { it == WsConnectionState.CONNECTED }
+                .collect { subscribePresence() }
+        }
+
+        viewModelScope.launch {
             userDao.observeUser(otherUserId)
                 .distinctUntilChanged()
                 .collect { user ->
@@ -213,7 +232,12 @@ class ChatDetailViewModel @Inject constructor(
         viewModelScope.launch {
             webSocketManager.events
                 .filter { event ->
-                    event is ServerWsEvent.NewMessage && event.chatId == chatId
+                    when (event) {
+                        is ServerWsEvent.NewMessage -> event.chatId == chatId
+                        is ServerWsEvent.MessageStatus -> true
+                        is ServerWsEvent.MessageSent -> event.chatId == chatId
+                        else -> false
+                    }
                 }
                 .collect { refreshTrigger.tryEmit(Unit) }
         }
