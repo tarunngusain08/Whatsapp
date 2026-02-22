@@ -81,11 +81,40 @@ func (s *messageServiceImpl) SendMessage(ctx context.Context, senderID string, r
 		return nil, apperr.NewInternal("failed to insert message", err)
 	}
 
-	if pubErr := s.publisher.PublishNewMessage(ctx, result); pubErr != nil {
+	enrichment := s.buildEnrichment(ctx, senderID, req.ChatID, permResp)
+	if pubErr := s.publisher.PublishNewMessage(ctx, result, enrichment); pubErr != nil {
 		s.log.Error().Err(pubErr).Str("message_id", result.MessageID).Msg("failed to publish msg.new event")
 	}
 
 	return result, nil
+}
+
+// buildEnrichment resolves sender name, avatar, chat participants etc.
+// for inclusion in the msg.new NATS event. Failures are logged but do
+// not block the send — downstream consumers will still get the basics.
+func (s *messageServiceImpl) buildEnrichment(ctx context.Context, senderID, chatID string, perm *chatv1.CheckChatPermissionResponse) *MessageEnrichment {
+	e := &MessageEnrichment{}
+
+	userResp, err := s.userClient.GetUser(ctx, &userv1.GetUserRequest{UserId: senderID})
+	if err == nil && userResp.User != nil {
+		e.SenderName = userResp.User.DisplayName
+		e.SenderAvatar = userResp.User.AvatarUrl
+	} else {
+		s.log.Warn().Err(err).Str("sender_id", senderID).Msg("enrichment: failed to resolve sender profile")
+	}
+
+	if perm != nil {
+		e.IsGroup = perm.ChatType == "group"
+	}
+
+	partResp, err := s.chatClient.GetChatParticipants(ctx, &chatv1.GetChatParticipantsRequest{ChatId: chatID})
+	if err == nil && partResp != nil {
+		e.ParticipantIDs = partResp.UserIds
+	} else {
+		s.log.Warn().Err(err).Str("chat_id", chatID).Msg("enrichment: failed to resolve participants")
+	}
+
+	return e
 }
 
 // GetMessages returns messages for a chat with cursor-based pagination.
