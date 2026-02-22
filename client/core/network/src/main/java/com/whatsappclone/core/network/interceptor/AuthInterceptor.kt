@@ -1,6 +1,7 @@
 package com.whatsappclone.core.network.interceptor
 
 import com.whatsappclone.core.network.token.TokenManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,7 +39,7 @@ class AuthInterceptor @Inject constructor(
         val response = chain.proceed(authenticatedRequest)
 
         if (response.code == HTTP_UNAUTHORIZED && accessToken != null) {
-            val refreshSucceeded = runBlocking {
+            val refreshSucceeded = runBlocking(Dispatchers.IO) {
                 refreshMutex.withLock {
                     // Check if another thread already refreshed the token
                     val currentToken = tokenManager.getAccessToken()
