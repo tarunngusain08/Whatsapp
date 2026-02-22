@@ -44,6 +44,12 @@ class AuthRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to persist auth state after login", e)
             }
+
+            try {
+                deviceTokenManager.registerWithBackend()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to register FCM token after login", e)
+            }
         }
 
         return result
