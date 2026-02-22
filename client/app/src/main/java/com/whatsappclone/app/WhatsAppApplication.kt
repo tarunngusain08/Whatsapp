@@ -75,6 +75,22 @@ class WhatsAppApplication : Application(), Configuration.Provider, SingletonImag
                 enableVibration(true)
             }
 
+            val callsChannel = NotificationChannel(
+                CHANNEL_CALLS,
+                "Incoming Calls",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Incoming call notifications"
+                enableVibration(true)
+                setSound(
+                    android.provider.Settings.System.DEFAULT_RINGTONE_URI,
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+
             val generalChannel = NotificationChannel(
                 CHANNEL_GENERAL,
                 "General",
@@ -84,7 +100,7 @@ class WhatsAppApplication : Application(), Configuration.Provider, SingletonImag
             }
 
             manager.createNotificationChannels(
-                listOf(messagesChannel, groupsChannel, generalChannel)
+                listOf(messagesChannel, groupsChannel, callsChannel, generalChannel)
             )
         }
     }
@@ -92,6 +108,7 @@ class WhatsAppApplication : Application(), Configuration.Provider, SingletonImag
     companion object {
         const val CHANNEL_MESSAGES = "messages"
         const val CHANNEL_GROUPS = "groups"
+        const val CHANNEL_CALLS = "calls"
         const val CHANNEL_GENERAL = "general"
     }
 }
