@@ -74,15 +74,7 @@ object NetworkModule {
                 )
                 prefsFile.delete()
             } catch (_: Exception) { /* best-effort cleanup */ }
-            try {
-                createEncryptedPrefs(context)
-            } catch (e2: Exception) {
-                Log.e(TAG, "Failed to recreate encrypted prefs, falling back to plain prefs", e2)
-                context.getSharedPreferences(
-                    "${ENCRYPTED_PREFS_NAME}_fallback",
-                    Context.MODE_PRIVATE
-                )
-            }
+            createEncryptedPrefs(context)
         }
     }
 
@@ -135,9 +127,16 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        return HttpLoggingInterceptor().apply {
+        return HttpLoggingInterceptor { message ->
+            val redacted = if (message.startsWith("Authorization:")) {
+                "Authorization: [REDACTED]"
+            } else {
+                message
+            }
+            Log.d("OkHttp", redacted)
+        }.apply {
             level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
+                HttpLoggingInterceptor.Level.HEADERS
             } else {
                 HttpLoggingInterceptor.Level.NONE
             }
