@@ -45,6 +45,8 @@ public class UserDao_Impl(
 
   private val __preparedStmtOfSetBlocked: SharedSQLiteStatement
 
+  private val __preparedStmtOfSetAllOffline: SharedSQLiteStatement
+
   private val __upsertionAdapterOfUserEntity: EntityUpsertionAdapter<UserEntity>
   init {
     this.__db = __db
@@ -58,6 +60,12 @@ public class UserDao_Impl(
     this.__preparedStmtOfSetBlocked = object : SharedSQLiteStatement(__db) {
       public override fun createQuery(): String {
         val _query: String = "UPDATE users SET isBlocked = ?, updatedAt = ? WHERE id = ?"
+        return _query
+      }
+    }
+    this.__preparedStmtOfSetAllOffline = object : SharedSQLiteStatement(__db) {
+      public override fun createQuery(): String {
+        val _query: String = "UPDATE users SET isOnline = 0 WHERE isOnline = 1"
         return _query
       }
     }
@@ -191,6 +199,24 @@ public class UserDao_Impl(
         }
       } finally {
         __preparedStmtOfSetBlocked.release(_stmt)
+      }
+    }
+  })
+
+  public override suspend fun setAllOffline(): Unit = CoroutinesRoom.execute(__db, true, object :
+      Callable<Unit> {
+    public override fun call() {
+      val _stmt: SupportSQLiteStatement = __preparedStmtOfSetAllOffline.acquire()
+      try {
+        __db.beginTransaction()
+        try {
+          _stmt.executeUpdateDelete()
+          __db.setTransactionSuccessful()
+        } finally {
+          __db.endTransaction()
+        }
+      } finally {
+        __preparedStmtOfSetAllOffline.release(_stmt)
       }
     }
   })
