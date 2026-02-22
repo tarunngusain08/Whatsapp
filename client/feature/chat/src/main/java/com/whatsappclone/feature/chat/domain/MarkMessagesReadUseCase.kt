@@ -31,6 +31,7 @@ class MarkMessagesReadUseCase @Inject constructor(
             val data = buildJsonObject {
                 put("message_id", JsonPrimitive(upToMessageId))
                 put("chat_id", JsonPrimitive(chatId))
+                put("sender_id", JsonPrimitive(latest.senderId))
             }
             webSocketManager.send(WsFrame(event = "message.read", data = data))
         }
