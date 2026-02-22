@@ -6,9 +6,11 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.room.withTransaction
 import com.whatsappclone.core.common.result.AppResult
 import com.whatsappclone.core.common.result.ErrorCode
 import com.whatsappclone.core.common.util.UuidGenerator
+import com.whatsappclone.core.database.AppDatabase
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.MessageDao
 import com.whatsappclone.core.database.entity.MessageEntity
@@ -36,6 +38,7 @@ class MessageRepositoryImpl @Inject constructor(
     private val messageApi: MessageApi,
     private val messageDao: MessageDao,
     private val chatDao: ChatDao,
+    private val database: AppDatabase,
     private val webSocketManager: WebSocketManager,
     private val json: Json,
     @Named("encrypted") private val encryptedPrefs: SharedPreferences
@@ -116,15 +119,16 @@ class MessageRepositoryImpl @Inject constructor(
             createdAt = now
         )
 
-        messageDao.insert(messageEntity)
-
-        chatDao.updateLastMessage(
-            chatId = chatId,
-            messageId = clientMsgId,
-            preview = preview,
-            timestamp = now,
-            updatedAt = now
-        )
+        database.withTransaction {
+            messageDao.insert(messageEntity)
+            chatDao.updateLastMessage(
+                chatId = chatId,
+                messageId = clientMsgId,
+                preview = preview,
+                timestamp = now,
+                updatedAt = now
+            )
+        }
 
         if (webSocketManager.connectionState.value == WsConnectionState.CONNECTED) {
             val payload = buildJsonObject {
