@@ -6,6 +6,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.whatsappclone.core.common.notification.ActiveChatTracker
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.MessageDao
 import com.whatsappclone.core.database.entity.MessageEntity
@@ -70,6 +71,31 @@ class WhatsAppFCMService : FirebaseMessagingService() {
         Log.d(TAG, "Push notification received: ${message.data}")
 
         val data = message.data
+        val type = data["type"] ?: "message"
+
+        when (type) {
+            "call" -> handleCallPush(data)
+            else -> handleMessagePush(data)
+        }
+    }
+
+    private fun handleCallPush(data: Map<String, String>) {
+        val callId = data["callId"] ?: return
+        val callerName = data["callerName"] ?: "Unknown"
+        val callType = data["callType"] ?: "audio"
+        val avatarUrl = data["avatarUrl"]
+
+        appScope.launch {
+            notificationBuilder.showCallNotification(
+                callId = callId,
+                callerName = callerName,
+                callType = callType,
+                avatarUrl = avatarUrl
+            )
+        }
+    }
+
+    private fun handleMessagePush(data: Map<String, String>) {
         val chatId = data["chatId"] ?: return
         val messageId = data["messageId"] ?: return
         val senderName = data["senderName"] ?: "Unknown"
@@ -95,13 +121,10 @@ class WhatsAppFCMService : FirebaseMessagingService() {
 
             when {
                 isAppInForeground() && activeChatTracker.isActive(chatId) -> {
-                    // User is viewing this exact chat — suppress notification entirely.
-                    // The real-time message will appear via WebSocket/Flow.
                     Log.d(TAG, "Suppressing notification — user is in chat $chatId")
                 }
 
                 isAppInForeground() -> {
-                    // User is in the app but viewing a different screen — show in-app banner.
                     Log.d(TAG, "Showing in-app banner for chat $chatId")
                     incrementUnread(chatId)
                     inAppNotificationManager.show(
@@ -117,7 +140,6 @@ class WhatsAppFCMService : FirebaseMessagingService() {
                 }
 
                 else -> {
-                    // App is in background or killed — show a full system notification.
                     Log.d(TAG, "Showing system notification for chat $chatId")
                     incrementUnread(chatId)
                     notificationBuilder.showMessageNotification(
