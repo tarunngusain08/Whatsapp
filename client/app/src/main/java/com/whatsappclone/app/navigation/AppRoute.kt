@@ -39,6 +39,8 @@ sealed class AppRoute(val route: String) {
 
     // ── Groups ───────────────────────────────────────────────────────────────────
 
+    data object GroupCreationFlow : AppRoute("group_creation_flow")
+
     data object NewGroup : AppRoute("new_group")
 
     data object GroupSetup : AppRoute("group_setup")
@@ -58,7 +60,7 @@ sealed class AppRoute(val route: String) {
             mediaId: String,
             senderName: String = "",
             timestamp: String = ""
-        ): String = "media_viewer/$mediaId?senderName=${Uri.encode(senderName)}&timestamp=${Uri.encode(timestamp)}"
+        ): String = "media_viewer/${Uri.encode(mediaId)}?senderName=${Uri.encode(senderName)}&timestamp=${Uri.encode(timestamp)}"
     }
 
     data object ImageViewer : AppRoute("image_viewer?url={url}&title={title}") {
@@ -112,7 +114,7 @@ sealed class AppRoute(val route: String) {
 
     data object StatusViewer : AppRoute("status_viewer/{userId}?startIndex={startIndex}") {
         fun create(userId: String, startIndex: Int = 0): String =
-            "status_viewer/$userId?startIndex=$startIndex"
+            "status_viewer/${Uri.encode(userId)}?startIndex=$startIndex"
     }
 
     data object StatusCreator : AppRoute("status_creator")
