@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.webrtc.AudioTrack
+import org.webrtc.Camera2Enumerator
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -30,6 +31,8 @@ import org.webrtc.PeerConnectionFactory
 import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
+import org.webrtc.SurfaceTextureHelper
+import org.webrtc.VideoCapturer
 import org.webrtc.VideoTrack
 import java.util.UUID
 import javax.inject.Inject
@@ -70,6 +73,8 @@ class CallService @Inject constructor(
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var localAudioTrack: AudioTrack? = null
+    private var videoCapturer: VideoCapturer? = null
+    private var surfaceTextureHelper: SurfaceTextureHelper? = null
     private val pendingIceCandidates = mutableListOf<IceCandidate>()
 
     private fun ensureFactory(): PeerConnectionFactory {
@@ -142,6 +147,11 @@ class CallService @Inject constructor(
         })!!.also { peerConnection = it }
     }
 
+    private fun configureAudioForCall() {
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        audioManager.isSpeakerphoneOn = false
+    }
+
     private fun addLocalAudioTrack() {
         val factory = ensureFactory()
         val audioConstraints = MediaConstraints()
@@ -149,6 +159,35 @@ class CallService @Inject constructor(
         localAudioTrack = factory.createAudioTrack("audio_local", audioSource)
         localAudioTrack?.setEnabled(true)
         peerConnection?.addTrack(localAudioTrack, listOf("stream_local"))
+    }
+
+    private fun addLocalVideoTrack() {
+        val factory = ensureFactory()
+        val enumerator = Camera2Enumerator(context)
+        val deviceName = enumerator.deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
+            ?: enumerator.deviceNames.firstOrNull()
+            ?: run {
+                Log.e(TAG, "No camera device found")
+                return
+            }
+
+        val capturer = enumerator.createCapturer(deviceName, null) ?: run {
+            Log.e(TAG, "Failed to create camera capturer for $deviceName")
+            return
+        }
+        videoCapturer = capturer
+
+        val helper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
+        surfaceTextureHelper = helper
+
+        val videoSource = factory.createVideoSource(capturer.isScreencast)
+        capturer.initialize(helper, context, videoSource.capturerObserver)
+        capturer.startCapture(1280, 720, 30)
+
+        val videoTrack = factory.createVideoTrack("video_local", videoSource)
+        videoTrack.setEnabled(true)
+        peerConnection?.addTrack(videoTrack, listOf("stream_local"))
+        _localVideoTrack.value = videoTrack
     }
 
     // ── Outgoing call ────────────────────────────────────────────────────
@@ -171,8 +210,12 @@ class CallService @Inject constructor(
             isOutgoing = true
         )
 
+        configureAudioForCall()
         createPeerConnection()
         addLocalAudioTrack()
+        if (callType == "video") {
+            addLocalVideoTrack()
+        }
 
         peerConnection?.createOffer(object : SdpObserverAdapter() {
             override fun onCreateSuccess(sdp: SessionDescription) {
@@ -205,8 +248,12 @@ class CallService @Inject constructor(
             state = CallState.INCOMING_RINGING
         )
 
+        configureAudioForCall()
         createPeerConnection()
         addLocalAudioTrack()
+        if (callType == "video") {
+            addLocalVideoTrack()
+        }
 
         val remoteSdp = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(SdpObserverAdapter(), remoteSdp)
@@ -287,6 +334,12 @@ class CallService @Inject constructor(
                 sendCallEnd(session.callId, session.remoteUserId, reason)
             }
         }
+
+        try { videoCapturer?.stopCapture() } catch (_: Exception) {}
+        videoCapturer?.dispose()
+        videoCapturer = null
+        surfaceTextureHelper?.dispose()
+        surfaceTextureHelper = null
 
         _localVideoTrack.value?.dispose()
         _localVideoTrack.value = null
