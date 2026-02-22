@@ -86,6 +86,7 @@ func main() {
 	tokenRepo := repository.NewDeviceTokenRepository(pgPool, log)
 	presenceRepo := repository.NewPresenceRepository(rdb, log)
 	muteRepo := repository.NewParticipantRepository(pgPool, log)
+	userRepo := repository.NewUserRepository(pgPool, log)
 
 	// --- FCM Client ---
 	var fcmClient service.FCMClient
@@ -122,7 +123,7 @@ func main() {
 	batcher := service.NewNotificationBatcher(cfg.GroupBatchWindow, fcmClient, tokenRepo, log)
 
 	// --- NATS Consumer ---
-	consumer := service.NewConsumer(js, presenceRepo, muteRepo, tokenRepo, fcmClient, batcher, log)
+	consumer := service.NewConsumer(js, presenceRepo, muteRepo, tokenRepo, userRepo, fcmClient, batcher, log)
 
 	consumerCtx, consumerCancel := context.WithCancel(context.Background())
 	go func() {
