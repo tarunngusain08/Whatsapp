@@ -259,8 +259,8 @@ class WebSocketManager @Inject constructor(
 
     private fun scheduleReconnect() {
         if (intentionalDisconnect) return
-        if (reconnectJob?.isActive == true) return
 
+        reconnectJob?.cancel()
         _connectionState.value = WsConnectionState.RECONNECTING
 
         reconnectJob = scope.launch {
