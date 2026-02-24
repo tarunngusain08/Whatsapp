@@ -71,6 +71,7 @@ sealed class ServerWsEvent {
     data class CallOffer(
         val callId: String,
         val callerId: String,
+        val callerName: String,
         val sdp: String,
         val callType: String
     ) : ServerWsEvent()
