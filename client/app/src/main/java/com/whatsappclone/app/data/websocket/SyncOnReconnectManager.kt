@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.room.withTransaction
+import com.whatsappclone.core.database.AppDatabase
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ChatParticipantDao
 import com.whatsappclone.core.database.dao.MessageDao
@@ -22,6 +24,8 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -38,6 +42,7 @@ class SyncOnReconnectManager @Inject constructor(
     private val chatParticipantDao: ChatParticipantDao,
     private val messageDao: MessageDao,
     private val userDao: UserDao,
+    private val database: AppDatabase,
     private val dataStore: DataStore<Preferences>
 ) {
 
@@ -49,13 +54,18 @@ class SyncOnReconnectManager @Inject constructor(
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Log.e(TAG, "Uncaught coroutine exception", throwable)
     }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
-    @Volatile private var started = false
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
+    private val started = AtomicBoolean(false)
     private val syncMutex = Mutex()
 
+    fun shutdown() {
+        started.set(false)
+        scope.cancel()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
+    }
+
     fun start() {
-        if (started) return
-        started = true
+        if (!started.compareAndSet(false, true)) return
         scope.launch {
             webSocketManager.connectionState
                 .filter { it == WsConnectionState.CONNECTED }
@@ -70,7 +80,7 @@ class SyncOnReconnectManager @Inject constructor(
         }
         try {
             Log.d(TAG, "Connection established, starting sync...")
-            try { userDao.setAllOffline() } catch (e: Exception) { Log.e(TAG, "Failed to reset presence", e) }
+            try { userDao.setAllOffline(System.currentTimeMillis()) } catch (e: Exception) { Log.e(TAG, "Failed to reset online status", e) }
             try { syncChats() } catch (e: Exception) { Log.e(TAG, "Failed to sync chats", e) }
             try { flushPendingMessages() } catch (e: Exception) { Log.e(TAG, "Failed to flush pending", e) }
             try { updateLastSyncTimestamp() } catch (e: Exception) { Log.e(TAG, "Failed to update timestamp", e) }
@@ -87,13 +97,19 @@ class SyncOnReconnectManager @Inject constructor(
             val body = response.body()
             if (!response.isSuccessful || body == null || !body.success || body.data == null) break
             val page = body.data!!
-            chatDao.upsertAll(page.items.map { it.toEntity() })
-            page.items.forEach { chatDto ->
-                chatDto.participants?.forEach { p ->
-                    chatParticipantDao.upsert(ChatParticipantEntity(
-                        chatId = chatDto.chatId, userId = p.userId, role = p.role,
-                        joinedAt = System.currentTimeMillis()
-                    ))
+            database.withTransaction {
+                val entities = page.items.map { dto ->
+                    val existing = chatDao.getChatById(dto.chatId)
+                    dto.toEntity(existingPinned = existing?.isPinned ?: false)
+                }
+                chatDao.upsertAll(entities)
+                page.items.forEach { chatDto ->
+                    chatDto.participants?.forEach { p ->
+                        chatParticipantDao.upsert(ChatParticipantEntity(
+                            chatId = chatDto.chatId, userId = p.userId, role = p.role,
+                            joinedAt = System.currentTimeMillis()
+                        ))
+                    }
                 }
             }
             cursor = page.nextCursor
@@ -111,7 +127,7 @@ class SyncOnReconnectManager @Inject constructor(
                         body = message.content, mediaId = message.mediaId,
                         mediaUrl = message.mediaUrl, thumbnailUrl = message.mediaThumbnailUrl,
                         mimeType = message.mediaMimeType, fileSize = message.mediaSize,
-                        duration = message.mediaDuration
+                        durationMs = message.mediaDuration
                     )
                 )
                 val response = messageApi.sendMessage(chatId = message.chatId, request = request)
@@ -130,12 +146,12 @@ class SyncOnReconnectManager @Inject constructor(
         dataStore.edit { it[KEY_LAST_SYNC] = System.currentTimeMillis() }
     }
 
-    private fun ChatDto.toEntity(): ChatEntity = ChatEntity(
+    private fun ChatDto.toEntity(existingPinned: Boolean = false): ChatEntity = ChatEntity(
         chatId = chatId, chatType = type, name = name, description = description,
         avatarUrl = avatarUrl, lastMessageId = lastMessage?.messageId,
         lastMessagePreview = lastMessage?.preview,
         lastMessageTimestamp = lastMessage?.timestamp?.let { parseTimestamp(it) },
-        unreadCount = unreadCount, isMuted = isMuted, isPinned = false,
+        unreadCount = unreadCount, isMuted = isMuted, isPinned = existingPinned,
         createdAt = createdAt?.let { parseTimestamp(it) } ?: System.currentTimeMillis(),
         updatedAt = updatedAt?.let { parseTimestamp(it) } ?: System.currentTimeMillis()
     )
