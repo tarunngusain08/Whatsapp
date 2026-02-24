@@ -10,6 +10,7 @@ type Config struct {
 	AuthGRPCAddr   string        `env:"WS_AUTH_GRPC_ADDR"    envDefault:"auth-service:9081"`
 	MessageGRPCAddr string       `env:"WS_MSG_GRPC_ADDR"     envDefault:"message-service:9084"`
 	ChatGRPCAddr   string        `env:"WS_CHAT_GRPC_ADDR"    envDefault:"chat-service:9083"`
+	UserGRPCAddr   string        `env:"WS_USER_GRPC_ADDR"    envDefault:"user-service:9082"`
 	PingInterval   time.Duration `env:"WS_PING_INTERVAL"     envDefault:"25s"`
 	PongTimeout    time.Duration `env:"WS_PONG_TIMEOUT"      envDefault:"35s"`
 	WriteTimeout   time.Duration `env:"WS_WRITE_TIMEOUT"     envDefault:"10s"`
