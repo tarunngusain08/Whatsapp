@@ -70,11 +70,17 @@ func NewHTTPFCMClient(projectID, apiKey string, tokenRepo repository.DeviceToken
 func (f *HTTPFCMClient) Send(ctx context.Context, payload *model.NotificationPayload) error {
 	url := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", f.projectID)
 
+	msg := map[string]interface{}{
+		"token": payload.Token,
+		"data":  payload.Data,
+	}
+	if payload.Priority == "high" {
+		msg["android"] = map[string]interface{}{
+			"priority": "high",
+		}
+	}
 	body := map[string]interface{}{
-		"message": map[string]interface{}{
-			"token": payload.Token,
-			"data":  payload.Data,
-		},
+		"message": msg,
 	}
 
 	jsonBody, err := json.Marshal(body)
