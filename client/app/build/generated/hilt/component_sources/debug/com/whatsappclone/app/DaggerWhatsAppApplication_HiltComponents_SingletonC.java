@@ -1318,7 +1318,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           return (T) new WsLifecycleManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.wsEventRouterProvider.get(), singletonCImpl.syncOnReconnectManagerProvider.get(), singletonCImpl.provideTokenManagerProvider.get());
 
           case 34: // com.whatsappclone.app.data.websocket.WsEventRouter 
-          return (T) new WsEventRouter(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.callServiceProvider.get(), singletonCImpl.provideJsonProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
+          return (T) new WsEventRouter(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideAppDatabaseProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.typingStateHolderProvider.get(), singletonCImpl.callServiceProvider.get(), singletonCImpl.provideJsonProvider.get(), singletonCImpl.provideEncryptedSharedPreferencesProvider.get());
 
           case 35: // com.whatsappclone.core.database.dao.ChatParticipantDao 
           return (T) DatabaseModule_ProvideChatParticipantDaoFactory.provideChatParticipantDao(singletonCImpl.provideAppDatabaseProvider.get());
@@ -1330,7 +1330,7 @@ public final class DaggerWhatsAppApplication_HiltComponents_SingletonC {
           return (T) new CallService(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.webSocketManagerProvider.get());
 
           case 38: // com.whatsappclone.app.data.websocket.SyncOnReconnectManager 
-          return (T) new SyncOnReconnectManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideNetworkDataStoreProvider.get());
+          return (T) new SyncOnReconnectManager(singletonCImpl.webSocketManagerProvider.get(), singletonCImpl.provideChatApiProvider.get(), singletonCImpl.provideMessageApiProvider.get(), singletonCImpl.provideChatDaoProvider.get(), singletonCImpl.provideChatParticipantDaoProvider.get(), singletonCImpl.provideMessageDaoProvider.get(), singletonCImpl.provideUserDaoProvider.get(), singletonCImpl.provideAppDatabaseProvider.get(), singletonCImpl.provideNetworkDataStoreProvider.get());
 
           case 39: // com.whatsappclone.core.network.api.ChatApi 
           return (T) NetworkModule_ProvideChatApiFactory.provideChatApi(singletonCImpl.provideRetrofitProvider.get());
