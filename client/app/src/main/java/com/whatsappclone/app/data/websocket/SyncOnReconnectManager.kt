@@ -80,7 +80,7 @@ class SyncOnReconnectManager @Inject constructor(
         }
         try {
             Log.d(TAG, "Connection established, starting sync...")
-            try { userDao.setAllOffline(System.currentTimeMillis()) } catch (e: Exception) { Log.e(TAG, "Failed to reset online status", e) }
+            try { userDao.setAllOffline() } catch (e: Exception) { Log.e(TAG, "Failed to reset online status", e) }
             try { syncChats() } catch (e: Exception) { Log.e(TAG, "Failed to sync chats", e) }
             try { flushPendingMessages() } catch (e: Exception) { Log.e(TAG, "Failed to flush pending", e) }
             try { updateLastSyncTimestamp() } catch (e: Exception) { Log.e(TAG, "Failed to update timestamp", e) }
