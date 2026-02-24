@@ -28,11 +28,11 @@ func RegisterProxyRoutes(engine *gin.Engine, routes []model.RouteTarget, authMW,
 
 		handlers := []gin.HandlerFunc{}
 		if rt.RequireAuth {
-			if rateLimitMW != nil {
-				handlers = append(handlers, rateLimitMW)
-			}
 			if authMW != nil {
 				handlers = append(handlers, authMW)
+			}
+			if rateLimitMW != nil {
+				handlers = append(handlers, rateLimitMW)
 			}
 		}
 		proxyHandler := func(c *gin.Context) {
