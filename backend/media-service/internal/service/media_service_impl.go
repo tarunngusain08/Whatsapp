@@ -127,10 +127,11 @@ func (s *mediaServiceImpl) Upload(ctx context.Context, uploaderID string, fh *mu
 		return nil, apperr.NewInternal("failed to save media metadata", err)
 	}
 
-	downloadURL := fmt.Sprintf("/api/v1/media/%s/download", mediaID)
+	gwBase := strings.TrimRight(s.cfg.GatewayBaseURL, "/")
+	downloadURL := fmt.Sprintf("%s/%s/download", gwBase, mediaID)
 	var thumbURL string
 	if thumbnailKey != "" {
-		thumbURL = fmt.Sprintf("/api/v1/media/%s/thumbnail", mediaID)
+		thumbURL = fmt.Sprintf("%s/%s/thumbnail", gwBase, mediaID)
 	}
 
 	return &model.UploadResult{
@@ -152,13 +153,14 @@ func (s *mediaServiceImpl) GetMetadata(ctx context.Context, mediaID string) (*mo
 		return nil, "", "", apperr.NewNotFound("media not found")
 	}
 
-	url, _ := s.storageRepo.PresignedURL(ctx, media.StorageKey, s.presignedTTL)
+	gwBase := strings.TrimRight(s.cfg.GatewayBaseURL, "/")
+	downloadURL := fmt.Sprintf("%s/%s/download", gwBase, mediaID)
 	var thumbURL string
 	if media.ThumbnailKey != "" {
-		thumbURL, _ = s.storageRepo.PresignedURL(ctx, media.ThumbnailKey, s.presignedTTL)
+		thumbURL = fmt.Sprintf("%s/%s/thumbnail", gwBase, mediaID)
 	}
 
-	return media, url, thumbURL, nil
+	return media, downloadURL, thumbURL, nil
 }
 
 func (s *mediaServiceImpl) GetDownloadURL(ctx context.Context, mediaID string, expiry time.Duration) (string, error) {
