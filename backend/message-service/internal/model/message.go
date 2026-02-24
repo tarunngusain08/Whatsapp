@@ -39,6 +39,7 @@ type Message struct {
 	Status           map[string]RecipientStatus `json:"status"                        bson:"status"`
 	Reactions        []Reaction                 `json:"reactions,omitempty"           bson:"reactions,omitempty"`
 	IsDeleted        bool                       `json:"is_deleted"                    bson:"is_deleted"`
+	DeletedForUsers  []string                   `json:"deleted_for_users,omitempty"   bson:"deleted_for_users,omitempty"`
 	IsStarredBy      []string                   `json:"is_starred_by"                 bson:"is_starred_by"`
 	ReplyToPreview   *ReplyPreview              `json:"reply_to_preview,omitempty"    bson:"-"`
 	CreatedAt        time.Time                  `json:"created_at"                    bson:"created_at"`
@@ -58,11 +59,15 @@ type ForwardedFrom struct {
 }
 
 type MessagePayload struct {
-	Body       string `json:"body,omitempty"        bson:"body,omitempty"`
-	MediaID    string `json:"media_id,omitempty"    bson:"media_id,omitempty"`
-	Caption    string `json:"caption,omitempty"     bson:"caption,omitempty"`
-	Filename   string `json:"filename,omitempty"    bson:"filename,omitempty"`
-	DurationMs int64  `json:"duration_ms,omitempty" bson:"duration_ms,omitempty"`
+	Body         string `json:"body,omitempty"           bson:"body,omitempty"`
+	MediaID      string `json:"media_id,omitempty"       bson:"media_id,omitempty"`
+	Caption      string `json:"caption,omitempty"        bson:"caption,omitempty"`
+	Filename     string `json:"filename,omitempty"       bson:"filename,omitempty"`
+	DurationMs   int64  `json:"duration_ms,omitempty"    bson:"duration_ms,omitempty"`
+	MediaURL     string `json:"media_url,omitempty"      bson:"-"`
+	ThumbnailURL string `json:"thumbnail_url,omitempty"  bson:"-"`
+	MimeType     string `json:"mime_type,omitempty"      bson:"-"`
+	FileSize     int64  `json:"file_size,omitempty"      bson:"-"`
 }
 
 type RecipientStatus struct {
