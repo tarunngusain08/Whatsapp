@@ -387,6 +387,7 @@ class WebSocketManager @Inject constructor(
             "call.offer" -> ServerWsEvent.CallOffer(
                 callId = data.string("call_id"),
                 callerId = data.string("caller_id"),
+                callerName = data.stringOrNull("caller_name") ?: "",
                 sdp = data.string("sdp"),
                 callType = data.stringOrNull("call_type") ?: "audio"
             )
