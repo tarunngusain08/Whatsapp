@@ -70,11 +70,15 @@ func (s *wsServiceImpl) subscribeNewMessages(ctx context.Context) error {
 			SenderID  string `json:"sender_id"`
 			Type      string `json:"type"`
 			Payload   struct {
-				Body       string `json:"body"`
-				MediaID    string `json:"media_id"`
-				Caption    string `json:"caption"`
-				Filename   string `json:"filename"`
-				DurationMs int64  `json:"duration_ms"`
+				Body         string `json:"body"`
+				MediaID      string `json:"media_id"`
+				Caption      string `json:"caption"`
+				Filename     string `json:"filename"`
+				DurationMs   int64  `json:"duration_ms"`
+				MediaURL     string `json:"media_url"`
+				ThumbnailURL string `json:"thumbnail_url"`
+				MimeType     string `json:"mime_type"`
+				FileSize     int64  `json:"file_size"`
 			} `json:"payload"`
 			CreatedAt time.Time `json:"created_at"`
 		}
@@ -91,19 +95,29 @@ func (s *wsServiceImpl) subscribeNewMessages(ctx context.Context) error {
 			SenderID:  event.SenderID,
 			Type:      event.Type,
 			Payload: model.MessageContent{
-				Body:       event.Payload.Body,
-				MediaID:    event.Payload.MediaID,
-				Caption:    event.Payload.Caption,
-				Filename:   event.Payload.Filename,
-				DurationMs: event.Payload.DurationMs,
+				Body:         event.Payload.Body,
+				MediaID:      event.Payload.MediaID,
+				Caption:      event.Payload.Caption,
+				Filename:     event.Payload.Filename,
+				DurationMs:   event.Payload.DurationMs,
+				MediaURL:     event.Payload.MediaURL,
+				ThumbnailURL: event.Payload.ThumbnailURL,
+				MimeType:     event.Payload.MimeType,
+				FileSize:     event.Payload.FileSize,
 			},
-			CreatedAt: event.CreatedAt.UnixMilli(),
+			Status:    "sent",
+			CreatedAt: event.CreatedAt.Format(time.RFC3339),
 		})
 
 		data, _ := json.Marshal(wsEvent)
 		participantIDs := s.getChatParticipants(ctx, event.ChatID)
+		if len(participantIDs) == 0 {
+			s.log.Warn().Str("chat_id", event.ChatID).Str("message_id", event.MessageID).Msg("no participants resolved for new message broadcast, delivery skipped")
+		}
 		for _, uid := range participantIDs {
-			s.rdb.Publish(ctx, "user:channel:"+uid, data)
+			if pubErr := s.rdb.Publish(ctx, "user:channel:"+uid, data).Err(); pubErr != nil {
+				s.log.Warn().Err(pubErr).Str("user_id", uid).Msg("redis publish failed for msg.new")
+			}
 		}
 
 		_ = m.Ack()
@@ -140,7 +154,9 @@ func (s *wsServiceImpl) subscribeStatusUpdates(ctx context.Context) error {
 			"status":     event.Status,
 		})
 		data, _ := json.Marshal(wsEvent)
-		s.rdb.Publish(context.Background(), "user:channel:"+event.SenderID, data)
+		if pubErr := s.rdb.Publish(context.Background(), "user:channel:"+event.SenderID, data).Err(); pubErr != nil {
+			s.log.Warn().Err(pubErr).Str("user_id", event.SenderID).Msg("redis publish failed for msg.status.updated")
+		}
 
 		_ = m.Ack()
 	}, nats.Durable("ws-status-consumer"), nats.ManualAck())
@@ -168,19 +184,28 @@ func (s *wsServiceImpl) subscribeDeletedMessages(ctx context.Context) error {
 		}
 
 		wsEvent := model.WSEvent{Type: "message.deleted"}
-		wsEvent.Payload, _ = json.Marshal(map[string]string{
-			"message_id": event.MessageID,
-			"user_id":    event.UserID,
+		wsEvent.Payload, _ = json.Marshal(map[string]interface{}{
+			"message_id":           event.MessageID,
+			"chat_id":             event.ChatID,
+			"user_id":             event.UserID,
+			"deleted_for_everyone": event.ForEveryone,
 		})
 		data, _ := json.Marshal(wsEvent)
 
 		if event.ForEveryone {
 			participantIDs := s.getChatParticipants(ctx, event.ChatID)
+			if len(participantIDs) == 0 {
+				s.log.Warn().Str("chat_id", event.ChatID).Str("message_id", event.MessageID).Msg("no participants resolved for delete broadcast, delivery skipped")
+			}
 			for _, uid := range participantIDs {
-				s.rdb.Publish(context.Background(), "user:channel:"+uid, data)
+				if pubErr := s.rdb.Publish(context.Background(), "user:channel:"+uid, data).Err(); pubErr != nil {
+					s.log.Warn().Err(pubErr).Str("user_id", uid).Msg("redis publish failed for msg.deleted")
+				}
 			}
 		} else {
-			s.rdb.Publish(context.Background(), "user:channel:"+event.UserID, data)
+			if pubErr := s.rdb.Publish(context.Background(), "user:channel:"+event.UserID, data).Err(); pubErr != nil {
+				s.log.Warn().Err(pubErr).Str("user_id", event.UserID).Msg("redis publish failed for msg.deleted")
+			}
 		}
 
 		_ = m.Ack()
@@ -220,8 +245,13 @@ func (s *wsServiceImpl) subscribeReactions(ctx context.Context) error {
 		data, _ := json.Marshal(wsEvent)
 
 		participantIDs := s.getChatParticipants(ctx, event.ChatID)
+		if len(participantIDs) == 0 {
+			s.log.Warn().Str("chat_id", event.ChatID).Str("message_id", event.MessageID).Msg("no participants resolved for reaction broadcast, delivery skipped")
+		}
 		for _, uid := range participantIDs {
-			s.rdb.Publish(context.Background(), "user:channel:"+uid, data)
+			if pubErr := s.rdb.Publish(context.Background(), "user:channel:"+uid, data).Err(); pubErr != nil {
+				s.log.Warn().Err(pubErr).Str("user_id", uid).Msg("redis publish failed for msg.reaction")
+			}
 		}
 
 		_ = m.Ack()
@@ -250,12 +280,11 @@ func (s *wsServiceImpl) subscribeChatAndGroupEvents(_ context.Context) error {
 			wsEvent := model.WSEvent{Type: subject}
 			wsEvent.Payload = m.Data
 
-			if members, ok := event["participants"].([]interface{}); ok {
-				data, _ := json.Marshal(wsEvent)
-				for _, mid := range members {
-					if uid, ok := mid.(string); ok {
-						s.rdb.Publish(context.Background(), "user:channel:"+uid, data)
-					}
+			data, _ := json.Marshal(wsEvent)
+			userIDs := extractUserIDs(event)
+			for _, uid := range userIDs {
+				if pubErr := s.rdb.Publish(context.Background(), "user:channel:"+uid, data).Err(); pubErr != nil {
+					s.log.Warn().Err(pubErr).Str("user_id", uid).Str("subject", subject).Msg("redis publish failed")
 				}
 			}
 
@@ -268,5 +297,29 @@ func (s *wsServiceImpl) subscribeChatAndGroupEvents(_ context.Context) error {
 		s.log.Info().Str("subject", subject).Msg("subscribed to NATS subject")
 	}
 
+	return nil
+}
+
+// extractUserIDs pulls participant user IDs from a NATS event, supporting both
+// structured participants ([]{"user_id": "...", "role": "..."}) and flat string
+// arrays, as well as single "user_id" fields for member add/remove events.
+func extractUserIDs(event map[string]interface{}) []string {
+	if participants, ok := event["participants"].([]interface{}); ok {
+		var ids []string
+		for _, p := range participants {
+			switch v := p.(type) {
+			case string:
+				ids = append(ids, v)
+			case map[string]interface{}:
+				if uid, ok := v["user_id"].(string); ok {
+					ids = append(ids, uid)
+				}
+			}
+		}
+		return ids
+	}
+	if uid, ok := event["user_id"].(string); ok {
+		return []string{uid}
+	}
 	return nil
 }
