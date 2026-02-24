@@ -2,6 +2,8 @@ package com.whatsappclone.app.data.websocket
 
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.room.withTransaction
+import com.whatsappclone.core.database.AppDatabase
 import com.whatsappclone.core.database.dao.ChatDao
 import com.whatsappclone.core.database.dao.ChatParticipantDao
 import com.whatsappclone.core.database.dao.MessageDao
@@ -22,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -36,6 +39,7 @@ import javax.inject.Singleton
 @Singleton
 class WsEventRouter @Inject constructor(
     private val webSocketManager: WebSocketManager,
+    private val database: AppDatabase,
     private val messageDao: MessageDao,
     private val chatDao: ChatDao,
     private val userDao: UserDao,
@@ -61,17 +65,17 @@ class WsEventRouter @Inject constructor(
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         Log.e(TAG, "Uncaught coroutine exception", throwable)
     }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
-    private var started = false
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
+    private val started = AtomicBoolean(false)
 
     fun shutdown() {
+        started.set(false)
         scope.cancel()
-        started = false
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     }
 
     fun start() {
-        if (started) return
-        started = true
+        if (!started.compareAndSet(false, true)) return
 
         scope.launch {
             webSocketManager.events.collect { event ->
@@ -96,10 +100,27 @@ class WsEventRouter @Inject constructor(
         val toSend: List<PendingReceipt>
         synchronized(pendingReceipts) {
             toSend = pendingReceipts.toList()
-            pendingReceipts.clear()
         }
+        val sent = mutableListOf<PendingReceipt>()
         for (receipt in toSend) {
-            sendDeliveryReceipt(receipt.messageId, receipt.senderId, receipt.chatId)
+            try {
+                if (webSocketManager.connectionState.value != WsConnectionState.CONNECTED) break
+                val payload = buildJsonObject {
+                    put("message_id", JsonPrimitive(receipt.messageId))
+                    put("chat_id", JsonPrimitive(receipt.chatId))
+                    put("sender_id", JsonPrimitive(receipt.senderId))
+                }
+                if (webSocketManager.send(WsFrame(event = "message.delivered", data = payload))) {
+                    sent.add(receipt)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to flush delivery receipt for ${receipt.messageId}", e)
+            }
+        }
+        if (sent.isNotEmpty()) {
+            synchronized(pendingReceipts) {
+                pendingReceipts.removeAll(sent.toSet())
+            }
         }
     }
 
@@ -191,25 +212,35 @@ class WsEventRouter @Inject constructor(
                 put("chat_id", JsonPrimitive(chatId))
                 put("sender_id", JsonPrimitive(senderId))
             }
-            webSocketManager.send(WsFrame(event = "message.delivered", data = payload))
+            val sent = webSocketManager.send(WsFrame(event = "message.delivered", data = payload))
+            if (!sent) {
+                synchronized(pendingReceipts) {
+                    pendingReceipts.add(PendingReceipt(messageId, senderId, chatId))
+                }
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to send delivery receipt for $messageId", e)
+            Log.w(TAG, "Failed to send delivery receipt for $messageId, queuing for retry", e)
+            synchronized(pendingReceipts) {
+                pendingReceipts.add(PendingReceipt(messageId, senderId, chatId))
+            }
         }
     }
 
     private suspend fun handleMessageSent(event: ServerWsEvent.MessageSent) {
-        messageDao.confirmSent(
-            clientMsgId = event.clientMsgId,
-            serverMessageId = event.messageId
-        )
-        val existing = messageDao.getByClientMsgId(event.clientMsgId)
-        chatDao.updateLastMessage(
-            chatId = event.chatId,
-            messageId = event.messageId,
-            preview = existing?.content,
-            timestamp = parseTimestamp(event.timestamp),
-            updatedAt = System.currentTimeMillis()
-        )
+        database.withTransaction {
+            val existing = messageDao.getByClientMsgId(event.clientMsgId)
+            messageDao.confirmSent(
+                clientMsgId = event.clientMsgId,
+                serverMessageId = event.messageId
+            )
+            chatDao.updateLastMessage(
+                chatId = event.chatId,
+                messageId = event.messageId,
+                preview = existing?.content,
+                timestamp = parseTimestamp(event.timestamp),
+                updatedAt = System.currentTimeMillis()
+            )
+        }
     }
 
     private suspend fun handleMessageStatus(event: ServerWsEvent.MessageStatus) {
@@ -254,7 +285,8 @@ class WsEventRouter @Inject constructor(
 
     private suspend fun handleChatCreated(event: ServerWsEvent.ChatCreated) {
         val chatDto = json.decodeFromString(ChatDto.serializer(), event.chatJson)
-        chatDao.upsert(chatDto.toEntity())
+        val existing = chatDao.getChatById(chatDto.chatId)
+        chatDao.upsert(chatDto.toEntity(existingPinned = existing?.isPinned ?: false))
         chatDto.participants?.forEach { participant ->
             chatParticipantDao.upsert(
                 ChatParticipantEntity(
@@ -331,13 +363,15 @@ class WsEventRouter @Inject constructor(
 
     private suspend fun handleCallOffer(event: ServerWsEvent.CallOffer) {
         Log.i(TAG, "Incoming call offer: callId=${event.callId} from=${event.callerId} type=${event.callType}")
-        val callerUser = userDao.getById(event.callerId)
+        val user = userDao.getById(event.callerId)
+        val displayName = event.callerName.takeIf { it.isNotBlank() }
+            ?: user?.displayName
+            ?: event.callerId.take(8)
         callService.onIncomingOffer(
             callId = event.callId,
             callerId = event.callerId,
-            callerName = callerUser?.displayName?.takeIf { it.isNotBlank() }
-                ?: event.callerId.take(8),
-            callerAvatar = callerUser?.avatarUrl,
+            callerName = displayName,
+            callerAvatar = user?.avatarUrl,
             sdp = event.sdp,
             callType = event.callType
         )
@@ -365,20 +399,20 @@ class WsEventRouter @Inject constructor(
     private fun MessageDto.toEntity(): MessageEntity = MessageEntity(
         messageId = messageId, clientMsgId = clientMsgId ?: messageId,
         chatId = chatId, senderId = senderId, messageType = type,
-        content = payload.body, mediaId = payload.mediaId, mediaUrl = payload.mediaUrl,
+        content = payload.body?.takeIf { it.isNotBlank() } ?: payload.caption, mediaId = payload.mediaId, mediaUrl = payload.mediaUrl,
         mediaThumbnailUrl = payload.thumbnailUrl, mediaMimeType = payload.mimeType,
-        mediaSize = payload.fileSize, mediaDuration = payload.duration,
+        mediaSize = payload.fileSize, mediaDuration = payload.durationMs,
         replyToMessageId = replyToMessageId, status = status, isDeleted = isDeleted,
-        deletedForEveryone = false, isStarred = isStarred,
+        deletedForEveryone = deletedForEveryone, isStarred = isStarred,
         timestamp = parseTimestamp(createdAt), createdAt = parseTimestamp(createdAt)
     )
 
-    private fun ChatDto.toEntity(): ChatEntity = ChatEntity(
+    private fun ChatDto.toEntity(existingPinned: Boolean = false): ChatEntity = ChatEntity(
         chatId = chatId, chatType = type, name = name, description = description,
         avatarUrl = avatarUrl, lastMessageId = lastMessage?.messageId,
         lastMessagePreview = lastMessage?.preview,
         lastMessageTimestamp = lastMessage?.timestamp?.let { parseTimestamp(it) },
-        unreadCount = unreadCount, isMuted = isMuted, isPinned = false,
+        unreadCount = unreadCount, isMuted = isMuted, isPinned = existingPinned,
         createdAt = createdAt?.let { parseTimestamp(it) } ?: System.currentTimeMillis(),
         updatedAt = updatedAt?.let { parseTimestamp(it) } ?: System.currentTimeMillis()
     )
