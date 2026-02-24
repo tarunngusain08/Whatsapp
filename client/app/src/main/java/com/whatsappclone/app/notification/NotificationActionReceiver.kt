@@ -6,8 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.app.RemoteInput
+import com.whatsappclone.app.notification.NotificationBuilder.Companion.ACTION_DECLINE_CALL
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.ACTION_MARK_READ
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.ACTION_REPLY
+import com.whatsappclone.app.notification.NotificationBuilder.Companion.EXTRA_CALL_ID
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.EXTRA_CHAT_ID
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.EXTRA_NOTIFICATION_ID
 import com.whatsappclone.app.notification.NotificationBuilder.Companion.KEY_TEXT_REPLY
@@ -39,6 +41,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
     lateinit var sendMessageUseCase: SendMessageUseCase
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_DECLINE_CALL) {
+            handleDeclineCall(context, intent)
+            return
+        }
+
         val chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: return
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
 
@@ -89,6 +96,17 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 Log.e(TAG, "Failed to send inline reply for chat $chatId", e)
             }
         }
+    }
+
+    private fun handleDeclineCall(context: Context, intent: Intent) {
+        val callId = intent.getStringExtra(EXTRA_CALL_ID) ?: return
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
+        if (notificationId != -1) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE)
+                    as NotificationManager
+            manager.cancel(notificationId)
+        }
+        Log.d(TAG, "Declined call $callId")
     }
 
     private fun dismissNotification(context: Context, notificationId: Int) {
