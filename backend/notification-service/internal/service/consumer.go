@@ -151,6 +151,9 @@ func (c *Consumer) subscribeMemberEvents(ctx context.Context) error {
 // to all offline, non-muted recipients.
 func (c *Consumer) handleNewMessage(ctx context.Context, event *model.MessageEvent) error {
 	body := event.Payload.Body
+	if body == "" && event.Payload.Caption != "" {
+		body = event.Payload.Caption
+	}
 	chatType := "direct"
 	if event.IsGroup {
 		chatType = "group"
@@ -190,7 +193,7 @@ func (c *Consumer) handleNewMessage(ctx context.Context, event *model.MessageEve
 			"chatType":    chatType,
 			"chatName":    chatName,
 			"avatarUrl":   event.SenderAvatar,
-			"timestamp":   event.CreatedAt,
+			"timestamp":   fmt.Sprintf("%d", event.CreatedAt),
 		}
 
 		if event.IsGroup {
