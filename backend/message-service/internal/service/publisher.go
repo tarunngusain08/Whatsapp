@@ -51,7 +51,7 @@ func (p *EventPublisher) PublishNewMessage(ctx context.Context, msg *model.Messa
 		"sender_id":  msg.SenderID,
 		"type":       msg.Type,
 		"payload":    msg.Payload,
-		"created_at": msg.CreatedAt,
+		"created_at": msg.CreatedAt.UnixMilli(),
 	}
 	if enrichment != nil {
 		payload["sender_name"] = enrichment.SenderName
