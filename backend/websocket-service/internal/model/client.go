@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -9,11 +10,13 @@ import (
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	Conn     *websocket.Conn
-	UserID   string
-	Phone    string
-	Send     chan []byte
-	JoinedAt time.Time
+	Conn      *websocket.Conn
+	UserID    string
+	Phone     string
+	Send      chan []byte
+	JoinedAt  time.Time
+	Ctx       context.Context
+	CancelCtx context.CancelFunc
 }
 
 // Hub maintains the set of active clients and routes messages.
