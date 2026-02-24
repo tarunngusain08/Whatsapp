@@ -180,10 +180,11 @@ class NotificationBuilder @Inject constructor(
         val notificationId = callId.hashCode()
         val avatarBitmap = loadAvatarBitmap(avatarUrl)
 
-        val contentIntent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse(
-                "whatsapp-clone://call/$callerName?callType=$callType"
-            )
+        val contentIntent = Intent(context, com.whatsappclone.app.MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            putExtra("call_id", callId)
+            putExtra("caller_name", callerName)
+            putExtra("call_type", callType)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val contentPending = PendingIntent.getActivity(
