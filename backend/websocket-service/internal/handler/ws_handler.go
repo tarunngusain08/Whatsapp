@@ -112,10 +112,13 @@ func (h *WSHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	h.hub.Register(client)
 	h.log.Info().Str("user_id", userID).Msg("client connected")
 
-	ctx := context.Background()
-	_ = h.wsSvc.SetPresence(ctx, userID, true)
+	clientCtx, clientCancel := context.WithCancel(context.Background())
+	client.Ctx = clientCtx
+	client.CancelCtx = clientCancel
+
+	_ = h.wsSvc.SetPresence(clientCtx, userID, true)
 	h.wsSvc.NotifyPresenceChange(userID, true)
-	_ = h.wsSvc.StartRedisSubscriber(ctx, client)
+	_ = h.wsSvc.StartRedisSubscriber(clientCtx, client)
 
 	go h.writePump(client)
 	go h.readPump(client)
@@ -124,6 +127,7 @@ func (h *WSHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
 // readPump reads messages from the WebSocket connection and routes them to the service layer.
 func (h *WSHandler) readPump(client *model.Client) {
 	defer func() {
+		client.CancelCtx()
 		h.hub.Unregister(client)
 		_ = h.wsSvc.StopRedisSubscriber(client)
 
@@ -142,7 +146,9 @@ func (h *WSHandler) readPump(client *model.Client) {
 	_ = client.Conn.SetReadDeadline(time.Now().Add(h.cfg.PongTimeout))
 	client.Conn.SetPongHandler(func(string) error {
 		_ = client.Conn.SetReadDeadline(time.Now().Add(h.cfg.PongTimeout))
-		_ = h.wsSvc.SetPresence(context.Background(), client.UserID, true)
+		presenceCtx, cancel := context.WithTimeout(client.Ctx, 2*time.Second)
+		defer cancel()
+		_ = h.wsSvc.SetPresence(presenceCtx, client.UserID, true)
 		return nil
 	})
 
@@ -161,10 +167,12 @@ func (h *WSHandler) readPump(client *model.Client) {
 			continue
 		}
 
-		if err := h.wsSvc.HandleEvent(context.Background(), client, &event); err != nil {
+		eventCtx, eventCancel := context.WithTimeout(client.Ctx, 10*time.Second)
+		if err := h.wsSvc.HandleEvent(eventCtx, client, &event); err != nil {
 			h.log.Error().Err(err).Str("type", event.Type).Str("user_id", client.UserID).Msg("event handling failed")
 			h.sendError(client, err.Error())
 		}
+		eventCancel()
 	}
 }
 
