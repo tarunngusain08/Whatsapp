@@ -7,6 +7,7 @@ import (
 	"time"
 
 	messagev1 "github.com/whatsapp-clone/backend/proto/message/v1"
+	userv1 "github.com/whatsapp-clone/backend/proto/user/v1"
 	"github.com/whatsapp-clone/backend/websocket-service/internal/model"
 )
 
@@ -48,7 +49,10 @@ func (s *wsServiceImpl) handleMessageSend(ctx context.Context, client *model.Cli
 		return fmt.Errorf("invalid message.send payload: %w", err)
 	}
 
-	resp, err := s.messageClient.SendMessage(ctx, &messagev1.SendMessageRequest{
+	grpcCtx, grpcCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer grpcCancel()
+
+	resp, err := s.messageClient.SendMessage(grpcCtx, &messagev1.SendMessageRequest{
 		ChatId:           p.ChatID,
 		SenderId:         client.UserID,
 		Type:             p.Type,
@@ -66,11 +70,14 @@ func (s *wsServiceImpl) handleMessageSend(ctx context.Context, client *model.Cli
 		return fmt.Errorf("message-service SendMessage failed: %w", err)
 	}
 
+	ts := resp.CreatedAt.AsTime()
 	ack := model.WSEvent{Type: "message.sent"}
 	ack.Payload, _ = json.Marshal(model.MessageSentAckPayload{
 		ClientMsgID: p.ClientMsgID,
 		MessageID:   resp.MessageId,
-		CreatedAt:   resp.CreatedAt.AsTime().UnixMilli(),
+		ChatID:      p.ChatID,
+		Timestamp:   ts.Format(time.RFC3339),
+		CreatedAt:   ts.UnixMilli(),
 	})
 	return s.SendToUser(client.UserID, &ack)
 }
@@ -96,14 +103,21 @@ func (s *wsServiceImpl) handleMessageStatus(ctx context.Context, client *model.C
 		data, _ := json.Marshal(statusEvent)
 
 		if p.SenderID != "" && p.SenderID != client.UserID {
-			s.rdb.Publish(ctx, "user:channel:"+p.SenderID, data)
+			if err := s.rdb.Publish(ctx, "user:channel:"+p.SenderID, data).Err(); err != nil {
+				s.log.Warn().Err(err).Str("user_id", p.SenderID).Msg("redis publish failed for status update")
+			}
 		} else {
 			participants := s.getChatParticipants(ctx, p.ChatID)
+			if len(participants) == 0 {
+				s.log.Warn().Str("chat_id", p.ChatID).Msg("no participants resolved for status broadcast, delivery skipped")
+			}
 			for _, uid := range participants {
 				if uid == client.UserID {
 					continue
 				}
-				s.rdb.Publish(ctx, "user:channel:"+uid, data)
+				if err := s.rdb.Publish(ctx, "user:channel:"+uid, data).Err(); err != nil {
+					s.log.Warn().Err(err).Str("user_id", uid).Msg("redis publish failed for status update")
+				}
 			}
 		}
 	}
@@ -134,15 +148,30 @@ func (s *wsServiceImpl) handleMessageDelete(ctx context.Context, client *model.C
 		return fmt.Errorf("invalid message.delete payload: %w", err)
 	}
 
-	data, _ := json.Marshal(map[string]interface{}{
-		"message_id":   p.MessageID,
-		"chat_id":      p.ChatID,
-		"user_id":      client.UserID,
-		"for_everyone": p.ForEveryone,
+	grpcCtx, grpcCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer grpcCancel()
+
+	_, err := s.messageClient.DeleteMessage(grpcCtx, &messagev1.DeleteMessageRequest{
+		MessageId:   p.MessageID,
+		UserId:      client.UserID,
+		ForEveryone: p.ForEveryone,
 	})
-	_, err := s.js.Publish("msg.deleted", data)
 	if err != nil {
-		return fmt.Errorf("publish msg.deleted: %w", err)
+		return fmt.Errorf("message-service DeleteMessage failed: %w", err)
+	}
+
+	// For "delete for me", message-service does not publish; we publish so the deleter gets confirmation.
+	// For "delete for everyone", message-service already publishes msg.deleted; publishing again would duplicate.
+	if !p.ForEveryone {
+		data, _ := json.Marshal(map[string]interface{}{
+			"message_id":   p.MessageID,
+			"chat_id":      p.ChatID,
+			"user_id":      client.UserID,
+			"for_everyone": p.ForEveryone,
+		})
+		if _, pubErr := s.js.Publish("msg.deleted", data); pubErr != nil {
+			s.log.Warn().Err(pubErr).Str("message_id", p.MessageID).Msg("failed to publish msg.deleted for delete-for-me")
+		}
 	}
 	return nil
 }
@@ -155,9 +184,13 @@ func (s *wsServiceImpl) handleTyping(ctx context.Context, client *model.Client, 
 
 	key := fmt.Sprintf("typing:%s:%s", p.ChatID, client.UserID)
 	if start {
-		s.rdb.SetEx(ctx, key, "1", s.cfg.TypingTTL)
+		if err := s.rdb.SetEx(ctx, key, "1", s.cfg.TypingTTL).Err(); err != nil {
+			s.log.Warn().Err(err).Str("chat_id", p.ChatID).Msg("failed to set typing indicator")
+		}
 	} else {
-		s.rdb.Del(ctx, key)
+		if err := s.rdb.Del(ctx, key).Err(); err != nil {
+			s.log.Warn().Err(err).Str("chat_id", p.ChatID).Msg("failed to clear typing indicator")
+		}
 	}
 
 	event := model.WSEvent{Type: "typing"}
@@ -169,11 +202,16 @@ func (s *wsServiceImpl) handleTyping(ctx context.Context, client *model.Client, 
 	data, _ := json.Marshal(event)
 
 	participants := s.getChatParticipants(ctx, p.ChatID)
+	if len(participants) == 0 {
+		s.log.Warn().Str("chat_id", p.ChatID).Msg("no participants resolved for typing broadcast, delivery skipped")
+	}
 	for _, uid := range participants {
 		if uid == client.UserID {
 			continue
 		}
-		s.rdb.Publish(ctx, "user:channel:"+uid, data)
+		if err := s.rdb.Publish(ctx, "user:channel:"+uid, data).Err(); err != nil {
+			s.log.Warn().Err(err).Str("user_id", uid).Msg("redis publish failed for typing event")
+		}
 	}
 
 	return nil
@@ -206,29 +244,45 @@ func (s *wsServiceImpl) handleCallOffer(ctx context.Context, client *model.Clien
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("invalid call.offer payload: %w", err)
 	}
+	if p.CallID == "" {
+		return fmt.Errorf("call_id is required")
+	}
+	if p.TargetUserID == "" {
+		return fmt.Errorf("target_user_id is required")
+	}
+
+	callerName := ""
+	lookupCtx, lookupCancel := context.WithTimeout(ctx, 2*time.Second)
+	defer lookupCancel()
+	userResp, err := s.userClient.GetUser(lookupCtx, &userv1.GetUserRequest{UserId: client.UserID})
+	if err != nil {
+		s.log.Warn().Err(err).Str("user_id", client.UserID).Msg("failed to fetch caller name for call.offer")
+	} else if userResp.User != nil {
+		callerName = userResp.User.DisplayName
+	}
 
 	event := model.WSEvent{Type: "call.offer"}
 	event.Payload, _ = json.Marshal(map[string]string{
-		"call_id":   p.CallID,
-		"caller_id": client.UserID,
-		"sdp":       p.SDP,
-		"call_type": p.CallType,
+		"call_id":     p.CallID,
+		"caller_id":   client.UserID,
+		"caller_name": callerName,
+		"sdp":         p.SDP,
+		"call_type":   p.CallType,
 	})
 	data, _ := json.Marshal(event)
-	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	if err := s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data).Err(); err != nil {
+		s.log.Warn().Err(err).Str("target_user", p.TargetUserID).Msg("redis publish failed for call.offer")
+	}
 
-	if !s.hub.IsConnected(p.TargetUserID) {
-		callEvent, _ := json.Marshal(map[string]string{
-			"call_id":        p.CallID,
-			"caller_id":      client.UserID,
-			"target_user_id": p.TargetUserID,
-			"call_type":      p.CallType,
-		})
-		if _, err := s.js.Publish("call.new", callEvent); err != nil {
-			s.log.Error().Err(err).
-				Str("call_id", p.CallID).
-				Msg("failed to publish call.new for offline user")
-		}
+	callEvent, _ := json.Marshal(map[string]string{
+		"call_id":        p.CallID,
+		"caller_id":      client.UserID,
+		"caller_name":    callerName,
+		"target_user_id": p.TargetUserID,
+		"call_type":      p.CallType,
+	})
+	if _, err := s.js.Publish("call.offer", callEvent); err != nil {
+		s.log.Warn().Err(err).Msg("failed to publish call.offer to NATS")
 	}
 
 	return nil
@@ -239,6 +293,12 @@ func (s *wsServiceImpl) handleCallAnswer(ctx context.Context, client *model.Clie
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("invalid call.answer payload: %w", err)
 	}
+	if p.CallID == "" {
+		return fmt.Errorf("call_id is required")
+	}
+	if p.TargetUserID == "" {
+		return fmt.Errorf("target_user_id is required")
+	}
 
 	event := model.WSEvent{Type: "call.answer"}
 	event.Payload, _ = json.Marshal(map[string]string{
@@ -247,7 +307,9 @@ func (s *wsServiceImpl) handleCallAnswer(ctx context.Context, client *model.Clie
 		"sdp":         p.SDP,
 	})
 	data, _ := json.Marshal(event)
-	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	if err := s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data).Err(); err != nil {
+		s.log.Warn().Err(err).Str("target_user", p.TargetUserID).Msg("redis publish failed for call.answer")
+	}
 	return nil
 }
 
@@ -255,6 +317,12 @@ func (s *wsServiceImpl) handleCallIceCandidate(ctx context.Context, client *mode
 	var p model.CallIceCandidatePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("invalid call.ice-candidate payload: %w", err)
+	}
+	if p.CallID == "" {
+		return fmt.Errorf("call_id is required")
+	}
+	if p.TargetUserID == "" {
+		return fmt.Errorf("target_user_id is required")
 	}
 
 	event := model.WSEvent{Type: "call.ice-candidate"}
@@ -264,7 +332,9 @@ func (s *wsServiceImpl) handleCallIceCandidate(ctx context.Context, client *mode
 		"candidate": p.Candidate,
 	})
 	data, _ := json.Marshal(event)
-	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	if err := s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data).Err(); err != nil {
+		s.log.Warn().Err(err).Str("target_user", p.TargetUserID).Msg("redis publish failed for call.ice-candidate")
+	}
 	return nil
 }
 
@@ -272,6 +342,12 @@ func (s *wsServiceImpl) handleCallEnd(ctx context.Context, client *model.Client,
 	var p model.CallEndPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("invalid call.end payload: %w", err)
+	}
+	if p.CallID == "" {
+		return fmt.Errorf("call_id is required")
+	}
+	if p.TargetUserID == "" {
+		return fmt.Errorf("target_user_id is required")
 	}
 
 	event := model.WSEvent{Type: "call.end"}
@@ -281,12 +357,16 @@ func (s *wsServiceImpl) handleCallEnd(ctx context.Context, client *model.Client,
 		"reason":    p.Reason,
 	})
 	data, _ := json.Marshal(event)
-	s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data)
+	if err := s.rdb.Publish(ctx, "user:channel:"+p.TargetUserID, data).Err(); err != nil {
+		s.log.Warn().Err(err).Str("target_user", p.TargetUserID).Msg("redis publish failed for call.end")
+	}
 	return nil
 }
 
 func (s *wsServiceImpl) handlePing(client *model.Client) error {
-	_ = s.SetPresence(context.Background(), client.UserID, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = s.SetPresence(ctx, client.UserID, true)
 
 	pong := model.WSEvent{Type: "pong"}
 	pong.Payload, _ = json.Marshal(map[string]int64{"timestamp": time.Now().UnixMilli()})
