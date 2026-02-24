@@ -40,6 +40,7 @@ class MediaRepositoryImpl @Inject constructor(
     // ── Upload Image ─────────────────────────────────────────────────────
 
     override suspend fun uploadImage(uri: Uri, uploaderId: String): AppResult<MediaEntity> {
+        val originalName = queryFileName(uri) ?: "photo_${System.currentTimeMillis()}.jpg"
         val compressed = imageCompressor.compress(uri)
             ?: return AppResult.Error(
                 ErrorCode.UNKNOWN,
@@ -50,7 +51,7 @@ class MediaRepositoryImpl @Inject constructor(
             file = compressed,
             fileType = "image",
             mimeType = "image/jpeg",
-            originalFilename = queryFileName(uri),
+            originalFilename = originalName,
             uploaderId = uploaderId
         ).also { compressed.delete() }
     }
@@ -58,6 +59,7 @@ class MediaRepositoryImpl @Inject constructor(
     // ── Upload Video ─────────────────────────────────────────────────────
 
     override suspend fun uploadVideo(uri: Uri, uploaderId: String): AppResult<MediaEntity> {
+        val originalName = queryFileName(uri) ?: "video_${System.currentTimeMillis()}.mp4"
         val copied = videoCompressor.compress(uri)
             ?: return AppResult.Error(
                 ErrorCode.UNKNOWN,
@@ -70,7 +72,7 @@ class MediaRepositoryImpl @Inject constructor(
             file = copied,
             fileType = "video",
             mimeType = mimeType,
-            originalFilename = queryFileName(uri),
+            originalFilename = originalName,
             uploaderId = uploaderId
         ).also { copied.delete() }
     }
