@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/whatsapp-clone/backend/message-service/internal/model"
 	"github.com/whatsapp-clone/backend/message-service/internal/service"
+	mediav1 "github.com/whatsapp-clone/backend/proto/media/v1"
 )
 
 // clientMessage is the client-compatible message shape.
@@ -94,12 +96,34 @@ func aggregateStatus(statusMap map[string]model.RecipientStatus) string {
 }
 
 type HTTPHandler struct {
-	msgSvc service.MessageService
-	log    zerolog.Logger
+	msgSvc      service.MessageService
+	mediaClient mediav1.MediaServiceClient
+	log         zerolog.Logger
 }
 
-func NewHTTPHandler(msgSvc service.MessageService, log zerolog.Logger) *HTTPHandler {
-	return &HTTPHandler{msgSvc: msgSvc, log: log}
+func NewHTTPHandler(msgSvc service.MessageService, mediaClient mediav1.MediaServiceClient, log zerolog.Logger) *HTTPHandler {
+	return &HTTPHandler{msgSvc: msgSvc, mediaClient: mediaClient, log: log}
+}
+
+func (h *HTTPHandler) resolveMediaURLs(ctx context.Context, msgs []*clientMessage) {
+	for _, m := range msgs {
+		if m.Payload.MediaID == "" {
+			continue
+		}
+		grpcCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		resp, err := h.mediaClient.GetMediaMetadata(grpcCtx, &mediav1.GetMediaMetadataRequest{
+			MediaId: m.Payload.MediaID,
+		})
+		cancel()
+		if err != nil {
+			h.log.Warn().Err(err).Str("media_id", m.Payload.MediaID).Msg("failed to resolve media metadata")
+			continue
+		}
+		m.Payload.MediaURL = resp.GetUrl()
+		m.Payload.ThumbnailURL = resp.GetThumbnailUrl()
+		m.Payload.MimeType = resp.GetMimeType()
+		m.Payload.FileSize = resp.GetSizeBytes()
+	}
 }
 
 func (h *HTTPHandler) RegisterRoutes(rg *gin.RouterGroup) {
@@ -153,6 +177,7 @@ func (h *HTTPHandler) ListMessages(c *gin.Context) {
 		return
 	}
 	clientMsgs := toClientMessages(msgs, userID)
+	h.resolveMediaURLs(c.Request.Context(), clientMsgs)
 
 	var nextCursor string
 	hasMore := false
@@ -162,8 +187,6 @@ func (h *HTTPHandler) ListMessages(c *gin.Context) {
 		hasMore = len(msgs) == limit
 	}
 
-	// Return in PaginatedData format the client expects:
-	// { success: true, data: { items: [...], nextCursor: "...", hasMore: true } }
 	response.OK(c, gin.H{
 		"items":      clientMsgs,
 		"nextCursor": nextCursor,
@@ -194,7 +217,9 @@ func (h *HTTPHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	response.Created(c, toClientMessage(msg, userID))
+	cm := toClientMessage(msg, userID)
+	h.resolveMediaURLs(c.Request.Context(), []*clientMessage{cm})
+	response.Created(c, cm)
 }
 
 func (h *HTTPHandler) DeleteMessage(c *gin.Context) {
@@ -247,7 +272,9 @@ func (h *HTTPHandler) ForwardMessage(c *gin.Context) {
 		forwarded = append(forwarded, msg)
 	}
 
-	response.Created(c, forwarded)
+	clientMsgs := toClientMessages(forwarded, userID)
+	h.resolveMediaURLs(c.Request.Context(), clientMsgs)
+	response.Created(c, clientMsgs)
 }
 
 func (h *HTTPHandler) StarMessage(c *gin.Context) {
@@ -305,6 +332,7 @@ func (h *HTTPHandler) MarkAsRead(c *gin.Context) {
 
 	msgs, err := h.msgSvc.GetMessages(c.Request.Context(), &model.ListMessagesQuery{
 		ChatID: chatID,
+		UserID: userID,
 		Limit:  100,
 	})
 	if err != nil {
@@ -351,8 +379,9 @@ func (h *HTTPHandler) SearchMessages(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetHeader("X-User-ID")
-	response.OK(c, toClientMessages(msgs, userID))
+	clientMsgs := toClientMessages(msgs, userID)
+	h.resolveMediaURLs(c.Request.Context(), clientMsgs)
+	response.OK(c, clientMsgs)
 }
 
 // ReactToMessage adds or replaces a user's reaction on a message.
@@ -394,12 +423,30 @@ func (h *HTTPHandler) RemoveReaction(c *gin.Context) {
 
 // GetMessageReceipts returns per-recipient read/delivery status breakdown for a message.
 func (h *HTTPHandler) GetMessageReceipts(c *gin.Context) {
+	userID := c.GetHeader("X-User-ID")
+	if userID == "" {
+		response.Error(c, apperr.NewUnauthorized("missing X-User-ID header"))
+		return
+	}
+
 	messageID := c.Param("messageId")
 	msg, err := h.msgSvc.GetMessageByID(c.Request.Context(), messageID)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
+
+	// Verify the caller is a member of the chat by triggering a membership check
+	_, err = h.msgSvc.GetMessages(c.Request.Context(), &model.ListMessagesQuery{
+		ChatID: msg.ChatID,
+		UserID: userID,
+		Limit:  1,
+	})
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
 	type receipt struct {
 		UserID    string    `json:"user_id"`
 		Status    string    `json:"status"`
@@ -451,5 +498,7 @@ func (h *HTTPHandler) SearchGlobal(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, toClientMessages(msgs, userID))
+	clientMsgs := toClientMessages(msgs, userID)
+	h.resolveMediaURLs(c.Request.Context(), clientMsgs)
+	response.OK(c, clientMsgs)
 }
