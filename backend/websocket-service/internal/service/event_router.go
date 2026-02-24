@@ -147,6 +147,9 @@ func (s *wsServiceImpl) handleMessageDelete(ctx context.Context, client *model.C
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("invalid message.delete payload: %w", err)
 	}
+	if p.ChatID == "" {
+		return fmt.Errorf("chat_id is required")
+	}
 
 	grpcCtx, grpcCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer grpcCancel()
@@ -180,6 +183,9 @@ func (s *wsServiceImpl) handleTyping(ctx context.Context, client *model.Client, 
 	var p model.TypingPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("invalid typing payload: %w", err)
+	}
+	if p.ChatID == "" {
+		return fmt.Errorf("chat_id is required")
 	}
 
 	key := fmt.Sprintf("typing:%s:%s", p.ChatID, client.UserID)
