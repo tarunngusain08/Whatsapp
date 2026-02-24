@@ -312,7 +312,7 @@ class MessageRepositoryImpl @Inject constructor(
                 thumbnailUrl = message.mediaThumbnailUrl,
                 mimeType = message.mediaMimeType,
                 fileSize = message.mediaSize,
-                duration = message.mediaDuration
+                durationMs = message.mediaDuration
             ),
             replyToMessageId = message.replyToMessageId
         )
@@ -382,16 +382,17 @@ private fun MessageDto.toEntity(): MessageEntity = MessageEntity(
     chatId = chatId,
     senderId = senderId,
     messageType = type,
-    content = payload.body,
+    content = payload.body?.takeIf { it.isNotBlank() } ?: payload.caption,
     mediaId = payload.mediaId,
     mediaUrl = payload.mediaUrl,
     mediaThumbnailUrl = payload.thumbnailUrl,
     mediaMimeType = payload.mimeType,
     mediaSize = payload.fileSize,
-    mediaDuration = payload.duration,
+    mediaDuration = payload.durationMs,
     replyToMessageId = replyToMessageId,
     status = status,
     isDeleted = isDeleted,
+    deletedForEveryone = deletedForEveryone,
     isStarred = isStarred,
     timestamp = createdAt.toEpochMillisOrNull() ?: System.currentTimeMillis(),
     createdAt = System.currentTimeMillis()
