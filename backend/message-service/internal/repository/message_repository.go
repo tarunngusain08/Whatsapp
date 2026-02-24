@@ -17,7 +17,8 @@ type MessageRepository interface {
 
 	// ListByChatID returns messages for a chat using cursor-based pagination.
 	// Cursor is (created_at, message_id) for deterministic ordering.
-	ListByChatID(ctx context.Context, chatID string, cursorTime *time.Time, cursorID string, limit int) ([]*model.Message, error)
+	// If userID is non-empty, messages in that user's deleted_for_users list are excluded.
+	ListByChatID(ctx context.Context, chatID string, userID string, cursorTime *time.Time, cursorID string, limit int) ([]*model.Message, error)
 
 	// UpdateStatus updates the status map entry for a specific recipient.
 	UpdateStatus(ctx context.Context, messageID, userID string, status model.RecipientStatus) error
@@ -41,13 +42,16 @@ type MessageRepository interface {
 	RemoveReaction(ctx context.Context, messageID, userID string) error
 
 	// Search performs a full-text search within a chat using MongoDB $text index.
-	Search(ctx context.Context, chatID, query string, limit int) ([]*model.Message, error)
+	// If userID is non-empty, messages in that user's deleted_for_users list are excluded.
+	Search(ctx context.Context, chatID, userID, query string, limit int) ([]*model.Message, error)
 
 	// SearchGlobal performs a full-text search across multiple chats.
-	SearchGlobal(ctx context.Context, chatIDs []string, query string, limit int) ([]*model.Message, error)
+	// If userID is non-empty, messages in that user's deleted_for_users list are excluded.
+	SearchGlobal(ctx context.Context, chatIDs []string, userID, query string, limit int) ([]*model.Message, error)
 
 	// GetLastPerChat returns the latest message for each given chat ID.
-	GetLastPerChat(ctx context.Context, chatIDs []string) (map[string]*model.Message, error)
+	// If userID is non-empty, messages in that user's deleted_for_users list are excluded.
+	GetLastPerChat(ctx context.Context, chatIDs []string, userID string) (map[string]*model.Message, error)
 
 	// CountUnread returns the count of unread messages per chat for the given user.
 	CountUnread(ctx context.Context, userID string, chatIDs []string) (map[string]int64, error)
