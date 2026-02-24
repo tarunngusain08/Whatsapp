@@ -15,9 +15,11 @@ data class MessageDto(
     val senderId: String,
     val type: String,
     val payload: MessagePayloadDto,
-    val status: String,
+    val status: String = "sent",
     @SerialName("is_deleted")
     val isDeleted: Boolean = false,
+    @SerialName("deleted_for_everyone")
+    val deletedForEveryone: Boolean = false,
     @SerialName("is_starred")
     val isStarred: Boolean = false,
     @SerialName("reply_to_message_id")
@@ -29,6 +31,7 @@ data class MessageDto(
 @Serializable
 data class MessagePayloadDto(
     val body: String? = null,
+    val caption: String? = null,
     @SerialName("media_id")
     val mediaId: String? = null,
     @SerialName("media_url")
@@ -41,7 +44,8 @@ data class MessagePayloadDto(
     val fileName: String? = null,
     @SerialName("file_size")
     val fileSize: Long? = null,
-    val duration: Int? = null
+    @SerialName("duration_ms")
+    val durationMs: Int? = null
 )
 
 @Serializable
