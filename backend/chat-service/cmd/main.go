@@ -98,7 +98,7 @@ func main() {
 
 	// --- Repositories, Service ---
 	chatRepo := repository.NewChatPostgres(pgPool)
-	chatSvc := service.NewChatService(chatRepo, messageClient, js, log)
+	chatSvc := service.NewChatService(chatRepo, messageClient, js, log, cfg.MediaHTTPAddr)
 
 	// --- HTTP Server ---
 	gin.SetMode(gin.ReleaseMode)
