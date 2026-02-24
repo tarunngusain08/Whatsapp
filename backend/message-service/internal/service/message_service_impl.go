@@ -96,11 +96,13 @@ func (s *messageServiceImpl) buildEnrichment(ctx context.Context, senderID, chat
 	e := &MessageEnrichment{}
 
 	userResp, err := s.userClient.GetUser(ctx, &userv1.GetUserRequest{UserId: senderID})
-	if err == nil && userResp.User != nil {
+	if err != nil {
+		s.log.Warn().Err(err).Str("sender_id", senderID).Msg("enrichment: failed to resolve sender profile")
+	} else if userResp.User == nil {
+		s.log.Warn().Str("sender_id", senderID).Msg("enrichment: user profile was nil")
+	} else {
 		e.SenderName = userResp.User.DisplayName
 		e.SenderAvatar = userResp.User.AvatarUrl
-	} else {
-		s.log.Warn().Err(err).Str("sender_id", senderID).Msg("enrichment: failed to resolve sender profile")
 	}
 
 	if perm != nil {
@@ -108,10 +110,10 @@ func (s *messageServiceImpl) buildEnrichment(ctx context.Context, senderID, chat
 	}
 
 	partResp, err := s.chatClient.GetChatParticipants(ctx, &chatv1.GetChatParticipantsRequest{ChatId: chatID})
-	if err == nil && partResp != nil {
-		e.ParticipantIDs = partResp.UserIds
-	} else {
+	if err != nil {
 		s.log.Warn().Err(err).Str("chat_id", chatID).Msg("enrichment: failed to resolve participants")
+	} else if partResp != nil {
+		e.ParticipantIDs = partResp.UserIds
 	}
 
 	return e
