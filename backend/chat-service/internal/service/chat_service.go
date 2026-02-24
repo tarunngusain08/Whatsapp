@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/whatsapp-clone/backend/chat-service/internal/model"
@@ -42,7 +43,7 @@ type ChatService interface {
 	PinChat(ctx context.Context, userID, chatID string, pin bool) error
 
 	// UploadGroupAvatar updates the avatar for a group chat (admin only).
-	UploadGroupAvatar(ctx context.Context, chatID, userID string) (string, error)
+	UploadGroupAvatar(ctx context.Context, chatID, userID string, file io.Reader, fileSize int64, contentType string) (string, error)
 
 	// SetDisappearingMessages sets the auto-delete timer for a chat participant.
 	SetDisappearingMessages(ctx context.Context, chatID, userID string, timer *time.Duration) error
