@@ -261,6 +261,10 @@ func (h *HTTPHandler) ForwardMessage(c *gin.Context) {
 		response.Error(c, apperr.NewBadRequest("invalid request body: "+err.Error()))
 		return
 	}
+	if len(req.TargetChatIDs) == 0 {
+		response.Error(c, apperr.NewBadRequest("target_chat_ids must not be empty"))
+		return
+	}
 
 	var forwarded []*model.Message
 	for _, targetChatID := range req.TargetChatIDs {
