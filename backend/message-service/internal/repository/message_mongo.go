@@ -85,7 +85,7 @@ func (r *messageMongoRepo) GetByID(ctx context.Context, messageID string) (*mode
 
 // ListByChatID returns messages using cursor-based pagination.
 // Sorted by (created_at desc, message_id desc). Filters out deleted messages.
-func (r *messageMongoRepo) ListByChatID(ctx context.Context, chatID string, cursorTime *time.Time, cursorID string, limit int) ([]*model.Message, error) {
+func (r *messageMongoRepo) ListByChatID(ctx context.Context, chatID string, userID string, cursorTime *time.Time, cursorID string, limit int) ([]*model.Message, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
@@ -93,6 +93,9 @@ func (r *messageMongoRepo) ListByChatID(ctx context.Context, chatID string, curs
 	filter := bson.M{
 		"chat_id":    chatID,
 		"is_deleted": false,
+	}
+	if userID != "" {
+		filter["deleted_for_users"] = bson.M{"$nin": bson.A{userID}}
 	}
 
 	if cursorTime != nil {
@@ -288,7 +291,7 @@ func (r *messageMongoRepo) RemoveReaction(ctx context.Context, messageID, userID
 }
 
 // Search performs a full-text search on payload.body within a chat.
-func (r *messageMongoRepo) Search(ctx context.Context, chatID, query string, limit int) ([]*model.Message, error) {
+func (r *messageMongoRepo) Search(ctx context.Context, chatID, userID, query string, limit int) ([]*model.Message, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -297,6 +300,9 @@ func (r *messageMongoRepo) Search(ctx context.Context, chatID, query string, lim
 		"chat_id":    chatID,
 		"is_deleted": false,
 		"$text":      bson.M{"$search": query},
+	}
+	if userID != "" {
+		filter["deleted_for_users"] = bson.M{"$nin": bson.A{userID}}
 	}
 
 	opts := options.Find().
@@ -317,7 +323,7 @@ func (r *messageMongoRepo) Search(ctx context.Context, chatID, query string, lim
 }
 
 // SearchGlobal performs a full-text search across multiple chats.
-func (r *messageMongoRepo) SearchGlobal(ctx context.Context, chatIDs []string, query string, limit int) ([]*model.Message, error) {
+func (r *messageMongoRepo) SearchGlobal(ctx context.Context, chatIDs []string, userID, query string, limit int) ([]*model.Message, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -326,6 +332,9 @@ func (r *messageMongoRepo) SearchGlobal(ctx context.Context, chatIDs []string, q
 		"chat_id":    bson.M{"$in": chatIDs},
 		"is_deleted": false,
 		"$text":      bson.M{"$search": query},
+	}
+	if userID != "" {
+		filter["deleted_for_users"] = bson.M{"$nin": bson.A{userID}}
 	}
 
 	opts := options.Find().
@@ -346,12 +355,17 @@ func (r *messageMongoRepo) SearchGlobal(ctx context.Context, chatIDs []string, q
 }
 
 // GetLastPerChat returns the latest message for each chat using aggregation.
-func (r *messageMongoRepo) GetLastPerChat(ctx context.Context, chatIDs []string) (map[string]*model.Message, error) {
+func (r *messageMongoRepo) GetLastPerChat(ctx context.Context, chatIDs []string, userID string) (map[string]*model.Message, error) {
+	matchFilter := bson.M{
+		"chat_id":    bson.M{"$in": chatIDs},
+		"is_deleted": false,
+	}
+	if userID != "" {
+		matchFilter["deleted_for_users"] = bson.M{"$nin": bson.A{userID}}
+	}
+
 	pipeline := mongo.Pipeline{
-		bson.D{{Key: "$match", Value: bson.M{
-			"chat_id":    bson.M{"$in": chatIDs},
-			"is_deleted": false,
-		}}},
+		bson.D{{Key: "$match", Value: matchFilter}},
 		bson.D{{Key: "$sort", Value: bson.D{
 			{Key: "created_at", Value: -1},
 		}}},
@@ -414,9 +428,10 @@ func (r *messageMongoRepo) CountUnread(ctx context.Context, userID string, chatI
 
 	pipeline := mongo.Pipeline{
 		bson.D{{Key: "$match", Value: bson.M{
-			"chat_id":    bson.M{"$in": chatIDs},
-			"sender_id":  bson.M{"$ne": userID},
-			"is_deleted": false,
+			"chat_id":           bson.M{"$in": chatIDs},
+			"sender_id":         bson.M{"$ne": userID},
+			"is_deleted":        false,
+			"deleted_for_users": bson.M{"$nin": bson.A{userID}},
 			"$or": bson.A{
 				bson.M{statusKey: bson.M{"$exists": false}},
 				bson.M{statusStatusKey: bson.M{"$ne": string(model.StatusRead)}},
