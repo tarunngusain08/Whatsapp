@@ -113,6 +113,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
 
+    // Room (withTransaction requires room-ktx on the classpath)
+    implementation(libs.room.ktx)
+
     // DataStore
     implementation(libs.datastore.preferences)
 
