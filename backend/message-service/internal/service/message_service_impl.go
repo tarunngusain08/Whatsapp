@@ -81,42 +81,56 @@ func (s *messageServiceImpl) SendMessage(ctx context.Context, senderID string, r
 		return nil, apperr.NewInternal("failed to insert message", err)
 	}
 
-	enrichment := s.buildEnrichment(ctx, senderID, req.ChatID, permResp)
-	if pubErr := s.publisher.PublishNewMessage(ctx, result, enrichment); pubErr != nil {
+	meta := s.buildMessageEventMeta(ctx, senderID, req.ChatID, permResp)
+	if pubErr := s.publisher.PublishNewMessage(ctx, result, meta); pubErr != nil {
 		s.log.Error().Err(pubErr).Str("message_id", result.MessageID).Msg("failed to publish msg.new event")
 	}
 
 	return result, nil
 }
 
-// buildEnrichment resolves sender name, avatar, chat participants etc.
-// for inclusion in the msg.new NATS event. Failures are logged but do
-// not block the send — downstream consumers will still get the basics.
-func (s *messageServiceImpl) buildEnrichment(ctx context.Context, senderID, chatID string, perm *chatv1.CheckChatPermissionResponse) *MessageEnrichment {
-	e := &MessageEnrichment{}
+// buildMessageEventMeta fetches sender name and participants for the NATS
+// msg.new event. It reuses a pre-fetched CheckChatPermission response when
+// available to avoid a duplicate gRPC round-trip. Failures are non-fatal;
+// the event will still be published with partial data.
+func (s *messageServiceImpl) buildMessageEventMeta(ctx context.Context, senderID, chatID string, permResp *chatv1.CheckChatPermissionResponse) *MessageEventMeta {
+	meta := &MessageEventMeta{}
 
-	userResp, err := s.userClient.GetUser(ctx, &userv1.GetUserRequest{UserId: senderID})
+	grpcCtx, grpcCancel := context.WithTimeout(ctx, 3*time.Second)
+	defer grpcCancel()
+
+	userResp, err := s.userClient.GetUser(grpcCtx, &userv1.GetUserRequest{UserId: senderID})
 	if err != nil {
-		s.log.Warn().Err(err).Str("sender_id", senderID).Msg("enrichment: failed to resolve sender profile")
-	} else if userResp.User == nil {
-		s.log.Warn().Str("sender_id", senderID).Msg("enrichment: user profile was nil")
+		s.log.Warn().Err(err).Str("user_id", senderID).Msg("failed to fetch sender profile for event meta")
+	} else if userResp.User != nil {
+		meta.SenderName = userResp.User.DisplayName
+	}
+	if meta.SenderName == "" {
+		if len(senderID) > 8 {
+			meta.SenderName = senderID[:8]
+		} else {
+			meta.SenderName = senderID
+		}
+	}
+
+	partResp, err := s.chatClient.GetChatParticipants(grpcCtx, &chatv1.GetChatParticipantsRequest{ChatId: chatID})
+	if err != nil {
+		s.log.Warn().Err(err).Str("chat_id", chatID).Msg("failed to fetch participants for event meta")
 	} else {
-		e.SenderName = userResp.User.DisplayName
-		e.SenderAvatar = userResp.User.AvatarUrl
+		meta.ParticipantIDs = partResp.UserIds
 	}
 
-	if perm != nil {
-		e.IsGroup = perm.ChatType == "group"
+	if permResp != nil {
+		meta.ChatType = permResp.ChatType
+		meta.IsGroup = permResp.ChatType == "group"
+		if meta.IsGroup {
+			meta.ChatName = permResp.ChatName
+		} else {
+			meta.ChatName = meta.SenderName
+		}
 	}
 
-	partResp, err := s.chatClient.GetChatParticipants(ctx, &chatv1.GetChatParticipantsRequest{ChatId: chatID})
-	if err != nil {
-		s.log.Warn().Err(err).Str("chat_id", chatID).Msg("enrichment: failed to resolve participants")
-	} else if partResp != nil {
-		e.ParticipantIDs = partResp.UserIds
-	}
-
-	return e
+	return meta
 }
 
 // GetMessages returns messages for a chat with cursor-based pagination.
@@ -148,7 +162,7 @@ func (s *messageServiceImpl) GetMessages(ctx context.Context, query *model.ListM
 		cursorTime = &t
 	}
 
-	msgs, err := s.messageRepo.ListByChatID(ctx, query.ChatID, cursorTime, query.CursorID, limit)
+	msgs, err := s.messageRepo.ListByChatID(ctx, query.ChatID, query.UserID, cursorTime, query.CursorID, limit)
 	if err != nil {
 		return nil, apperr.NewInternal("failed to list messages", err)
 	}
@@ -158,15 +172,11 @@ func (s *messageServiceImpl) GetMessages(ctx context.Context, query *model.ListM
 		if msg.ReplyToMessageID != "" {
 			original, err := s.messageRepo.GetByID(ctx, msg.ReplyToMessageID)
 			if err == nil && original != nil {
-				body := original.Payload.Body
-				if len(body) > 100 {
-					body = body[:97] + "..."
-				}
 				msg.ReplyToPreview = &model.ReplyPreview{
 					MessageID: original.MessageID,
 					SenderID:  original.SenderID,
 					Type:      original.Type,
-					Body:      body,
+					Body:      replyPreviewBody(original.Type, original.Payload),
 				}
 			}
 		}
@@ -392,7 +402,7 @@ func (s *messageServiceImpl) SearchMessages(ctx context.Context, chatID, userID,
 		}
 	}
 
-	msgs, err := s.messageRepo.Search(ctx, chatID, query, limit)
+	msgs, err := s.messageRepo.Search(ctx, chatID, userID, query, limit)
 	if err != nil {
 		return nil, apperr.NewInternal("failed to search messages", err)
 	}
@@ -407,7 +417,7 @@ func (s *messageServiceImpl) SearchGlobal(ctx context.Context, userID, query str
 		limit = 20
 	}
 
-	msgs, err := s.messageRepo.SearchGlobal(ctx, chatIDs, query, limit)
+	msgs, err := s.messageRepo.SearchGlobal(ctx, chatIDs, userID, query, limit)
 	if err != nil {
 		return nil, apperr.NewInternal("failed to search messages globally", err)
 	}
@@ -416,7 +426,7 @@ func (s *messageServiceImpl) SearchGlobal(ctx context.Context, userID, query str
 
 // GetLastMessages delegates to the repository aggregation.
 func (s *messageServiceImpl) GetLastMessages(ctx context.Context, chatIDs []string) (map[string]*model.Message, error) {
-	msgs, err := s.messageRepo.GetLastPerChat(ctx, chatIDs)
+	msgs, err := s.messageRepo.GetLastPerChat(ctx, chatIDs, "")
 	if err != nil {
 		return nil, apperr.NewInternal("failed to get last messages", err)
 	}
@@ -430,6 +440,49 @@ func (s *messageServiceImpl) GetUnreadCounts(ctx context.Context, userID string,
 		return nil, apperr.NewInternal("failed to get unread counts", err)
 	}
 	return counts, nil
+}
+
+// replyPreviewBody returns a human-readable preview string for a message,
+// preferring caption/body for text, and falling back to type labels for media.
+func replyPreviewBody(msgType model.MessageType, payload model.MessagePayload) string {
+	switch msgType {
+	case model.MessageTypeText, model.MessageTypeLocation:
+		body := payload.Body
+		if len(body) > 100 {
+			body = body[:97] + "..."
+		}
+		return body
+	case model.MessageTypeImage:
+		if payload.Caption != "" {
+			return "\U0001F4F7 " + truncate100(payload.Caption)
+		}
+		return "\U0001F4F7 Photo"
+	case model.MessageTypeVideo:
+		if payload.Caption != "" {
+			return "\U0001F3A5 " + truncate100(payload.Caption)
+		}
+		return "\U0001F3A5 Video"
+	case model.MessageTypeAudio:
+		return "\U0001F3A4 Audio"
+	case model.MessageTypeDocument:
+		if payload.Filename != "" {
+			return "\U0001F4C4 " + payload.Filename
+		}
+		return "\U0001F4C4 Document"
+	default:
+		body := payload.Body
+		if len(body) > 100 {
+			body = body[:97] + "..."
+		}
+		return body
+	}
+}
+
+func truncate100(s string) string {
+	if len(s) > 100 {
+		return s[:97] + "..."
+	}
+	return s
 }
 
 // validateMessagePayload checks that the payload contains required fields for the given type.
