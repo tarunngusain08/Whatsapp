@@ -1,7 +1,13 @@
 package com.whatsappclone.feature.chat.call
 
+import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.whatsappclone.core.network.websocket.WebSocketManager
 import com.whatsappclone.core.network.websocket.WsConnectionState
@@ -19,6 +25,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.webrtc.AudioTrack
 import org.webrtc.Camera2Enumerator
+import org.webrtc.CameraVideoCapturer
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -32,8 +39,9 @@ import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceTextureHelper
-import org.webrtc.VideoCapturer
+import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
+import java.util.Collections
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,6 +61,8 @@ class CallService @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val mainHandler = Handler(Looper.getMainLooper())
     val eglBase: EglBase by lazy { EglBase.create() }
 
     private val _session = MutableStateFlow<CallSession?>(null)
@@ -73,9 +83,50 @@ class CallService @Inject constructor(
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
     private var localAudioTrack: AudioTrack? = null
-    private var videoCapturer: VideoCapturer? = null
+    private var videoCapturer: CameraVideoCapturer? = null
+    private var videoSource: VideoSource? = null
     private var surfaceTextureHelper: SurfaceTextureHelper? = null
-    private val pendingIceCandidates = mutableListOf<IceCandidate>()
+    private val pendingIceCandidates: MutableList<IceCandidate> = Collections.synchronizedList(mutableListOf())
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var previousAudioMode: Int = AudioManager.MODE_NORMAL
+
+    private fun configureAudioForCall() {
+        previousAudioMode = audioManager.mode
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        audioManager.isSpeakerphoneOn = false
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val focusReq = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .build()
+            audioFocusRequest = focusReq
+            audioManager.requestAudioFocus(focusReq)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                null,
+                AudioManager.STREAM_VOICE_CALL,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+            )
+        }
+    }
+
+    private fun restoreAudio() {
+        audioManager.mode = AudioManager.MODE_NORMAL
+        audioManager.isSpeakerphoneOn = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+            audioFocusRequest = null
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(null)
+        }
+    }
 
     private fun ensureFactory(): PeerConnectionFactory {
         peerConnectionFactory?.let { return it }
@@ -104,10 +155,9 @@ class CallService @Inject constructor(
 
         return factory.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(candidate: IceCandidate) {
-                val callId = _session.value?.callId ?: return
-                val targetUserId = _session.value?.remoteUserId ?: return
+                val session = _session.value ?: return
                 scope.launch {
-                    sendIceCandidate(callId, targetUserId, candidate.sdp)
+                    sendIceCandidate(session.callId, session.remoteUserId, candidate.sdp)
                 }
             }
 
@@ -147,11 +197,6 @@ class CallService @Inject constructor(
         })!!.also { peerConnection = it }
     }
 
-    private fun configureAudioForCall() {
-        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-        audioManager.isSpeakerphoneOn = false
-    }
-
     private fun addLocalAudioTrack() {
         val factory = ensureFactory()
         val audioConstraints = MediaConstraints()
@@ -167,27 +212,20 @@ class CallService @Inject constructor(
         val deviceName = enumerator.deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
             ?: enumerator.deviceNames.firstOrNull()
             ?: run {
-                Log.e(TAG, "No camera device found")
+                Log.e(TAG, "No camera found")
                 return
             }
 
-        val capturer = enumerator.createCapturer(deviceName, null) ?: run {
-            Log.e(TAG, "Failed to create camera capturer for $deviceName")
-            return
-        }
-        videoCapturer = capturer
+        videoCapturer = enumerator.createCapturer(deviceName, null)
+        surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
+        videoSource = factory.createVideoSource(videoCapturer!!.isScreencast)
+        videoCapturer!!.initialize(surfaceTextureHelper, context, videoSource!!.capturerObserver)
+        videoCapturer!!.startCapture(640, 480, 30)
 
-        val helper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
-        surfaceTextureHelper = helper
-
-        val videoSource = factory.createVideoSource(capturer.isScreencast)
-        capturer.initialize(helper, context, videoSource.capturerObserver)
-        capturer.startCapture(1280, 720, 30)
-
-        val videoTrack = factory.createVideoTrack("video_local", videoSource)
-        videoTrack.setEnabled(true)
-        peerConnection?.addTrack(videoTrack, listOf("stream_local"))
-        _localVideoTrack.value = videoTrack
+        val localTrack = factory.createVideoTrack("video_local", videoSource)
+        localTrack?.setEnabled(true)
+        _localVideoTrack.value = localTrack
+        peerConnection?.addTrack(localTrack, listOf("stream_local"))
     }
 
     // ── Outgoing call ────────────────────────────────────────────────────
@@ -215,6 +253,7 @@ class CallService @Inject constructor(
         addLocalAudioTrack()
         if (callType == "video") {
             addLocalVideoTrack()
+            audioManager.isSpeakerphoneOn = true
         }
 
         peerConnection?.createOffer(object : SdpObserverAdapter() {
@@ -251,9 +290,6 @@ class CallService @Inject constructor(
         configureAudioForCall()
         createPeerConnection()
         addLocalAudioTrack()
-        if (callType == "video") {
-            addLocalVideoTrack()
-        }
 
         val remoteSdp = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(SdpObserverAdapter(), remoteSdp)
@@ -266,7 +302,13 @@ class CallService @Inject constructor(
 
     fun acceptCall() {
         val session = _session.value ?: return
+        mainHandler.post { notificationManager.cancel(session.callId.hashCode()) }
         _session.update { it?.copy(state = CallState.CONNECTING) }
+
+        if (session.callType == "video") {
+            addLocalVideoTrack()
+            audioManager.isSpeakerphoneOn = true
+        }
 
         peerConnection?.createAnswer(object : SdpObserverAdapter() {
             override fun onCreateSuccess(sdp: SessionDescription) {
@@ -284,11 +326,7 @@ class CallService @Inject constructor(
     }
 
     fun declineCall() {
-        val session = _session.value ?: return
         endCall("declined")
-        scope.launch {
-            sendCallEnd(session.callId, session.remoteUserId, "declined")
-        }
     }
 
     // ── Remote events ────────────────────────────────────────────────────
@@ -328,37 +366,41 @@ class CallService @Inject constructor(
     }
 
     fun endCall(reason: String = "user_hangup") {
-        val session = _session.value
-        if (session != null && session.state != CallState.ENDED) {
-            scope.launch {
-                sendCallEnd(session.callId, session.remoteUserId, reason)
-            }
+        val session = _session.value ?: return
+        if (session.state == CallState.ENDED) return
+        _session.update { it?.copy(state = CallState.ENDED) }
+
+        mainHandler.post { notificationManager.cancel(session.callId.hashCode()) }
+        scope.launch {
+            sendCallEnd(session.callId, session.remoteUserId, reason)
         }
 
-        try { videoCapturer?.stopCapture() } catch (_: Exception) {}
-        videoCapturer?.dispose()
-        videoCapturer = null
-        surfaceTextureHelper?.dispose()
-        surfaceTextureHelper = null
+        try {
+            try { videoCapturer?.stopCapture() } catch (_: Exception) {}
+            videoCapturer?.dispose()
+            videoCapturer = null
+            videoSource?.dispose()
+            videoSource = null
+            surfaceTextureHelper?.dispose()
+            surfaceTextureHelper = null
 
-        _localVideoTrack.value?.dispose()
-        _localVideoTrack.value = null
-        _remoteVideoTrack.value = null
+            _localVideoTrack.value?.dispose()
+            _localVideoTrack.value = null
+            _remoteVideoTrack.value = null
 
-        localAudioTrack?.dispose()
-        localAudioTrack = null
+            localAudioTrack?.dispose()
+            localAudioTrack = null
 
-        peerConnection?.close()
-        peerConnection?.dispose()
-        peerConnection = null
+            peerConnection?.close()
+            peerConnection?.dispose()
+            peerConnection = null
 
-        _isMuted.value = false
-        _isSpeakerOn.value = false
-        audioManager.mode = AudioManager.MODE_NORMAL
-        audioManager.isSpeakerphoneOn = false
-        pendingIceCandidates.clear()
-
-        _session.update { it?.copy(state = CallState.ENDED) }
+            _isMuted.value = false
+            _isSpeakerOn.value = false
+        } finally {
+            restoreAudio()
+            pendingIceCandidates.clear()
+        }
     }
 
     fun clearSession() {
