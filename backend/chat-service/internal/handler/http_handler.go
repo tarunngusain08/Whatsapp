@@ -410,7 +410,7 @@ func (h *HTTPHandler) UploadGroupAvatar(c *gin.Context) {
 		return
 	}
 
-	avatarURL, err := h.chatSvc.UploadGroupAvatar(c.Request.Context(), chatID, userID)
+	avatarURL, err := h.chatSvc.UploadGroupAvatar(c.Request.Context(), chatID, userID, file, header.Size, contentType)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -475,19 +475,6 @@ func (e *validationErr) Error() string {
 // flattenChat transforms a ChatListItem into a flat ChatDto-like map
 // matching the client's expected shape.
 func flattenChat(item *model.ChatListItem) gin.H {
-	name := ""
-	description := ""
-	avatarURL := ""
-
-	if item.Group != nil {
-		name = item.Group.Name
-		description = item.Group.Description
-		avatarURL = item.Group.AvatarURL
-	}
-
-	// Build flat participant list -- only include fields the chat-service
-	// actually knows.  display_name / avatar_url are NOT sent so the client
-	// won't overwrite existing local user records with empty values.
 	participants := make([]gin.H, 0, len(item.Participants))
 	for _, p := range item.Participants {
 		participants = append(participants, gin.H{
@@ -496,7 +483,6 @@ func flattenChat(item *model.ChatListItem) gin.H {
 		})
 	}
 
-	// Build flat last_message
 	var lastMessage interface{}
 	if item.LastMessage != nil {
 		lastMessage = gin.H{
@@ -508,7 +494,6 @@ func flattenChat(item *model.ChatListItem) gin.H {
 		}
 	}
 
-	// Determine muted status from participants
 	isMuted := false
 	for _, p := range item.Participants {
 		if p.IsMuted {
@@ -517,12 +502,9 @@ func flattenChat(item *model.ChatListItem) gin.H {
 		}
 	}
 
-	return gin.H{
+	resp := gin.H{
 		"chat_id":      item.Chat.ID,
 		"type":         string(item.Chat.Type),
-		"name":         name,
-		"description":  description,
-		"avatar_url":   avatarURL,
 		"participants": participants,
 		"last_message": lastMessage,
 		"unread_count": item.UnreadCount,
@@ -530,4 +512,12 @@ func flattenChat(item *model.ChatListItem) gin.H {
 		"created_at":   item.Chat.CreatedAt.Format(time.RFC3339),
 		"updated_at":   item.Chat.UpdatedAt.Format(time.RFC3339),
 	}
+
+	if item.Group != nil {
+		resp["name"] = item.Group.Name
+		resp["description"] = item.Group.Description
+		resp["avatar_url"] = item.Group.AvatarURL
+	}
+
+	return resp
 }
