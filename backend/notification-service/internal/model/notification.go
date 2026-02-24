@@ -20,13 +20,14 @@ type MessageEvent struct {
 	ChatName       string         `json:"chat_name"`
 	IsGroup        bool           `json:"is_group"`
 	ParticipantIDs []string       `json:"participant_ids"`
-	CreatedAt      string         `json:"created_at"`
+	CreatedAt      int64          `json:"created_at"`
 }
 
 // MessagePayload holds the message content fields from the NATS event.
 type MessagePayload struct {
 	Body     string `json:"body"`
 	MediaID  string `json:"media_id"`
+	Caption  string `json:"caption"`
 	Filename string `json:"filename"`
 }
 
