@@ -19,11 +19,15 @@ type MessageSendPayload struct {
 }
 
 type MessageContent struct {
-	Body       string `json:"body,omitempty"`
-	MediaID    string `json:"media_id,omitempty"`
-	Caption    string `json:"caption,omitempty"`
-	Filename   string `json:"filename,omitempty"`
-	DurationMs int64  `json:"duration_ms,omitempty"`
+	Body         string `json:"body,omitempty"`
+	MediaID      string `json:"media_id,omitempty"`
+	Caption      string `json:"caption,omitempty"`
+	Filename     string `json:"filename,omitempty"`
+	DurationMs   int64  `json:"duration_ms,omitempty"`
+	MediaURL     string `json:"media_url,omitempty"`
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	MimeType     string `json:"mime_type,omitempty"`
+	FileSize     int64  `json:"file_size,omitempty"`
 }
 
 type MessageStatusPayload struct {
@@ -63,18 +67,22 @@ type MessageNewPayload struct {
 	SenderID  string         `json:"sender_id"`
 	Type      string         `json:"type"`
 	Payload   MessageContent `json:"payload"`
-	CreatedAt int64          `json:"created_at"`
+	Status    string         `json:"status"`    // "sent" for client MessageDto
+	CreatedAt string         `json:"created_at"` // ISO8601 for client parseTimestamp
 }
 
 type MessageSentAckPayload struct {
 	ClientMsgID string `json:"client_msg_id"`
 	MessageID   string `json:"message_id"`
-	CreatedAt   int64  `json:"created_at"`
+	ChatID      string `json:"chat_id"`
+	Timestamp   string `json:"timestamp"` // ISO8601 for client parseTimestamp
+	CreatedAt   int64  `json:"created_at"` // Unix ms, kept for backwards compat
 }
 
 type PresenceEventPayload struct {
-	UserID string `json:"user_id"`
-	Online bool   `json:"online"`
+	UserID   string `json:"user_id"`
+	Online   bool   `json:"online"`
+	LastSeen string `json:"last_seen,omitempty"`
 }
 
 // --- Call signaling payloads ---
