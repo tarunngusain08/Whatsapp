@@ -1,8 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,8 +21,9 @@ import (
 )
 
 type chatServiceImpl struct {
-	chatRepo      repository.ChatRepository
-	messageClient messagev1.MessageServiceClient
+	chatRepo       repository.ChatRepository
+	messageClient  messagev1.MessageServiceClient
+	mediaHTTPAddr  string
 	eventPublisher
 }
 
@@ -26,10 +32,12 @@ func NewChatService(
 	messageClient messagev1.MessageServiceClient,
 	js nats.JetStreamContext,
 	log zerolog.Logger,
+	mediaHTTPAddr string,
 ) ChatService {
 	return &chatServiceImpl{
 		chatRepo:      chatRepo,
 		messageClient: messageClient,
+		mediaHTTPAddr: mediaHTTPAddr,
 		eventPublisher: eventPublisher{
 			js:  js,
 			log: log,
@@ -70,9 +78,14 @@ func (s *chatServiceImpl) CreateDirectChat(ctx context.Context, callerID string,
 	}
 
 	s.publishEvent("chat.created", map[string]interface{}{
-		"chat_id":      chatID,
-		"type":         "direct",
-		"participants": []string{callerID, req.OtherUserID},
+		"chat_id": chatID,
+		"type":    "direct",
+		"participants": []map[string]string{
+			{"user_id": callerID, "role": "member"},
+			{"user_id": req.OtherUserID, "role": "member"},
+		},
+		"created_at": now.Format(time.RFC3339),
+		"updated_at": now.Format(time.RFC3339),
 	})
 
 	return chat, nil
@@ -118,11 +131,21 @@ func (s *chatServiceImpl) CreateGroup(ctx context.Context, callerID string, req 
 		return nil, nil, apperr.NewInternal("failed to create group", err)
 	}
 
+	eventParticipants := make([]map[string]string, 0, len(participants))
+	for _, p := range participants {
+		eventParticipants = append(eventParticipants, map[string]string{
+			"user_id": p.UserID,
+			"role":    p.Role,
+		})
+	}
 	s.publishEvent("chat.created", map[string]interface{}{
-		"chat_id": chatID,
-		"type":    "group",
-		"name":    req.Name,
-		"members": append(req.MemberIDs, callerID),
+		"chat_id":      chatID,
+		"type":         "group",
+		"name":         req.Name,
+		"description":  req.Description,
+		"participants": eventParticipants,
+		"created_at":   now.Format(time.RFC3339),
+		"updated_at":   now.Format(time.RFC3339),
 	})
 
 	for _, memberID := range req.MemberIDs {
@@ -395,10 +418,16 @@ func (s *chatServiceImpl) PromoteMember(ctx context.Context, callerID, chatID, t
 		return apperr.NewInternal("failed to promote member", err)
 	}
 
+	participants, _ := s.chatRepo.GetParticipants(ctx, chatID)
+	participantIDs := make([]string, 0, len(participants))
+	for _, p := range participants {
+		participantIDs = append(participantIDs, p.UserID)
+	}
 	s.publishEvent("chat.updated", map[string]interface{}{
-		"chat_id":  chatID,
-		"user_id":  targetUserID,
-		"new_role": "admin",
+		"chat_id":      chatID,
+		"user_id":      targetUserID,
+		"new_role":     "admin",
+		"participants": participantIDs,
 	})
 
 	return nil
@@ -425,10 +454,16 @@ func (s *chatServiceImpl) DemoteMember(ctx context.Context, callerID, chatID, ta
 		return apperr.NewInternal("failed to demote member", err)
 	}
 
+	participants, _ := s.chatRepo.GetParticipants(ctx, chatID)
+	participantIDs := make([]string, 0, len(participants))
+	for _, p := range participants {
+		participantIDs = append(participantIDs, p.UserID)
+	}
 	s.publishEvent("chat.updated", map[string]interface{}{
-		"chat_id":  chatID,
-		"user_id":  targetUserID,
-		"new_role": "member",
+		"chat_id":      chatID,
+		"user_id":      targetUserID,
+		"new_role":     "member",
+		"participants": participantIDs,
 	})
 
 	return nil
@@ -447,10 +482,26 @@ func (s *chatServiceImpl) UpdateGroup(ctx context.Context, callerID, chatID stri
 		return apperr.NewInternal("failed to update group", err)
 	}
 
-	s.publishEvent("chat.updated", map[string]interface{}{
-		"chat_id": chatID,
-		"action":  "group_updated",
-	})
+	participants, _ := s.chatRepo.GetParticipants(ctx, chatID)
+	participantIDs := make([]string, 0, len(participants))
+	for _, p := range participants {
+		participantIDs = append(participantIDs, p.UserID)
+	}
+	eventPayload := map[string]interface{}{
+		"chat_id":      chatID,
+		"action":       "group_updated",
+		"participants": participantIDs,
+	}
+	if req.Name != nil {
+		eventPayload["name"] = *req.Name
+	}
+	if req.Description != nil {
+		eventPayload["description"] = *req.Description
+	}
+	if req.AvatarURL != nil {
+		eventPayload["avatar_url"] = *req.AvatarURL
+	}
+	s.publishEvent("chat.updated", eventPayload)
 
 	return nil
 }
@@ -487,8 +538,7 @@ func (s *chatServiceImpl) PinChat(ctx context.Context, userID, chatID string, pi
 	return nil
 }
 
-func (s *chatServiceImpl) UploadGroupAvatar(ctx context.Context, chatID, userID string) (string, error) {
-	// Verify user is admin of the group
+func (s *chatServiceImpl) UploadGroupAvatar(ctx context.Context, chatID, userID string, file io.Reader, fileSize int64, contentType string) (string, error) {
 	isAdmin, err := s.chatRepo.IsAdmin(ctx, chatID, userID)
 	if err != nil {
 		return "", apperr.NewInternal("failed to check admin status", err)
@@ -497,8 +547,10 @@ func (s *chatServiceImpl) UploadGroupAvatar(ctx context.Context, chatID, userID 
 		return "", apperr.NewForbidden("only group admins can update the avatar")
 	}
 
-	// In production, delegate to media-service for storage
-	avatarURL := fmt.Sprintf("/api/v1/media/group-avatars/%s", chatID)
+	avatarURL, err := s.uploadToMediaService(ctx, userID, file, contentType)
+	if err != nil {
+		return "", apperr.NewInternal("failed to upload avatar to media-service", err)
+	}
 
 	err = s.chatRepo.UpdateGroupRaw(ctx, chatID, map[string]interface{}{
 		"avatar_url": avatarURL,
@@ -507,6 +559,47 @@ func (s *chatServiceImpl) UploadGroupAvatar(ctx context.Context, chatID, userID 
 		return "", apperr.NewInternal("failed to update group avatar", err)
 	}
 	return avatarURL, nil
+}
+
+func (s *chatServiceImpl) uploadToMediaService(ctx context.Context, uploaderID string, file io.Reader, contentType string) (string, error) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	part, err := writer.CreateFormFile("file", "avatar")
+	if err != nil {
+		return "", fmt.Errorf("failed to create form file: %w", err)
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return "", fmt.Errorf("failed to copy file data: %w", err)
+	}
+	writer.Close()
+
+	uploadURL := fmt.Sprintf("%s/api/v1/media/upload", s.mediaHTTPAddr)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uploadURL, &buf)
+	if err != nil {
+		return "", fmt.Errorf("failed to create upload request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-User-ID", uploaderID)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("media-service upload failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("media-service returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode media-service response: %w", err)
+	}
+	return result.Data.URL, nil
 }
 
 func (s *chatServiceImpl) SetDisappearingMessages(ctx context.Context, chatID, userID string, timer *time.Duration) error {
